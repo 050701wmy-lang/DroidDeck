@@ -133,6 +133,9 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
         val size = outputSize()
         SessionState.outputSize = size
         SessionState.refreshHz = refreshHz()
+        // Letterbox, never stretch or crop: the output above can be a different shape from the
+        // panel now, and a game's picture must keep its proportions with bars, not lose its edges.
+        WaylandCompositor.nativeSetScaleMode(SCALE_FIT, ALIGN_CENTER)
         CompositorHost.startOrAttach(
             holder.surface, runtimeDir.path,
             driverId?.let { turnip.driverPath(it) }, driverId?.let { turnip.libraryName(it) },
@@ -171,14 +174,18 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
             windowManager.defaultDisplay.getRealMetrics(metrics)
             android.graphics.Rect(0, 0, metrics.widthPixels, metrics.heightPixels)
         }
-        var width = maxOf(bounds.width(), bounds.height())
-        var height = minOf(bounds.width(), bounds.height())
-        // The client's CEF is the heaviest thing in the session; above 1080p it costs frames for
-        // nothing anyone can see on a phone panel.
-        if (height > 1080) {
-            width = width * 1080 / height
-            height = 1080
-        }
+        val panelW = maxOf(bounds.width(), bounds.height()).toFloat()
+        val panelH = minOf(bounds.width(), bounds.height()).toFloat()
+        // Never narrower than 16:9. A foldable's inner panel is nearly square, and a game handed a
+        // square display draws for the frame it was made for and cuts the sides off itself
+        // (FlatOut on a Fold lost the edges of its own menus). Wider than 16:9 is fine — games and
+        // the client cope with a phone's 20:9 — so the panel's aspect is kept above that and the
+        // compositor letterboxes the 16:9 picture onto a squarer panel.
+        val aspect = maxOf(panelW / panelH, 16f / 9f)
+        // 1080 tall at most: the client's CEF is the heaviest thing in the session, and above
+        // 1080p it costs frames for nothing anyone can see on a handheld panel.
+        val height = minOf(panelH, 1080f).toInt()
+        val width = (height * aspect).toInt()
         // Odd sizes upset the scaler; both dimensions even is what every mode here would be.
         return Pair(width and 1.inv(), height and 1.inv())
     }
@@ -260,8 +267,16 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> 2
             else -> return false
         }
-        val x = (event.x / width * 1920f).toInt().coerceIn(0, 1919)
-        val y = (event.y / height * 1080f).toInt().coerceIn(0, 1079)
+        // The picture is letterboxed inside the view when the panel is a different shape from the
+        // output, so a touch is mapped through the fitted rectangle, not the whole view.
+        val out = SessionState.outputSize
+        val scale = minOf(width / out.first.toFloat(), height / out.second.toFloat())
+        val drawnW = out.first * scale
+        val drawnH = out.second * scale
+        val left = (width - drawnW) / 2f
+        val top = (height - drawnH) / 2f
+        val x = ((event.x - left) / drawnW * 1920f).toInt().coerceIn(0, 1919)
+        val y = ((event.y - top) / drawnH * 1080f).toInt().coerceIn(0, 1079)
         WaylandCompositor.nativeSendPointer(action, x, y)
         return true
     }
@@ -362,5 +377,8 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
 
     companion object {
         private const val TAG = "SessionActivity"
+        /** Compositor scale modes (Container.FULLSCREEN_* values): 1 = fit with bars, centred. */
+        private const val SCALE_FIT = 1
+        private const val ALIGN_CENTER = 0
     }
 }
