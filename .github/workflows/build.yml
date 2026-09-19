@@ -173,6 +173,22 @@ jobs:
           [ "$fail" = 0 ] && echo "every NEEDED resolves"
           exit $fail
 
+      # AGP signs with v2+v3 and drops v1 whenever minSdk is 24 or higher, and setting
+      # enableV1Signing in the DSL does not move it. Re-signing here with apksigner is the one way
+      # to be sure of what the apk carries: zipalign first, then all three schemes explicitly.
+      - name: Sign with the testkey (v1 + v2 + v3)
+        run: |
+          set -euo pipefail
+          APK=$(find app/build/outputs/apk -name '*.apk' | head -1)
+          TOOLS=$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -type d | sort -V | tail -1)
+          "$TOOLS/zipalign" -p -f 4 "$APK" "$APK.aligned"
+          "$TOOLS/apksigner" sign \
+            --ks keystore/testkey.p12 --ks-type PKCS12 --ks-pass pass:android \
+            --ks-key-alias testkey --key-pass pass:android \
+            --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true \
+            --out "$APK" "$APK.aligned"
+          rm -f "$APK.aligned" "$APK.idsig"
+
       # The apk must stay installable over the last one, and on every Android version: that means
       # one stable key and all three signature schemes. Cheap to assert, easy to lose silently.
       - name: Check the signature
