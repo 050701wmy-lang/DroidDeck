@@ -82,19 +82,36 @@ object FrameGen {
         return problem
     }
 
-    /** Off, or an engine at 2x/3x/4x; saved on pick, then [onChanged]. */
+    /**
+     * Off, or an engine at 2x/3x/4x; saved on pick, then [onChanged]. The LSFG rows are greyed
+     * and unpickable until Lossless Scaling is installed in the Steam client — the engine cannot
+     * run without its DLL, so offering it would only produce a setting that silently does nothing.
+     */
     fun showPicker(activity: android.app.Activity, onChanged: () -> Unit) {
-        val choices = arrayOf("Off",
+        val lsfgReady = LsfgNative.isInstalled(activity)
+        val lsfgNote = if (lsfgReady) "" else "  — install Lossless Scaling in Steam"
+        val choices = listOf("Off",
             "Win-FG 2×", "Win-FG 3×", "Win-FG 4×",
-            "LSFG 2× (needs Lossless Scaling)", "LSFG 3× (needs Lossless Scaling)", "LSFG 4× (needs Lossless Scaling)")
+            "LSFG 2×$lsfgNote", "LSFG 3×$lsfgNote", "LSFG 4×$lsfgNote")
         val current = when (engine(activity)) {
             ENGINE_WINFG -> multiplier(activity) - 1
-            ENGINE_LSFG -> multiplier(activity) + 2
+            ENGINE_LSFG -> if (lsfgReady) multiplier(activity) + 2 else 0
             else -> 0
+        }
+        val adapter = object : android.widget.ArrayAdapter<String>(
+            activity, android.R.layout.simple_list_item_single_choice, choices) {
+            override fun isEnabled(position: Int) = lsfgReady || position < 4
+            override fun areAllItemsEnabled() = lsfgReady
+            override fun getView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
+                val view = super.getView(position, convertView, parent)
+                view.isEnabled = isEnabled(position)
+                view.alpha = if (isEnabled(position)) 1f else 0.38f
+                return view
+            }
         }
         android.app.AlertDialog.Builder(activity)
             .setTitle(com.steamdeck.launcher.R.string.frame_gen_title)
-            .setSingleChoiceItems(choices, current) { dialog, which ->
+            .setSingleChoiceItems(adapter, current) { dialog, which ->
                 when (which) {
                     0 -> set(activity, ENGINE_OFF, 2)
                     in 1..3 -> set(activity, ENGINE_WINFG, which + 1)
