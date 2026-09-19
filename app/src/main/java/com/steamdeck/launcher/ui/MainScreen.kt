@@ -3,7 +3,6 @@ package com.steamdeck.launcher.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.steamdeck.launcher.R
 
 /** Everything the main screen shows; the activity owns the values and the work behind them. */
@@ -44,8 +45,13 @@ class MainUiState(
 )
 
 /**
- * The whole app outside a session, in one scrolling column that stays a sensible width on a wide
- * panel: is the runtime installed, is there a newer one, frame generation, and Play.
+ * The whole app outside a session, in one column that is sized to the window it has.
+ *
+ * Panels and densities vary too much for fixed dp: a 7" 1080p handheld in landscape has barely
+ * 400dp of height, a foldable's inner screen has 900. So the column is designed at one size and
+ * scaled by the height available — everything on it, text included, shrinks together until it
+ * fits — with scrolling left as the last resort, and a width cap so the buttons never span a
+ * wide panel. The system bars are kept clear of.
  */
 @Composable
 fun MainScreen(
@@ -58,92 +64,90 @@ fun MainScreen(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentAlignment = Alignment.TopCenter,
+            .background(MaterialTheme.colorScheme.background)
+            .systemBarsPadding(),
+        contentAlignment = Alignment.Center,
     ) {
-        val wide = maxWidth > 600.dp
+        // The column as designed needs about this much height; below it, scale everything.
+        val designHeight = 480.dp
+        val k = (maxHeight / designHeight).coerceIn(0.55f, 1f)
+        val colors = MaterialTheme.colorScheme
+
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .fillMaxSize()
+                .widthIn(max = 420.dp * k)
+                .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 20.dp),
+                .padding(horizontal = 24.dp * k, vertical = 12.dp * k),
         ) {
-            // The column never spans a landscape panel: the buttons stay a readable width.
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth(),
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.logo),
-                    contentDescription = null,
-                    modifier = Modifier.size(if (wide) 88.dp else 72.dp),
-                )
-                Spacer(Modifier.height(8.dp))
-                Text("SteamDeck", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onBackground)
-                Text(
-                    "Valve's native ARM64 Steam client, under gamescope",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(18.dp))
+            Image(
+                painter = painterResource(R.drawable.logo),
+                contentDescription = null,
+                modifier = Modifier.size(72.dp * k),
+            )
+            Spacer(Modifier.height(6.dp * k))
+            Text("SteamDeck", fontSize = 22.sp * k, color = colors.onBackground)
+            Text(
+                "Valve's native ARM64 Steam client, under gamescope",
+                fontSize = 12.sp * k, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(14.dp * k))
 
-                val status = when {
-                    state.busy -> "Working…"
-                    !state.ready -> "Linux runtime not installed"
-                    else -> "Ready"
-                }
-                Text(status, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
-                val detail = when {
-                    state.busy -> if (state.percent >= 0) "${state.stage} ${state.percent}%" else state.stage
-                    state.failed -> "Install failed — nothing was changed"
-                    !state.ready -> state.available?.let { "$it · ${state.availableSize} download, one time" }
-                        ?: "Could not reach the runtime catalog"
-                    state.available != null && state.available != state.installed ->
-                        "Runtime ${state.installed ?: "?"} installed · ${state.available} available"
-                    else -> "Runtime ${state.installed ?: "?"} installed"
-                }
-                Text(
-                    detail,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-                if (state.busy) {
-                    Spacer(Modifier.height(8.dp))
-                    if (state.percent >= 0) {
-                        LinearProgressIndicator(progress = { state.percent / 100f }, modifier = Modifier.fillMaxWidth())
-                    } else {
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                    }
-                }
-                Spacer(Modifier.height(18.dp))
-
-                Button(onClick = onPlay, enabled = state.ready && !state.busy, modifier = Modifier.fillMaxWidth()) {
-                    Text("Play")
-                }
-                val runtimeLabel = when {
-                    state.busy -> "Working…"
-                    !state.ready -> "Install Linux runtime"
-                    state.available != null && state.available != state.installed -> "Update Linux runtime"
-                    else -> "Remove Linux runtime"
-                }
-                OutlinedButton(onClick = onRuntime, enabled = !state.busy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                    Text(runtimeLabel)
-                }
-                OutlinedButton(onClick = onFrameGen, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                    Text("Frame generation: ${state.frameGenLabel}")
-                }
-                Spacer(Modifier.height(14.dp))
-                Text(
-                    "by The412Banner and maxjivi05 · credits",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.clickable(onClick = onCredits).padding(6.dp),
-                )
+            val status = when {
+                state.busy -> "Working…"
+                !state.ready -> "Linux runtime not installed"
+                else -> "Ready"
             }
+            Text(status, fontSize = 15.sp * k, color = colors.onBackground)
+            val detail = when {
+                state.busy -> if (state.percent >= 0) "${state.stage} ${state.percent}%" else state.stage
+                state.failed -> "Install failed — nothing was changed"
+                !state.ready -> state.available?.let { "$it · ${state.availableSize} download, one time" }
+                    ?: "Could not reach the runtime catalog"
+                state.available != null && state.available != state.installed ->
+                    "Runtime ${state.installed ?: "?"} installed · ${state.available} available"
+                else -> "Runtime ${state.installed ?: "?"} installed"
+            }
+            Text(
+                detail, fontSize = 12.sp * k, color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 3.dp * k),
+            )
+            if (state.busy) {
+                Spacer(Modifier.height(6.dp * k))
+                if (state.percent >= 0) {
+                    LinearProgressIndicator(progress = { state.percent / 100f }, modifier = Modifier.fillMaxWidth())
+                } else {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+            }
+            Spacer(Modifier.height(14.dp * k))
+
+            val buttonHeight = 40.dp * k
+            Button(
+                onClick = onPlay, enabled = state.ready && !state.busy,
+                modifier = Modifier.fillMaxWidth().height(buttonHeight),
+            ) { Text("Play", fontSize = 14.sp * k) }
+            val runtimeLabel = when {
+                state.busy -> "Working…"
+                !state.ready -> "Install Linux runtime"
+                state.available != null && state.available != state.installed -> "Update Linux runtime"
+                else -> "Remove Linux runtime"
+            }
+            OutlinedButton(
+                onClick = onRuntime, enabled = !state.busy,
+                modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight + 5.dp * k),
+            ) { Text(runtimeLabel, fontSize = 13.sp * k) }
+            OutlinedButton(
+                onClick = onFrameGen,
+                modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight + 5.dp * k),
+            ) { Text("Frame generation: ${state.frameGenLabel}", fontSize = 13.sp * k) }
+            Spacer(Modifier.height(10.dp * k))
+            Text(
+                "by The412Banner and maxjivi05 · credits",
+                fontSize = 11.sp * k, color = colors.onSurfaceVariant,
+                modifier = Modifier.clickable(onClick = onCredits).padding(4.dp),
+            )
         }
     }
 }
