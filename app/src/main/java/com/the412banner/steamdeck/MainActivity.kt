@@ -44,6 +44,13 @@ class MainActivity : Activity() {
 
         playButton.setOnClickListener { startActivity(Intent(this, SessionActivity::class.java)) }
         runtimeButton.setOnClickListener { onRuntimeButton() }
+        findViewById<TextView>(R.id.credits).setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.credits_title)
+                .setMessage(R.string.credits_body)
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
+        }
 
         // The session's logs land in Downloads so a failed run can be handed over as a folder
         // rather than dug out of app-private storage. targetSdk 28 means the old permission still

@@ -59,6 +59,12 @@ Files in `/sdcard/Download`, for a device that cannot be reached with a debugger
 
 Session logs land in `/sdcard/Download/SteamDeck/`.
 
+## Authors
+
+- **The412Banner** — the app, the Wayland compositor, the runtime plumbing and the Steam session.
+- **maxjivi05 (Max)** — the gamescope runtime this is built on: the proot session, the session
+  shim, the fake-evdev interposer and the controller work, from WinNative.
+
 ## Lineage and licence
 
 GPL-3.0. The gamescope runtime, the session shim and the fake-evdev interposer come from
