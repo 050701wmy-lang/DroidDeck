@@ -15,13 +15,13 @@ import android.view.SurfaceView
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
-import android.widget.TextView
 import com.steamdeck.launcher.core.FileUtils
 import com.steamdeck.launcher.gpu.TurnipDriver
 import com.steamdeck.launcher.input.EvdevKeys
 import com.steamdeck.launcher.input.OnScreenControls
 import com.steamdeck.launcher.input.PadBridge
 import com.steamdeck.launcher.runtime.LinuxRuntime
+import com.steamdeck.launcher.session.LoadingPanel
 import com.steamdeck.launcher.session.SessionService
 import com.steamdeck.launcher.session.SessionState
 import com.steamdeck.launcher.wayland.CompositorHost
@@ -40,7 +40,7 @@ import java.io.File
  */
 class SessionActivity : Activity(), SurfaceHolder.Callback {
     private lateinit var surfaceView: SurfaceView
-    private lateinit var statusView: TextView
+    private lateinit var loading: LoadingPanel
     private var padBridge: PadBridge? = null
     private var onScreenControls: OnScreenControls? = null
     private var watching = true
@@ -72,23 +72,22 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
         surfaceView.holder.addCallback(this)
         root.addView(surfaceView)
         // Until the client's first frame arrives there is nothing on screen for a minute or more
-        // on a first run, so the session's own milestones are shown instead of a black panel.
-        statusView = TextView(this).apply {
-            setPadding(48, 48, 48, 48)
-            setTextColor(0xFFDDDDDD.toInt())
-            textSize = 14f
-            text = getString(R.string.session_starting)
-            // A session already running is past its milestones; do not cover its picture.
-            visibility = if (SessionState.running) View.GONE else View.VISIBLE
-        }
-        root.addView(statusView)
+        // on a first run, so the session's own progress is shown instead of a black panel.
+        val panel = layoutInflater.inflate(R.layout.session_loading, root, false)
+        root.addView(panel)
+        loading = LoadingPanel(panel)
+        // A session that has already drawn is past its milestones; do not cover its picture.
+        if (SessionState.running && SessionState.firstFrameSeen) loading.hide() else loading.show()
         setContentView(root)
 
         val bridge = PadBridge(File(LinuxRuntime.sessionRoot(this), "dev/input"))
         padBridge = bridge
         onScreenControls = OnScreenControls(this, bridge).also { root.addView(it, 1) }
         updateOnScreenControls()
-        WaylandCompositor.setFirstFrameListener { runOnUiThread { statusView.visibility = View.GONE } }
+        WaylandCompositor.setFirstFrameListener {
+            SessionState.firstFrameSeen = true
+            runOnUiThread { loading.hide() }
+        }
         SessionState.endListener = { status -> onSessionEnded(status) }
         watchSessionLog()
     }
@@ -161,37 +160,25 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
 
     // ── Session state ───────────────────────────────────────────────────────────────────────
 
-    /** Mirrors the session script's "== STEP" milestones onto the screen while it starts. */
+    /** Keeps the loading panel current from the session log while it is showing. */
     private fun watchSessionLog() {
         val handler = Handler(Looper.getMainLooper())
-        Thread({
-            var shown = ""
-            while (watching) {
-                try {
-                    Thread.sleep(500)
-                    val log = SessionState.logFile ?: continue
-                    val text = FileUtils.readString(log) ?: continue
-                    val step = text.lineSequence().lastOrNull { it.startsWith("== STEP") } ?: continue
-                    val message = step.substringAfter("== STEP ").substringAfter(' ')
-                    if (message != shown) {
-                        shown = message
-                        handler.post { if (statusView.visibility == View.VISIBLE) statusView.text = message }
-                    }
-                } catch (e: InterruptedException) {
-                    return@Thread
-                } catch (ignored: Exception) {
-                }
+        val poll = object : Runnable {
+            override fun run() {
+                if (!watching) return
+                if (loading.isVisible) loading.update(SessionState.logFile)
+                handler.postDelayed(this, 500)
             }
-        }, "session-log").start()
+        }
+        handler.post(poll)
     }
 
     private fun onSessionEnded(status: Int) {
         runOnUiThread {
             if (isFinishing || isDestroyed) return@runOnUiThread
             if (status != 0) {
-                statusView.visibility = View.VISIBLE
-                statusView.text = getString(R.string.session_ended, status,
-                    SessionState.logFile?.path ?: "-")
+                loading.showEnded(getString(R.string.session_ended, status,
+                    SessionState.logFile?.path ?: "-"))
                 // A moment on screen, so a failure is readable rather than a flash of black.
                 Handler(Looper.getMainLooper()).postDelayed({ finish() }, 4000)
             } else {

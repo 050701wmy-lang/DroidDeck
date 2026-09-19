@@ -17,6 +17,17 @@
     <string name="catalog_unreachable">Could not reach the runtime catalog</string>
     <string name="install_failed">Install failed — nothing was changed</string>
     <string name="session_starting">Starting the session…</string>
+    <string name="loading_title">Steam is loading</string>
+    <string name="loading_elapsed">%1$s elapsed · still working</string>
+    <string name="loading_download">Downloading the Steam client update · %1$d%%</string>
+    <string name="loading_client_download">Downloading the Steam client · %1$s</string>
+    <string-array name="loading_hints">
+        <item>The first run downloads the Steam client from Valve and then its update — a few minutes on a good connection.</item>
+        <item>The screen stays black until the client draws its first frame; nothing is stuck while this clock is moving.</item>
+        <item>You can leave. Steam keeps running in the background and the notification brings you back.</item>
+        <item>A controller shows up in Steam as an Xbox 360 pad. Without one, the on-screen pad appears.</item>
+        <item>Games you install go through Valve\'s own ARM64 Proton; the client fetches it the first time it is needed.</item>
+    </string-array>
     <string name="session_ended">The session ended (%1$d)\n%2$s</string>
     <string name="session_channel">Session</string>
     <string name="session_channel_description">Keeps Steam running while the app is in the background</string>

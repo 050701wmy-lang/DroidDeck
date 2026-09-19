@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    What the user sees until the client draws its first frame, which on a first run is minutes:
+    the runtime's own milestones, the client's download progress lifted out of its log, a clock
+    that proves time is passing, and a hint about what all of this is. Sized small and centred so
+    it reads the same on a phone and a tablet.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/loading"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="#FF000000"
+    android:padding="32dp">
+
+    <ImageView
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_marginBottom="14dp"
+        android:contentDescription="@string/app_name"
+        android:src="@drawable/logo" />
+
+    <TextView
+        android:id="@+id/loading_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/loading_title"
+        android:textColor="#FFFFFFFF"
+        android:textSize="17sp" />
+
+    <TextView
+        android:id="@+id/loading_step"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center"
+        android:text="@string/session_starting"
+        android:textColor="#FFB8C4D0"
+        android:textSize="13sp" />
+
+    <ProgressBar
+        android:id="@+id/loading_progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="220dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:indeterminate="true"
+        android:max="100" />
+
+    <TextView
+        android:id="@+id/loading_elapsed"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textColor="#FF667788"
+        android:textSize="11sp" />
+
+    <TextView
+        android:id="@+id/loading_hint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:gravity="center"
+        android:maxWidth="360dp"
+        android:textColor="#FF667788"
+        android:textSize="11sp" />
+</LinearLayout>

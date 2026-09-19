@@ -57,6 +57,7 @@ class SessionService : Service() {
         startForeground(NOTIFICATION_ID, buildNotification())
         if (SessionState.running) return START_NOT_STICKY
         SessionState.running = true
+        SessionState.firstFrameSeen = false
         acquireLocks()
         Thread({ runSession() }, "session-start").start()
         // The activity or the notification stops us; the system must not resurrect a session whose

@@ -18,6 +18,10 @@ object SessionState {
     @Volatile
     var refreshHz: Float = 60f
 
+    /** The compositor has presented a frame, so the loading panel is behind us for this session. */
+    @Volatile
+    var firstFrameSeen = false
+
     /** Where this session is writing its log, for the "it ended" message. */
     @Volatile
     var logFile: File? = null
