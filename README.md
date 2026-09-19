@@ -47,6 +47,15 @@ su -c 'cp -a /data/data/com.tencent.ig/files/linuxfs /data/data/com.steamdeck.la
 The two runtimes are independent after that: each app has its own Steam install, its own login and
 its own games.
 
+## Controls
+
+A physical controller is republished into the session as a synthetic Xbox 360 pad, which is the
+identity SDL and Steam have a mapping for. With nothing attached, an on-screen pad appears —
+d-pad, A/B/X/Y, shoulders, select/start and the Steam button — writing into the same rings, so the
+client sees one pad either way. Connect a controller and the on-screen one disappears; unplug it
+and it comes back. Anywhere the controls are not is a touchpad: touch moves the pointer and a tap
+clicks, which is how the client's own on-screen keyboard is used to sign in.
+
 ## Background and foreground
 
 A session belongs to a foreground service, not to the activity, so leaving Big Picture does not
@@ -65,6 +74,7 @@ Files in `/sdcard/Download`, for a device that cannot be reached with a debugger
 | `steamdeck-no-pad` | Turns the controller feature off entirely (a true baseline) |
 | `steamdeck-pad-log` | Traces every interposer call into the session log |
 | `steamdeck-driver` | `a7xx`, `a8xx` or `system` — overrides the Turnip build the compositor loads |
+| `steamdeck-osc` | `always` or `never` — pins the on-screen controls instead of following what is attached |
 
 Session logs land in `/sdcard/Download/SteamDeck/`.
 

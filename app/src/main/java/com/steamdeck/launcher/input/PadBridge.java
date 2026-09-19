@@ -54,9 +54,20 @@ public final class PadBridge {
     /** True when the device this event came from is a gamepad or joystick, not the touchscreen. */
     public static boolean isFromController(InputDevice device) {
         if (device == null) return false;
+        // A virtual device is the system's own synthetic input, not a pad somebody is holding —
+        // counting it would hide the on-screen controls with nothing to replace them.
+        if (device.isVirtual()) return false;
         int sources = device.getSources();
         return (sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD
                 || (sources & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;
+    }
+
+    /** Whether any real controller is attached right now. */
+    public static boolean anyControllerConnected() {
+        for (int id : InputDevice.getDeviceIds()) {
+            if (isFromController(InputDevice.getDevice(id))) return true;
+        }
+        return false;
     }
 
     /** @return true when the event was a pad button and has been consumed. */
@@ -117,6 +128,15 @@ public final class PadBridge {
         state.dpad[3] = hatX < -0.5f;
         publish();
         return true;
+    }
+
+    /**
+     * The on-screen controls' way in: they mutate the same state a physical pad writes, so the
+     * client only ever sees one device and a user can use both at once without them fighting.
+     */
+    public synchronized void applyTouch(java.util.function.Consumer<GamepadState> mutation) {
+        mutation.accept(state);
+        publish();
     }
 
     private void publish() {

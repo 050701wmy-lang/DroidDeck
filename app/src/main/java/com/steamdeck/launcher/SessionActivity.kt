@@ -4,6 +4,8 @@ import android.app.Activity
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
+import android.hardware.input.InputManager
+import android.os.Environment
 import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
@@ -17,6 +19,7 @@ import android.widget.TextView
 import com.steamdeck.launcher.core.FileUtils
 import com.steamdeck.launcher.gpu.TurnipDriver
 import com.steamdeck.launcher.input.EvdevKeys
+import com.steamdeck.launcher.input.OnScreenControls
 import com.steamdeck.launcher.input.PadBridge
 import com.steamdeck.launcher.runtime.LinuxRuntime
 import com.steamdeck.launcher.session.SessionService
@@ -39,7 +42,19 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
     private lateinit var surfaceView: SurfaceView
     private lateinit var statusView: TextView
     private var padBridge: PadBridge? = null
+    private var onScreenControls: OnScreenControls? = null
     private var watching = true
+
+    /**
+     * Shows the on-screen pad when nothing is plugged in and takes it away the moment something
+     * is — a user with a controller in their hands should not be looking at buttons they cannot
+     * press, and a user without one must not be left with no way to answer Big Picture.
+     */
+    private val deviceListener = object : InputManager.InputDeviceListener {
+        override fun onInputDeviceAdded(deviceId: Int) = updateOnScreenControls()
+        override fun onInputDeviceRemoved(deviceId: Int) = updateOnScreenControls()
+        override fun onInputDeviceChanged(deviceId: Int) = updateOnScreenControls()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,7 +84,10 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
         root.addView(statusView)
         setContentView(root)
 
-        padBridge = PadBridge(File(LinuxRuntime.sessionRoot(this), "dev/input"))
+        val bridge = PadBridge(File(LinuxRuntime.sessionRoot(this), "dev/input"))
+        padBridge = bridge
+        onScreenControls = OnScreenControls(this, bridge).also { root.addView(it, 1) }
+        updateOnScreenControls()
         WaylandCompositor.setFirstFrameListener { runOnUiThread { statusView.visibility = View.GONE } }
         SessionState.endListener = { status -> onSessionEnded(status) }
         watchSessionLog()
@@ -240,6 +258,40 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
         moveTaskToBack(true)
+    }
+
+    /**
+     * `steamdeck-osc` in Downloads forces the matter either way ("always" / "never"); with no such
+     * file the controls follow what is attached.
+     */
+    private fun updateOnScreenControls() {
+        val forced = File(Environment.getExternalStorageDirectory(), "Download/steamdeck-osc")
+            .takeIf { it.isFile }
+            ?.let { FileUtils.readString(it)?.trim()?.lowercase() }
+        val show = when {
+            forced == "always" -> true
+            forced == "never" -> false
+            else -> !PadBridge.anyControllerConnected()
+        }
+        val controls = onScreenControls ?: return
+        if (show == (controls.visibility == View.VISIBLE)) return
+        if (!show) controls.releaseAll()
+        controls.visibility = if (show) View.VISIBLE else View.GONE
+        Log.i(TAG, "on-screen controls " + (if (show) "shown" else "hidden"))
+    }
+
+    override fun onResume() {
+        super.onResume()
+        (getSystemService(INPUT_SERVICE) as? InputManager)
+            ?.registerInputDeviceListener(deviceListener, Handler(Looper.getMainLooper()))
+        updateOnScreenControls()
+    }
+
+    override fun onPause() {
+        (getSystemService(INPUT_SERVICE) as? InputManager)?.unregisterInputDeviceListener(deviceListener)
+        // A button held when the app goes away would stay held in the ring for the whole session.
+        onScreenControls?.releaseAll()
+        super.onPause()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
