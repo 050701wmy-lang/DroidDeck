@@ -36,6 +36,12 @@
     <string name="frame_gen">Frame generation: %1$s</string>
     <string name="frame_gen_title">Frame generation</string>
     <string name="frame_gen_help">Extra frames are generated between the real ones on the way to the screen, so a game running at 30 fps looks like 60. Win-FG is built in. LSFG uses the shaders from your own copy of Lossless Scaling — install it from the Steam client in this app first. Takes effect immediately, even mid-game.</string>
+    <string name="drawer_hud">Performance HUD</string>
+    <string name="drawer_osc">On-screen controls: %1$s</string>
+    <string name="drawer_background">Send to background</string>
+    <string name="osc_auto">auto</string>
+    <string name="osc_always">always</string>
+    <string name="osc_never">never</string>
     <string name="credits_line">by The412Banner and maxjivi05 · credits</string>
     <string name="credits_title">Credits</string>
     <string name="credits_body">SteamDeck\n\nThe412Banner — the app, the Wayland compositor, the runtime and the Steam session.\n\nmaxjivi05 (Max) — the gamescope runtime this is built on: the proot session, the session shim, the fake-evdev interposer and the controller work, from WinNative.\n\nGPL-3.0. Valve, Steam, Steam Deck and Proton are trademarks of Valve Corporation; this project is not affiliated with Valve. gamescope, Mesa, Turnip, Xwayland, PulseAudio, proot and Arch Linux ARM are their authors\' own.</string>

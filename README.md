@@ -70,9 +70,10 @@ Pick an engine and 2×/3×/4× on the main screen; it applies immediately, mid-g
 A session belongs to a foreground service, not to the activity, so leaving Big Picture does not
 end it: the process stays at perceptible priority, a partial wake lock keeps the CPU from dropping
 the guest's threads, and a high-performance WiFi lock keeps a backgrounded download from being
-throttled to nothing. Back puts the app away and leaves Steam running; the (silent) notification
-brings it back. A session ends only when you say so — the notification's **Stop session** action —
-or when the app is swiped out of recents.
+throttled to nothing. **Back opens the drawer**: the performance HUD switch, frame generation, on-screen controls
+(auto / always / never), *Send to background* and *Stop session*. Backgrounded, Steam keeps
+running and the (silent) notification brings it back. A session ends only when you say so — the
+drawer or the notification's **Stop session** — or when the app is swiped out of recents.
 
 ## Device switches
 

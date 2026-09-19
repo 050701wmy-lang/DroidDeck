@@ -82,5 +82,30 @@ object FrameGen {
         return problem
     }
 
+    /** Off, or an engine at 2x/3x/4x; saved on pick, then [onChanged]. */
+    fun showPicker(activity: android.app.Activity, onChanged: () -> Unit) {
+        val choices = arrayOf("Off",
+            "Win-FG 2×", "Win-FG 3×", "Win-FG 4×",
+            "LSFG 2× (needs Lossless Scaling)", "LSFG 3× (needs Lossless Scaling)", "LSFG 4× (needs Lossless Scaling)")
+        val current = when (engine(activity)) {
+            ENGINE_WINFG -> multiplier(activity) - 1
+            ENGINE_LSFG -> multiplier(activity) + 2
+            else -> 0
+        }
+        android.app.AlertDialog.Builder(activity)
+            .setTitle(com.steamdeck.launcher.R.string.frame_gen_title)
+            .setSingleChoiceItems(choices, current) { dialog, which ->
+                when (which) {
+                    0 -> set(activity, ENGINE_OFF, 2)
+                    in 1..3 -> set(activity, ENGINE_WINFG, which + 1)
+                    else -> set(activity, ENGINE_LSFG, which - 2)
+                }
+                dialog.dismiss()
+                onChanged()
+            }
+            .setNeutralButton(android.R.string.ok, null)
+            .show()
+    }
+
     private const val TAG = "FrameGen"
 }

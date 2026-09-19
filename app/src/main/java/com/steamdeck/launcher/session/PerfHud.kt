@@ -49,7 +49,10 @@ class PerfHud(context: Context) {
     private var lastTick = 0L
     private var running = false
     private val handler = Handler(Looper.getMainLooper())
-    private val enabled = !File(Environment.getExternalStorageDirectory(), "Download/steamdeck-no-hud").exists()
+    /** The session's own switch (drawer), with the Downloads file as a device-side override. */
+    private val enabled: Boolean
+        get() = SessionPrefs.hudEnabled(context)
+            && !File(Environment.getExternalStorageDirectory(), "Download/steamdeck-no-hud").exists()
 
     private val listener = object : WaylandCompositor.GameListener {
         override fun onGameSurface(window: String?, gpuName: String?) {}
@@ -66,6 +69,11 @@ class PerfHud(context: Context) {
             view.text = line(base)
             handler.postDelayed(this, 1000)
         }
+    }
+
+    /** Re-reads the switch: starts or stops to match it. */
+    fun refresh() {
+        if (enabled) start() else stop()
     }
 
     fun start() {

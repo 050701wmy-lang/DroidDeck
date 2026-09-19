@@ -24,6 +24,8 @@ import com.steamdeck.launcher.input.PadBridge
 import com.steamdeck.launcher.runtime.LinuxRuntime
 import com.steamdeck.launcher.session.LoadingPanel
 import com.steamdeck.launcher.session.PerfHud
+import com.steamdeck.launcher.session.SessionDrawer
+import com.steamdeck.launcher.session.SessionPrefs
 import com.steamdeck.launcher.session.SessionService
 import com.steamdeck.launcher.session.SessionState
 import com.steamdeck.launcher.wayland.CompositorHost
@@ -44,6 +46,7 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
     private lateinit var surfaceView: SurfaceView
     private lateinit var loading: LoadingPanel
     private lateinit var hud: PerfHud
+    private lateinit var drawer: SessionDrawer
     private var padBridge: PadBridge? = null
     private var onScreenControls: OnScreenControls? = null
     private var watching = true
@@ -83,6 +86,13 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
         // client's first frame, since before that there is nothing to count.
         hud = PerfHud(this)
         root.addView(hud.view, root.indexOfChild(panel))
+        // Back opens this; it sits above everything, the loading panel included.
+        drawer = SessionDrawer(this, root,
+            onHudChanged = { hud.refresh() },
+            onOscChanged = { updateOnScreenControls() },
+            onFrameGenChanged = { applyFrameGen() },
+            onBackground = { moveTaskToBack(true) },
+            onStop = { SessionService.stop(this); finish() })
         // A session that has already drawn is past its milestones; do not cover its picture.
         if (SessionState.running && SessionState.firstFrameSeen) {
             loading.hide()
@@ -259,26 +269,27 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
     // ── Lifecycle ───────────────────────────────────────────────────────────────────────────
 
     /**
-     * Back leaves the session running and puts the app behind whatever the user wants next; the
-     * notification brings it back. Ending a session is done deliberately — from the
-     * notification's Stop action, or by swiping the app out of recents.
+     * Back opens the drawer (and closes it again). Leaving the session running in the background
+     * and ending it are both actions in there, so neither can happen by accident from a button
+     * a game might also be reading.
      */
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
-        moveTaskToBack(true)
+        drawer.toggle()
     }
 
     /**
-     * `steamdeck-osc` in Downloads forces the matter either way ("always" / "never"); with no such
-     * file the controls follow what is attached.
+     * The drawer's mode ("always" / "never") decides outright; on "auto" the controls follow
+     * what is attached. `steamdeck-osc` in Downloads still overrides, for a device we cannot reach.
      */
     private fun updateOnScreenControls() {
         val forced = File(Environment.getExternalStorageDirectory(), "Download/steamdeck-osc")
             .takeIf { it.isFile }
             ?.let { FileUtils.readString(it)?.trim()?.lowercase() }
-        val show = when {
-            forced == "always" -> true
-            forced == "never" -> false
+            ?: SessionPrefs.oscMode(this)
+        val show = when (forced) {
+            SessionPrefs.OSC_ALWAYS -> true
+            SessionPrefs.OSC_NEVER -> false
             else -> !PadBridge.anyControllerConnected()
         }
         val controls = onScreenControls ?: return
