@@ -32,6 +32,21 @@ debug-signed arm64 apk. It cross-compiles the two glibc preloads the session nee
 (`libfakeinput.so`, `libblsession.so`) from the sources in this repo before the app build, so
 those can never drift from what ships.
 
+## If Bannerlator is already installed
+
+The runtime image is the same one Bannerlator installs, so on a device that already has it the
+790 MB download can be skipped entirely — copy it across with root, once, before the first launch:
+
+```sh
+su -c 'cp -a /data/data/com.tencent.ig/files/linuxfs /data/data/com.the412banner.steamdeck/files/ \
+  && chown -R $(stat -c %u /data/data/com.the412banner.steamdeck/files) \
+              /data/data/com.the412banner.steamdeck/files/linuxfs \
+  && chcon -R u:object_r:app_data_file:s0 /data/data/com.the412banner.steamdeck/files/linuxfs'
+```
+
+The two runtimes are independent after that: each app has its own Steam install, its own login and
+its own games.
+
 ## Device switches
 
 Files in `/sdcard/Download`, for a device that cannot be reached with a debugger:
