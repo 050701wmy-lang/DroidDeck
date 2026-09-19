@@ -196,7 +196,13 @@ jobs:
           set -euo pipefail
           APK=$(find app/build/outputs/apk -name '*.apk' | head -1)
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
-          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/sig.txt
+          # --min-sdk-version 21: apksigner only verifies the schemes an apk's own minSdk requires,
+          # so at minSdk 26 it reports v1 as false whether or not the JAR signature is there.
+          # Asking it to verify from 21 makes it actually look.
+          "$APKSIGNER" verify --min-sdk-version 21 --verbose --print-certs "$APK" | tee /tmp/sig.txt
+          # And the files themselves, which is what an old installer reads.
+          unzip -l "$APK" | grep -qE 'META-INF/.*\.(SF|RSA|DSA)$' \
+            || { echo "::error::apk carries no JAR signature files"; exit 1; }
           for scheme in "v1 scheme (JAR signing): true" "v2 scheme (APK Signature Scheme v2): true" \
                         "v3 scheme (APK Signature Scheme v3): true"; do
             grep -qF "$scheme" /tmp/sig.txt || { echo "::error::apk is not signed with $scheme"; exit 1; }
