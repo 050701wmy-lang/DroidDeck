@@ -65,6 +65,14 @@ android {
         }
     }
 
+    lint {
+        // targetSdk 28 is deliberate and structural: an app on 29+ may not execute a file out of
+        // its own data directory, and executing a rootfs is the whole of what this app does. Lint
+        // fails a release build over it because Google Play will not accept an sdk that old —
+        // true, and not something this app can trade away. Every other check stays on.
+        disable 'ExpiredTargetSdkVersion'
+    }
+
     packagingOptions {
         jniLibs {
             // The PulseAudio daemon is executed from the native library directory and its
