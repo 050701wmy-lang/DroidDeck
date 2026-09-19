@@ -1,0 +1,131 @@
+package com.steamdeck.launcher.input;
+
+import android.util.Log;
+import android.view.InputDevice;
+import android.view.KeyEvent;
+import android.view.MotionEvent;
+
+import java.io.File;
+
+/**
+ * A physical controller, republished as a synthetic evdev device the Steam client can see.
+ *
+ * <p>Android hands a gamepad to the foreground activity as key and motion events; the Steam client
+ * inside the runtime never sees that. What it does scan is {@code /dev/input}, which the session's
+ * interposer (libfakeinput.so) serves out of the shared-memory rings written here. So the path is:
+ * Android event → {@link GamepadState} → {@link FakeInputWriter} ring → interposer → evdev node →
+ * SDL → Big Picture.
+ *
+ * <p>The identity the interposer reports is an Xbox 360 pad, which is what makes SDL apply a known
+ * mapping without the user configuring anything.
+ */
+public final class PadBridge {
+    private static final String TAG = "PadBridge";
+    /** Slot 0 is the one the session exports; extra slots would each show as another pad. */
+    private static final int SLOT = 0;
+    private static final float DEAD_ZONE = 0.12f;
+
+    private final FakeInputWriter writer;
+    private final GamepadState state = new GamepadState();
+    private boolean open;
+
+    public PadBridge(File fakeInputDir) {
+        writer = new FakeInputWriter(fakeInputDir.getAbsolutePath(), SLOT);
+    }
+
+    /** Opens the ring; safe to call more than once. */
+    public synchronized boolean start() {
+        if (!open) {
+            open = writer.open();
+            Log.i(TAG, "ring slot " + SLOT + (open ? " open" : " NOT open"));
+        }
+        return open;
+    }
+
+    public synchronized void stop() {
+        if (open) {
+            state.reset();
+            writer.writeGamepadState(state);
+            writer.close();
+            open = false;
+        }
+    }
+
+    /** True when the device this event came from is a gamepad or joystick, not the touchscreen. */
+    public static boolean isFromController(InputDevice device) {
+        if (device == null) return false;
+        int sources = device.getSources();
+        return (sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD
+                || (sources & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;
+    }
+
+    /** @return true when the event was a pad button and has been consumed. */
+    public synchronized boolean onKeyEvent(KeyEvent event) {
+        if (!isFromController(event.getDevice())) return false;
+        boolean pressed = event.getAction() == KeyEvent.ACTION_DOWN;
+        switch (event.getKeyCode()) {
+            case KeyEvent.KEYCODE_BUTTON_A: state.setPressed(0, pressed); break;
+            case KeyEvent.KEYCODE_BUTTON_B: state.setPressed(1, pressed); break;
+            case KeyEvent.KEYCODE_BUTTON_X: state.setPressed(2, pressed); break;
+            case KeyEvent.KEYCODE_BUTTON_Y: state.setPressed(3, pressed); break;
+            case KeyEvent.KEYCODE_BUTTON_L1: state.setPressed(4, pressed); break;
+            case KeyEvent.KEYCODE_BUTTON_R1: state.setPressed(5, pressed); break;
+            case KeyEvent.KEYCODE_BUTTON_SELECT:
+            case KeyEvent.KEYCODE_BACK: state.setPressed(6, pressed); break;
+            case KeyEvent.KEYCODE_BUTTON_START:
+            case KeyEvent.KEYCODE_MENU: state.setPressed(7, pressed); break;
+            case KeyEvent.KEYCODE_BUTTON_THUMBL: state.setPressed(8, pressed); break;
+            case KeyEvent.KEYCODE_BUTTON_THUMBR: state.setPressed(9, pressed); break;
+            // The client's own in-game menu is opened by this one; the interposer publishes it as
+            // BTN_MODE, which SDL reports as the "guide" button.
+            case KeyEvent.KEYCODE_BUTTON_MODE:
+            case KeyEvent.KEYCODE_HOME: state.setPressed(GamepadState.IDX_BUTTON_MODE, pressed); break;
+            case KeyEvent.KEYCODE_BUTTON_L2: state.triggerL = pressed ? 1f : 0f; break;
+            case KeyEvent.KEYCODE_BUTTON_R2: state.triggerR = pressed ? 1f : 0f; break;
+            case KeyEvent.KEYCODE_DPAD_UP: state.dpad[0] = pressed; break;
+            case KeyEvent.KEYCODE_DPAD_RIGHT: state.dpad[1] = pressed; break;
+            case KeyEvent.KEYCODE_DPAD_DOWN: state.dpad[2] = pressed; break;
+            case KeyEvent.KEYCODE_DPAD_LEFT: state.dpad[3] = pressed; break;
+            default: return false;
+        }
+        publish();
+        return true;
+    }
+
+    /** @return true when the event was a pad's sticks/triggers and has been consumed. */
+    public synchronized boolean onMotionEvent(MotionEvent event) {
+        if (!isFromController(event.getDevice())) return false;
+        if (event.getAction() != MotionEvent.ACTION_MOVE) return false;
+        state.thumbLX = axis(event, MotionEvent.AXIS_X);
+        // Android's Y axis grows downwards and evdev's ABS_Y does too, so no flip here: what the
+        // pad reports as "down" is what the client is told.
+        state.thumbLY = axis(event, MotionEvent.AXIS_Y);
+        state.thumbRX = axis(event, MotionEvent.AXIS_Z);
+        state.thumbRY = axis(event, MotionEvent.AXIS_RZ);
+        float lt = event.getAxisValue(MotionEvent.AXIS_LTRIGGER);
+        float rt = event.getAxisValue(MotionEvent.AXIS_RTRIGGER);
+        // Some pads only report the triggers on BRAKE/GAS.
+        if (lt == 0f) lt = event.getAxisValue(MotionEvent.AXIS_BRAKE);
+        if (rt == 0f) rt = event.getAxisValue(MotionEvent.AXIS_GAS);
+        state.triggerL = lt;
+        state.triggerR = rt;
+        float hatX = event.getAxisValue(MotionEvent.AXIS_HAT_X);
+        float hatY = event.getAxisValue(MotionEvent.AXIS_HAT_Y);
+        state.dpad[0] = hatY < -0.5f;
+        state.dpad[1] = hatX > 0.5f;
+        state.dpad[2] = hatY > 0.5f;
+        state.dpad[3] = hatX < -0.5f;
+        publish();
+        return true;
+    }
+
+    private void publish() {
+        if (!open && !start()) return;
+        writer.writeGamepadState(state);
+    }
+
+    private static float axis(MotionEvent event, int axis) {
+        float value = event.getAxisValue(axis);
+        return Math.abs(value) < DEAD_ZONE ? 0f : value;
+    }
+}

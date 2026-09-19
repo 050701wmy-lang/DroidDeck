@@ -171,6 +171,21 @@ jobs:
           [ "$fail" = 0 ] && echo "every NEEDED resolves"
           exit $fail
 
+      # The apk must stay installable over the last one, and on every Android version: that means
+      # one stable key and all three signature schemes. Cheap to assert, easy to lose silently.
+      - name: Check the signature
+        run: |
+          set -euo pipefail
+          APK=$(find app/build/outputs/apk -name '*.apk' | head -1)
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/sig.txt
+          for scheme in "v1 scheme (JAR signing): true" "v2 scheme (APK Signature Scheme v2): true" \
+                        "v3 scheme (APK Signature Scheme v3): true"; do
+            grep -qF "$scheme" /tmp/sig.txt || { echo "::error::apk is not signed with $scheme"; exit 1; }
+          done
+          grep -qi "CN=Android, OU=Android, O=Android" /tmp/sig.txt \
+            || { echo "::error::apk is not signed with the AOSP testkey"; exit 1; }
+
       - uses: actions/upload-artifact@v4
         with:
           name: steamdeck-apk

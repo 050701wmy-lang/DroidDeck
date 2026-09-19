@@ -1,0 +1,89 @@
+package com.steamdeck.launcher.session
+
+import android.content.Context
+import android.os.Environment
+import android.util.Log
+import com.steamdeck.launcher.core.FileUtils
+import com.steamdeck.launcher.runtime.LinuxRuntime
+import java.io.File
+
+/** Everything the session needs written into the runtime before it starts. */
+object SessionFiles {
+    private const val TAG = "SessionFiles"
+    private const val NO_PAD_SWITCH = "Download/steamdeck-no-pad"
+
+    /**
+     * The libraries and scripts the session runs, refreshed from the apk at every launch.
+     *
+     * The runtime image carries its own copies, but a runtime installed months ago carries the
+     * copies of that day and a device has no way to replace them from outside the app. Staging
+     * them here is how a fix inside the session shim, the controller reader or one of the scripts
+     * reaches an already-installed runtime without a ~790 MB re-download. Each lands through a
+     * rename, so a session that still has one mapped keeps the file it opened.
+     */
+    fun stage(context: Context, root: File) {
+        val files = arrayOf(
+            "libblsession.so" to "usr/local/lib/libblsession.so",
+            "libfakeinput.so" to "usr/local/lib/libfakeinput.so",
+            "usr/local/bin/bannerlator-session" to "usr/local/bin/bannerlator-session",
+            "usr/local/bin/bannerlator-steam-compat" to "usr/local/bin/bannerlator-steam-compat",
+            "usr/local/bin/bannerlator-steam-install" to "usr/local/bin/bannerlator-steam-install",
+            "usr/local/bin/bannerlator-steam-library" to "usr/local/bin/bannerlator-steam-library",
+            "usr/local/bin/bannerlator-seed-redists" to "usr/local/bin/bannerlator-seed-redists",
+        )
+        for ((asset, relative) in files) {
+            val target = File(root, relative)
+            val staged = File(target.parentFile, target.name + ".staged")
+            var installed = false
+            try {
+                target.parentFile?.mkdirs()
+                context.assets.open("linuxfs/$asset").use { input ->
+                    staged.outputStream().use { output -> FileUtils.copy(input, output) }
+                }
+                installed = staged.setExecutable(true, false) && staged.renameTo(target)
+            } catch (e: Exception) {
+                Log.w(TAG, "could not stage $relative", e)
+            } finally {
+                if (!installed) staged.delete()
+            }
+            if (!installed) Log.e(TAG, "$relative NOT staged")
+        }
+        // What every process in the session preloads. LD_PRELOAD in the environment would not
+        // survive: the Steam client rebuilds it for each process it starts and appends its own
+        // overlay entry without a separator, which silently drops whatever was there.
+        val preload = StringBuilder("/usr/local/lib/libblsession.so\n")
+        if (!File(Environment.getExternalStorageDirectory(), NO_PAD_SWITCH).exists()) {
+            preload.append("/usr/local/lib/libfakeinput.so\n")
+        }
+        val etc = File(root, "etc").apply { mkdirs() }
+        val staged = File(etc, "ld.so.preload.staged")
+        if (!FileUtils.writeString(staged, preload.toString())
+            || !staged.renameTo(File(etc, "ld.so.preload"))) {
+            staged.delete()
+            Log.e(TAG, "could not write ld.so.preload")
+        }
+    }
+
+    /**
+     * Where the session writes its log. Downloads is the point — a failed run is handed over as a
+     * folder rather than dug out of app-private storage — but the session script redirects its own
+     * output there with `exec`, and a redirection a non-interactive shell cannot open ends that
+     * shell. So a public directory is used only once it is proven writable; otherwise the app's
+     * own files directory, which is bound into the session anyway, stands in.
+     */
+    fun logDirectory(context: Context): File {
+        val public = LinuxRuntime.debugLogDir()
+        if (public.isDirectory || public.mkdirs()) {
+            val probe = File(public, ".writable")
+            try {
+                if (probe.createNewFile() || probe.isFile) {
+                    probe.delete()
+                    return public
+                }
+            } catch (ignored: Exception) {
+            }
+        }
+        Log.w(TAG, "$public is not writable (storage permission?); logging to files/logs")
+        return File(context.filesDir, "logs").apply { mkdirs() }
+    }
+}

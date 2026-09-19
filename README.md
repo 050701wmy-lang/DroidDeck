@@ -38,14 +38,23 @@ The runtime image is the same one Bannerlator installs, so on a device that alre
 790 MB download can be skipped entirely — copy it across with root, once, before the first launch:
 
 ```sh
-su -c 'cp -a /data/data/com.tencent.ig/files/linuxfs /data/data/com.the412banner.steamdeck/files/ \
-  && chown -R $(stat -c %u /data/data/com.the412banner.steamdeck/files) \
-              /data/data/com.the412banner.steamdeck/files/linuxfs \
-  && chcon -R u:object_r:app_data_file:s0 /data/data/com.the412banner.steamdeck/files/linuxfs'
+su -c 'cp -a /data/data/com.tencent.ig/files/linuxfs /data/data/com.steamdeck.launcher/files/ \
+  && chown -R $(stat -c %u /data/data/com.steamdeck.launcher/files) \
+              /data/data/com.steamdeck.launcher/files/linuxfs \
+  && chcon -R u:object_r:app_data_file:s0 /data/data/com.steamdeck.launcher/files/linuxfs'
 ```
 
 The two runtimes are independent after that: each app has its own Steam install, its own login and
 its own games.
+
+## Background and foreground
+
+A session belongs to a foreground service, not to the activity, so leaving Big Picture does not
+end it: the process stays at perceptible priority, a partial wake lock keeps the CPU from dropping
+the guest's threads, and a high-performance WiFi lock keeps a backgrounded download from being
+throttled to nothing. Back puts the app away and leaves Steam running; the (silent) notification
+brings it back. A session ends only when you say so — the notification's **Stop session** action —
+or when the app is swiped out of recents.
 
 ## Device switches
 

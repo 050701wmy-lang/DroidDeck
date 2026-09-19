@@ -7,6 +7,14 @@
     android:padding="32dp"
     android:background="#FF101418">
 
+    <ImageView
+        android:id="@+id/logo"
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:layout_marginBottom="12dp"
+        android:contentDescription="@string/app_name"
+        android:src="@mipmap/ic_launcher" />
+
     <TextView
         android:id="@+id/title"
         android:layout_width="wrap_content"

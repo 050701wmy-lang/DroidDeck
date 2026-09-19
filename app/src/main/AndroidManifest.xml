@@ -7,6 +7,11 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- The session keeps running while the app is not on screen: a foreground service holds the
+         process at perceptible priority, and a high-performance WiFi lock keeps a backgrounded
+         download from being throttled to nothing by the radio's power-save. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <uses-feature android:name="android.hardware.vulkan.version" android:version="0x401000" android:required="true" />
@@ -43,5 +48,16 @@
             android:screenOrientation="sensorLandscape"
             android:resizeableActivity="false"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density" />
+
+        <!--
+            Owns the session — gamescope, the Steam client, audio — so it survives the activity
+            going away. Without it Android demotes the process as soon as the last visible
+            activity goes, and the low-memory killer reaps the guest: leaving Big Picture to
+            answer a message would come back to a dead Steam and a half-finished download.
+        -->
+        <service
+            android:name=".session.SessionService"
+            android:exported="false"
+            android:stopWithTask="false" />
     </application>
 </manifest>

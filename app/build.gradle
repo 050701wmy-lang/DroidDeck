@@ -4,14 +4,14 @@ plugins {
 apply plugin: 'kotlin-android'
 
 android {
-    namespace 'com.the412banner.steamdeck'
+    namespace 'com.steamdeck.launcher'
     compileSdk 34
     // The NDK is pinned by property so CI can hand in whatever the runner already has rather than
     // downloading a second copy; see gradle.properties.
     ndkVersion project.findProperty('ndkVersion') ?: '27.0.12077973'
 
     defaultConfig {
-        applicationId "com.the412banner.steamdeck"
+        applicationId "com.steamdeck.launcher"
         minSdkVersion 26
         // 28 is not a leftover. An app on targetSdk 29+ runs in a domain that may not execute a
         // file out of its own data directory, and this app's entire job is to exec a rootfs:
@@ -37,15 +37,31 @@ android {
         }
     }
 
+    signingConfigs {
+        // AOSP testkey (android@android.com), the same key Bannerlator ships with. It is publicly
+        // known, so it proves nothing about who built the apk — what it buys is ONE stable
+        // signature: every build installs over the last one instead of asking the user to
+        // uninstall first. v1 (JAR) + v2 + v3 so every installer and Android version accepts it.
+        testkey {
+            storeFile file("${rootDir}/keystore/testkey.p12")
+            storeType "PKCS12"
+            storePassword "android"
+            keyAlias "testkey"
+            keyPassword "android"
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
+        }
+    }
+
     buildTypes {
         debug {
             minifyEnabled false
+            signingConfig signingConfigs.testkey
         }
         release {
             minifyEnabled false
-            // Signed with the debug key for now: this is a test build handed to a device, not a
-            // published app, and a release key would have to live in the repo's secrets first.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.testkey
         }
     }
 

@@ -1,7 +1,0 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp" android:height="108dp"
-    android:viewportWidth="108" android:viewportHeight="108">
-    <!-- A gamepad silhouette: the app is a handheld launcher and nothing else. -->
-    <path android:fillColor="#FFFFFFFF"
-        android:pathData="M34,42h40c8.8,0 16,7.2 16,16v4c0,5.5 -4.5,10 -10,10c-3.6,0 -6.9,-1.9 -8.7,-5l-2.6,-4.5h-29.4l-2.6,4.5c-1.8,3.1 -5.1,5 -8.7,5c-5.5,0 -10,-4.5 -10,-10v-4C18,49.2 25.2,42 34,42zM40,50v6h-6v4h6v6h4v-6h6v-4h-6v-6zM68,52a3,3 0 1,0 0.1,0zM76,60a3,3 0 1,0 0.1,0z" />
-</vector>

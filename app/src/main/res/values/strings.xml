@@ -18,6 +18,10 @@
     <string name="install_failed">Install failed — nothing was changed</string>
     <string name="session_starting">Starting the session…</string>
     <string name="session_ended">The session ended (%1$d)\n%2$s</string>
+    <string name="session_channel">Session</string>
+    <string name="session_channel_description">Keeps Steam running while the app is in the background</string>
+    <string name="session_notification">Steam is running — leave this notification alone</string>
+    <string name="stop_session">Stop session</string>
     <string name="credits_line">by The412Banner and maxjivi05 · credits</string>
     <string name="credits_title">Credits</string>
     <string name="credits_body">SteamDeck\n\nThe412Banner — the app, the Wayland compositor, the runtime and the Steam session.\n\nmaxjivi05 (Max) — the gamescope runtime this is built on: the proot session, the session shim, the fake-evdev interposer and the controller work, from WinNative.\n\nGPL-3.0. Valve, Steam, Steam Deck and Proton are trademarks of Valve Corporation; this project is not affiliated with Valve. gamescope, Mesa, Turnip, Xwayland, PulseAudio, proot and Arch Linux ARM are their authors\' own.</string>
