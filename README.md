@@ -83,6 +83,7 @@ Files in `/sdcard/Download`, for a device that cannot be reached with a debugger
 | `steamdeck-no-pad` | Turns the controller feature off entirely (a true baseline) |
 | `steamdeck-pad-log` | Traces every interposer call into the session log |
 | `steamdeck-driver` | `a7xx`, `a8xx` or `system` — overrides the Turnip build the compositor loads |
+| `steamdeck-no-hud` | Hides the top-right performance line (fps, and `base → generated` while frame generation runs) |
 | `steamdeck-osc` | `always` or `never` — pins the on-screen controls instead of following what is attached |
 
 Session logs land in `/sdcard/Download/SteamDeck/`.

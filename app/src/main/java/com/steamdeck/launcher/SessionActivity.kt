@@ -23,6 +23,7 @@ import com.steamdeck.launcher.input.OnScreenControls
 import com.steamdeck.launcher.input.PadBridge
 import com.steamdeck.launcher.runtime.LinuxRuntime
 import com.steamdeck.launcher.session.LoadingPanel
+import com.steamdeck.launcher.session.PerfHud
 import com.steamdeck.launcher.session.SessionService
 import com.steamdeck.launcher.session.SessionState
 import com.steamdeck.launcher.wayland.CompositorHost
@@ -42,6 +43,7 @@ import java.io.File
 class SessionActivity : Activity(), SurfaceHolder.Callback {
     private lateinit var surfaceView: SurfaceView
     private lateinit var loading: LoadingPanel
+    private lateinit var hud: PerfHud
     private var padBridge: PadBridge? = null
     private var onScreenControls: OnScreenControls? = null
     private var watching = true
@@ -77,8 +79,17 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
         val panel = layoutInflater.inflate(R.layout.session_loading, root, false)
         root.addView(panel)
         loading = LoadingPanel(panel)
+        // The performance line, above everything but the loading panel; it starts with the
+        // client's first frame, since before that there is nothing to count.
+        hud = PerfHud(this)
+        root.addView(hud.view, root.indexOfChild(panel))
         // A session that has already drawn is past its milestones; do not cover its picture.
-        if (SessionState.running && SessionState.firstFrameSeen) loading.hide() else loading.show()
+        if (SessionState.running && SessionState.firstFrameSeen) {
+            loading.hide()
+            hud.start()
+        } else {
+            loading.show()
+        }
         setContentView(root)
 
         val bridge = PadBridge(File(LinuxRuntime.sessionRoot(this), "dev/input"))
@@ -87,7 +98,10 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
         updateOnScreenControls()
         WaylandCompositor.setFirstFrameListener {
             SessionState.firstFrameSeen = true
-            runOnUiThread { loading.hide() }
+            runOnUiThread {
+                loading.hide()
+                hud.start()
+            }
         }
         SessionState.endListener = { status -> onSessionEnded(status) }
         watchSessionLog()
@@ -328,6 +342,7 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
         // Deliberately does NOT end the session: this activity can be destroyed while the user is
         // in another app, and the whole point of the service is that Steam survives that.
         watching = false
+        hud.stop()
         padBridge?.stop()
         SessionState.endListener = null
         WaylandCompositor.setFirstFrameListener(null)
