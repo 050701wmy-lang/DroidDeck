@@ -25,6 +25,7 @@ class SessionDrawer(
     private val hud = root.findViewById<Switch>(R.id.drawer_hud)
     private val frameGen = root.findViewById<Button>(R.id.drawer_frame_gen)
     private val osc = root.findViewById<Button>(R.id.drawer_osc)
+    private val shape = root.findViewById<Button>(R.id.drawer_shape)
 
     init {
         root.visibility = View.GONE
@@ -51,6 +52,12 @@ class SessionDrawer(
             SessionPrefs.setOscMode(activity, next)
             refresh()
             onOscChanged()
+        }
+        shape.setOnClickListener {
+            val next = if (SessionPrefs.shapeMode(activity) == SessionPrefs.SHAPE_WIDE) SessionPrefs.SHAPE_AUTO
+                       else SessionPrefs.SHAPE_WIDE
+            SessionPrefs.setShapeMode(activity, next)
+            refresh()
         }
         root.findViewById<View>(R.id.drawer_background).setOnClickListener {
             close()
@@ -85,5 +92,8 @@ class SessionDrawer(
             else -> activity.getString(R.string.osc_auto)
         }
         osc.text = activity.getString(R.string.drawer_osc, mode)
+        shape.text = activity.getString(R.string.drawer_shape,
+            if (SessionPrefs.shapeMode(activity) == SessionPrefs.SHAPE_WIDE) activity.getString(R.string.shape_wide)
+            else activity.getString(R.string.shape_auto))
     }
 }

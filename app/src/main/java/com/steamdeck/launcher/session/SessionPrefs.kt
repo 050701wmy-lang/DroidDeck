@@ -16,6 +16,23 @@ object SessionPrefs {
         prefs(context).edit().putBoolean("hud", on).apply()
     }
 
+    const val SHAPE_AUTO = "auto"
+    const val SHAPE_WIDE = "16:9"
+
+    /**
+     * The shape of the display the session presents: the panel's own (never narrower than 16:9)
+     * or a fixed 16:9. A foldable defaults to 16:9, which sits with modest bars on either of its
+     * panels; the panel's own shape would fit one and leave a strip on the other, and gamescope's
+     * display cannot change size once the session is up.
+     */
+    fun shapeMode(context: Context): String =
+        prefs(context).getString("shape", null)
+            ?: if (context.packageManager.hasSystemFeature("android.hardware.sensor.hinge_angle")) SHAPE_WIDE else SHAPE_AUTO
+
+    fun setShapeMode(context: Context, mode: String) {
+        prefs(context).edit().putString("shape", mode).apply()
+    }
+
     fun oscMode(context: Context): String = prefs(context).getString("osc", OSC_AUTO) ?: OSC_AUTO
 
     fun setOscMode(context: Context, mode: String) {

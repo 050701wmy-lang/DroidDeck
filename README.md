@@ -71,7 +71,9 @@ A session belongs to a foreground service, not to the activity, so leaving Big P
 end it: the process stays at perceptible priority, a partial wake lock keeps the CPU from dropping
 the guest's threads, and a high-performance WiFi lock keeps a backgrounded download from being
 throttled to nothing. **Back opens the drawer**: the performance HUD switch, frame generation, on-screen controls
-(auto / always / never), *Send to background* and *Stop session*. Backgrounded, Steam keeps
+(auto / always / never), the display shape (the panel's own, or a fixed 16:9 — the default on a
+foldable, so opening or closing it mid-session only changes the bars, never the picture; takes
+effect on the next session), *Send to background* and *Stop session*. Backgrounded, Steam keeps
 running and the (silent) notification brings it back. A session ends only when you say so — the
 drawer or the notification's **Stop session** — or when the app is swiped out of recents.
 

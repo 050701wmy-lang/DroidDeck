@@ -181,7 +181,8 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
         // (FlatOut on a Fold lost the edges of its own menus). Wider than 16:9 is fine — games and
         // the client cope with a phone's 20:9 — so the panel's aspect is kept above that and the
         // compositor letterboxes the 16:9 picture onto a squarer panel.
-        val aspect = maxOf(panelW / panelH, 16f / 9f)
+        val aspect = if (SessionPrefs.shapeMode(this) == SessionPrefs.SHAPE_WIDE) 16f / 9f
+                     else maxOf(panelW / panelH, 16f / 9f)
         // 1080 tall at most: the client's CEF is the heaviest thing in the session, and above
         // 1080p it costs frames for nothing anyone can see on a handheld panel.
         val height = minOf(panelH, 1080f).toInt()
