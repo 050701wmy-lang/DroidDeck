@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SteamDeck</string>
+    <string name="subtitle">Valve\'s native ARM64 Steam client, under gamescope</string>
+    <string name="play">Play</string>
+    <string name="ready">Ready</string>
+    <string name="working">Working…</string>
+    <string name="runtime_missing">Linux runtime not installed</string>
+    <string name="install_runtime">Install Linux runtime</string>
+    <string name="update_runtime">Update Linux runtime</string>
+    <string name="remove_runtime">Remove Linux runtime</string>
+    <string name="remove">Remove</string>
+    <string name="remove_runtime_message">This deletes the runtime, the Steam client inside it, and every game installed there.</string>
+    <string name="runtime_installed">Runtime %1$s installed</string>
+    <string name="runtime_update">Runtime %1$s installed · %2$s available</string>
+    <string name="runtime_download_size">%1$s · %2$s download, one time</string>
+    <string name="catalog_unreachable">Could not reach the runtime catalog</string>
+    <string name="install_failed">Install failed — nothing was changed</string>
+    <string name="session_starting">Starting the session…</string>
+    <string name="session_ended">The session ended (%1$d). Log: Download/%2$s</string>
+</resources>

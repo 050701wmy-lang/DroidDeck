@@ -1,0 +1,98 @@
+name: Build APK
+
+# One job: the two glibc preload libraries the session needs, then the app around them.
+# Nothing is built on a developer machine — this workflow is the only thing that produces an apk.
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # ── The session's preloads ───────────────────────────────────────────────────────────
+      # Both are glibc aarch64 libraries that live inside the rootfs, so they are cross-compiled
+      # here rather than by the NDK. They ship in assets (not in the runtime tarball) so a fix in
+      # either reaches an already-installed runtime on the next launch instead of waiting on a
+      # ~790 MB runtime re-host.
+      - name: Build libfakeinput.so and libblsession.so (glibc aarch64)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gcc-aarch64-linux-gnu g++-aarch64-linux-gnu >/dev/null
+          D=app/src/main/assets/linuxfs
+          mkdir -p "$D"
+          # Statically linked C++ runtime: this is preloaded into every Steam process, and Steam
+          # ships its own libstdc++ while rewriting LD_LIBRARY_PATH. Pulling the system one in
+          # ahead of it is a version conflict waiting to happen. Only libc is left as a dependency.
+          aarch64-linux-gnu-g++ -shared -fPIC -O2 -Wall -Wno-attributes -Wno-nonnull-compare \
+            -pthread -std=c++17 -static-libstdc++ -static-libgcc \
+            -o "$D/libfakeinput.so" app/src/main/cpp/fakeinput.cpp -ldl
+          aarch64-linux-gnu-strip --strip-unneeded "$D/libfakeinput.so"
+          NEED=$(aarch64-linux-gnu-readelf -d "$D/libfakeinput.so" | sed -n 's/.*NEEDED.*\[\(.*\)\]/\1/p')
+          echo "libfakeinput NEEDED: $NEED"
+          for bad in libstdc++.so.6 libgcc_s.so.1; do
+            if printf '%s\n' "$NEED" | grep -qx "$bad"; then
+              echo "::error::libfakeinput.so links $bad — the C++ runtime must stay static"; exit 1
+            fi
+          done
+          # The interposers are the whole point: if one is missing the client sees no controller.
+          SYMS=$(aarch64-linux-gnu-nm -D --defined-only "$D/libfakeinput.so" | awk '{print $NF}')
+          for sym in open openat ioctl read close poll ppoll select stat fstat access scandir; do
+            grep -qx "$sym" <<<"$SYMS" || { echo "::error::libfakeinput.so does not export $sym"; exit 1; }
+          done
+
+          aarch64-linux-gnu-gcc -shared -fPIC -O2 -Wall -pthread \
+            -o "$D/libblsession.so" tools/linuxfs/preload/*.c -ldl
+          aarch64-linux-gnu-strip --strip-unneeded "$D/libblsession.so"
+          for sym in socket bind getsockname setsockopt; do
+            aarch64-linux-gnu-nm -D --defined-only "$D/libblsession.so" | awk '{print $NF}' \
+              | grep -qx "$sym" || { echo "::error::libblsession.so does not export $sym"; exit 1; }
+          done
+
+          # The session's scripts travel the same way, for the same reason.
+          for script in tools/linuxfs/overlay/usr/local/bin/bannerlator-*; do
+            install -Dm644 "$script" "$D/usr/local/bin/$(basename "$script")"
+          done
+          ls -lR "$D"
+
+      - name: Resolve the runner's NDK
+        run: |
+          NDK="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-$ANDROID_NDK_ROOT}}"
+          VERSION=$(sed -n 's/^Pkg.Revision *= *//p' "$NDK/source.properties")
+          echo "NDK $VERSION at $NDK"
+          echo "NDK_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: ./gradlew --no-daemon assembleDebug -PndkVersion="$NDK_VERSION"
+
+      - name: Describe the apk
+        run: |
+          set -euo pipefail
+          APK=$(find app/build/outputs/apk -name '*.apk' | head -1)
+          echo "apk: $APK"
+          ls -l "$APK"
+          sha256sum "$APK"
+          unzip -l "$APK" | grep -E 'lib/arm64-v8a|assets/linuxfs' | head -30
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: steamdeck-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30

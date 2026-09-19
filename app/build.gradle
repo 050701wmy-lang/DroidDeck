@@ -1,0 +1,74 @@
+plugins {
+    id 'com.android.application'
+}
+apply plugin: 'kotlin-android'
+
+android {
+    namespace 'com.the412banner.steamdeck'
+    compileSdk 34
+    // The NDK is pinned by property so CI can hand in whatever the runner already has rather than
+    // downloading a second copy; see gradle.properties.
+    ndkVersion project.findProperty('ndkVersion') ?: '27.0.12077973'
+
+    defaultConfig {
+        applicationId "com.the412banner.steamdeck"
+        minSdkVersion 26
+        // 28 is not a leftover. An app on targetSdk 29+ runs in a domain that may not execute a
+        // file out of its own data directory, and this app's entire job is to exec a rootfs:
+        // proot, gamescope, the Steam client and everything it launches all live under files/.
+        targetSdkVersion 28
+        versionCode 1
+        versionName "0.1.0"
+
+        ndk {
+            abiFilters 'arm64-v8a'
+        }
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=c++_shared'
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path 'src/main/cpp/CMakeLists.txt'
+            version '3.22.1'
+        }
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+        }
+        release {
+            minifyEnabled false
+            // Signed with the debug key for now: this is a test build handed to a device, not a
+            // published app, and a release key would have to live in the repo's secrets first.
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    packagingOptions {
+        jniLibs {
+            // The PulseAudio daemon is executed from the native library directory and its
+            // libraries are read out of the apk by the class loader: both want the old,
+            // uncompressed-and-extracted layout.
+            useLegacyPackaging = true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+dependencies {
+    // The runtime tarball is a zstd-compressed tar; nothing else in the app needs a library.
+    implementation 'com.github.luben:zstd-jni:1.5.2-3@aar'
+    implementation 'org.apache.commons:commons-compress:1.20'
+}

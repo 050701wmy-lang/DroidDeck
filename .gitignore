@@ -1,0 +1,12 @@
+*.iml
+.gradle/
+local.properties
+.idea/
+.DS_Store
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+# Built in CI from tools/linuxfs and app/src/main/cpp/fakeinput.cpp, never committed, so the two
+# copies cannot drift.
+app/src/main/assets/linuxfs/
