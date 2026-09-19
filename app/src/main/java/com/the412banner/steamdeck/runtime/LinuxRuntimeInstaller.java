@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 
+import com.the412banner.steamdeck.core.Downloader;
 import com.the412banner.steamdeck.core.FileUtils;
 
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
