@@ -70,5 +70,13 @@ object CompositorHost {
         vsyncRunning = false
     }
 
+    /**
+     * A new session behind a compositor that has already presented: the first-frame notice is
+     * one-shot in native code, so it is re-armed here or the loading panel would never leave.
+     */
+    fun newSession() {
+        if (started) WaylandCompositor.nativeResetFirstFrame()
+    }
+
     val isStarted: Boolean get() = started
 }

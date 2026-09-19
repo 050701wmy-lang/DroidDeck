@@ -79,6 +79,7 @@ class SessionService : Service() {
         val root = LinuxRuntime.rootDir(this)
         val sessionRoot = LinuxRuntime.sessionRoot(this).apply { mkdirs() }
         val runtimeDir = File(filesDir, ".wayland-rt").apply { mkdirs() }
+        killStragglers()
         SessionFiles.stage(this, root)
 
         val logDir = SessionFiles.logDirectory(this)
@@ -172,6 +173,31 @@ class SessionService : Service() {
             stopSession(status ?: -1)
         }, null)
         Log.i(TAG, "session pid $sessionPid, log ${sessionLog.path}")
+    }
+
+    /**
+     * proot's --kill-on-exit takes its tracees down, but a session that died from the inside
+     * (the client asserting, Xwayland going) leaves gamescopereaper and the session script
+     * behind, still holding the Wayland socket and the audio server the next session needs. They
+     * are our uid, so they are ours to kill.
+     */
+    private fun killStragglers() {
+        val me = android.os.Process.myPid()
+        val procs = File("/proc").listFiles { f -> f.name.all { it.isDigit() } } ?: return
+        var killed = 0
+        for (proc in procs) {
+            val pid = proc.name.toIntOrNull() ?: continue
+            if (pid == me) continue
+            val cmdline = try {
+                File(proc, "cmdline").readBytes().toString(Charsets.UTF_8).replace('\u0000', ' ')
+            } catch (e: Exception) {
+                continue
+            }
+            if (STRAGGLERS.none { cmdline.contains(it) }) continue
+            android.os.Process.killProcess(pid)
+            killed++
+        }
+        if (killed > 0) Log.w(TAG, "killed $killed leftover process(es) of a previous session")
     }
 
     private fun stopSession(status: Int) {
@@ -301,6 +327,9 @@ class SessionService : Service() {
         private const val CHANNEL_ID = "session"
         private const val NOTIFICATION_ID = 1001
         const val ACTION_STOP = "com.steamdeck.launcher.STOP_SESSION"
+        /** Command lines that can only belong to a session of ours. */
+        private val STRAGGLERS = listOf("bannerlator-session", "gamescope", "Xwayland", "steamrtarm64",
+            "steamwebhelper", "linuxfs/opt/android-host/proot", "pulseaudio/libpulseaudio.so")
         private const val NO_PAD_SWITCH = "Download/steamdeck-no-pad"
         private const val PAD_LOG_SWITCH = "Download/steamdeck-pad-log"
 

@@ -1805,6 +1805,12 @@ int vkp_surface_rotation_degrees(void) {
 
 ANativeWindow *vkp_window(void) { return g_window; }
 
+/* A new session under a compositor that has already presented: arm the one-shot again so the
+ * next drawn frame reports, or the app would show its loading panel over the new client for good. */
+void vkp_reset_first_frame(void) {
+    g_first_frame_done = 0;
+}
+
 void vkp_signal_first_frame(void) {
     if (g_first_frame_done) return;
     g_first_frame_done = 1;

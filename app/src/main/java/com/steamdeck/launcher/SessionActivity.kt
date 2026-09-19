@@ -108,14 +108,19 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
         val size = outputSize()
         SessionState.outputSize = size
         SessionState.refreshHz = refreshHz()
-        val first = CompositorHost.startOrAttach(
+        CompositorHost.startOrAttach(
             holder.surface, runtimeDir.path,
             driverId?.let { turnip.driverPath(it) }, driverId?.let { turnip.libraryName(it) },
             applicationInfo.nativeLibraryDir, size.first, size.second, refreshHz(),
         )
-        // The service owns everything below the compositor, and starting it is idempotent: coming
-        // back to a running session just re-attaches the Surface above.
-        if (first) SessionService.start(this)
+        // The service owns everything below the compositor. It is started whenever no session is
+        // running — NOT only when the compositor was just started: the compositor lives for the
+        // whole process, so the second Play after a session ended used to re-attach the Surface,
+        // start nothing, and leave the loading panel counting up over a dead session.
+        if (!SessionState.running) {
+            CompositorHost.newSession()
+            SessionService.start(this)
+        }
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {}

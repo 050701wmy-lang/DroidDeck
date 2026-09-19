@@ -346,6 +346,13 @@ Java_com_steamdeck_launcher_wayland_WaylandCompositor_nativeSetOutputRefreshRate
 }
 
 /* The container's screen size for the advertised wl_output mode. Set before the compositor starts. */
+extern void vkp_reset_first_frame(void);
+JNIEXPORT void JNICALL
+Java_com_steamdeck_launcher_wayland_WaylandCompositor_nativeResetFirstFrame(JNIEnv *env, jclass clazz) {
+    (void)env; (void)clazz;
+    vkp_reset_first_frame();
+}
+
 JNIEXPORT void JNICALL
 Java_com_steamdeck_launcher_wayland_WaylandCompositor_nativeSetOutputSize(JNIEnv *env, jclass clazz, jint w, jint h) {
     g_output_w = w > 0 ? w : 0;

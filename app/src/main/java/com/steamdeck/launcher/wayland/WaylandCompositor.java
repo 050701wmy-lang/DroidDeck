@@ -240,6 +240,10 @@ public final class WaylandCompositor {
      *  list stops at the desktop size, as the X server's does on X11. Set before the compositor starts. */
     public static native void nativeSetOutputSize(int width, int height);
 
+    /** Re-arms the one-shot first-frame notice, for a new session under a compositor that has
+     *  already presented a previous one. */
+    public static native void nativeResetFirstFrame();
+
     // ── HDR10 output, round 1 (waylandcomp/src/banner_color.h, wl_color_mgmt.c) ─────────────────
     // Opt-in: BANNER_WAYLAND_HDR=1 in the container's or shortcut's env vars. The compositor offers
     // games HDR10 (wp_color_manager_v1 + 10-bit buffers, frames tagged BT2020_PQ on the game's own
