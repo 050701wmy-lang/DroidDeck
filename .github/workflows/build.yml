@@ -133,8 +133,10 @@ jobs:
           restore-keys: |
             cxx-${{ env.NDK_VERSION }}-
 
+      # Release, not debug: AGP quietly drops v1 (JAR) signing from a debug build once minSdk is
+      # 24 or higher, and the apk has to carry all three schemes. Nothing is minified either way.
       - name: Build
-        run: ./gradlew assembleDebug -PndkVersion="$NDK_VERSION"
+        run: ./gradlew assembleRelease -PndkVersion="$NDK_VERSION"
 
       - name: Describe the apk
         run: |
@@ -189,7 +191,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: steamdeck-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 30
           # An apk is a zip already; compressing it again buys nothing and costs seconds.
