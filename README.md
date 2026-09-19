@@ -56,6 +56,15 @@ client sees one pad either way. Connect a controller and the on-screen one disap
 and it comes back. Anywhere the controls are not is a touchpad: touch moves the pointer and a tap
 clicks, which is how the client's own on-screen keyboard is used to sign in.
 
+## Frame generation
+
+Extra frames are generated between the real ones on the way to the screen — inside the app's
+compositor, on gamescope's final output — so it works for any game with nothing changed in the
+runtime. **Win-FG** is built in. **LSFG** uses the shader chain from your own copy of Lossless
+Scaling: install it from the Steam client in this app and the app reads its `Lossless.dll` from
+the runtime's Steam library (parsed as data, never executed; nothing of it is redistributed).
+Pick an engine and 2×/3×/4× on the main screen; it applies immediately, mid-game included.
+
 ## Background and foreground
 
 A session belongs to a foreground service, not to the activity, so leaving Big Picture does not

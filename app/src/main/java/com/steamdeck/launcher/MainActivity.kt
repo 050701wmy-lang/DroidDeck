@@ -14,6 +14,7 @@ import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.TextView
 import com.steamdeck.launcher.core.FileUtils
+import com.steamdeck.launcher.gpu.FrameGen
 import com.steamdeck.launcher.runtime.LinuxRuntime
 import com.steamdeck.launcher.runtime.LinuxRuntimeInstaller
 
@@ -28,6 +29,7 @@ class MainActivity : Activity() {
     private lateinit var progress: ProgressBar
     private lateinit var playButton: Button
     private lateinit var runtimeButton: Button
+    private lateinit var frameGenButton: Button
 
     private val ui = Handler(Looper.getMainLooper())
     @Volatile private var busy = false
@@ -41,6 +43,8 @@ class MainActivity : Activity() {
         progress = findViewById(R.id.progress)
         playButton = findViewById(R.id.play)
         runtimeButton = findViewById(R.id.runtime)
+        frameGenButton = findViewById(R.id.frame_gen)
+        frameGenButton.setOnClickListener { pickFrameGen() }
 
         playButton.setOnClickListener { startActivity(Intent(this, SessionActivity::class.java)) }
         runtimeButton.setOnClickListener { onRuntimeButton() }
@@ -119,7 +123,36 @@ class MainActivity : Activity() {
         ui.post { render() }
     }
 
+    /** Off, or an engine at 2x/3x/4x. Saved, and pushed to a running session on the next resume. */
+    private fun pickFrameGen() {
+        val choices = arrayOf("Off",
+            "Win-FG 2×", "Win-FG 3×", "Win-FG 4×",
+            "LSFG 2× (needs Lossless Scaling)", "LSFG 3× (needs Lossless Scaling)", "LSFG 4× (needs Lossless Scaling)")
+        val engine = FrameGen.engine(this)
+        val current = when (engine) {
+            FrameGen.ENGINE_WINFG -> FrameGen.multiplier(this) - 1
+            FrameGen.ENGINE_LSFG -> FrameGen.multiplier(this) + 2
+            else -> 0
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.frame_gen_title)
+            .setSingleChoiceItems(choices, current) { dialog, which ->
+                when (which) {
+                    0 -> FrameGen.set(this, FrameGen.ENGINE_OFF, 2)
+                    in 1..3 -> FrameGen.set(this, FrameGen.ENGINE_WINFG, which + 1)
+                    else -> FrameGen.set(this, FrameGen.ENGINE_LSFG, which - 2)
+                }
+                dialog.dismiss()
+                render()
+            }
+            .setNeutralButton(android.R.string.ok, null)
+            .setMessage(null)
+            .show()
+        Log.i(TAG, "frame generation picker: " + FrameGen.label(this))
+    }
+
     private fun render() {
+        frameGenButton.text = getString(R.string.frame_gen, FrameGen.label(this))
         val installed = LinuxRuntimeInstaller.installedVersion(this)
         val ready = LinuxRuntime.isInstalled(this)
         progress.visibility = if (busy) View.VISIBLE else View.GONE

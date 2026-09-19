@@ -16,6 +16,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
 import com.steamdeck.launcher.core.FileUtils
+import com.steamdeck.launcher.gpu.FrameGen
 import com.steamdeck.launcher.gpu.TurnipDriver
 import com.steamdeck.launcher.input.EvdevKeys
 import com.steamdeck.launcher.input.OnScreenControls
@@ -121,6 +122,7 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
             CompositorHost.newSession()
             SessionService.start(this)
         }
+        applyFrameGen()
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {}
@@ -272,8 +274,23 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
         Log.i(TAG, "on-screen controls " + (if (show) "shown" else "hidden"))
     }
 
+    /**
+     * The saved frame-generation setting, pushed to the compositor. Off the main thread: LSFG's
+     * first use translates the shader chain out of Lossless.dll, which takes seconds.
+     */
+    private fun applyFrameGen() {
+        val hz = refreshHz()
+        Thread({
+            val problem = FrameGen.apply(this, hz)
+            if (problem != null) runOnUiThread {
+                android.widget.Toast.makeText(this, problem, android.widget.Toast.LENGTH_LONG).show()
+            }
+        }, "frame-gen").start()
+    }
+
     override fun onResume() {
         super.onResume()
+        if (CompositorHost.isStarted) applyFrameGen()
         (getSystemService(INPUT_SERVICE) as? InputManager)
             ?.registerInputDeviceListener(deviceListener, Handler(Looper.getMainLooper()))
         updateOnScreenControls()

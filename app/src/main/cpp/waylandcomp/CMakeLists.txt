@@ -72,6 +72,8 @@ if (TARGET dxbc AND EXISTS ${BANNER_FRAMEGEN_LSFG_DIR}/lsfg_engine.cpp
             ${BANNER_FRAMEGEN_LSFG_DIR}/lsfg_pacer.cpp
             ${BANNER_FRAMEGEN_LSFG_DIR}/lsfg_engine.cpp
             ${BANNER_FRAMEGEN_LSFG_DIR}/lsfg_governor.cpp
+            # The Lossless.dll import (validate / extract / cache) for the app's LsfgNative.
+            ${BANNER_FRAMEGEN_LSFG_DIR}/lsfg_jni.cpp
             ${BANNER_FRAMEGEN_WINFG_DIR}/framegen.cpp
             ${BANNER_FRAMEGEN_WINFG_DIR}/winfg_vkd.cpp
             ${BANNER_FRAMEGEN_WINFG_DIR}/winfg_engine.cpp
