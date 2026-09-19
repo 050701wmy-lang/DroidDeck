@@ -22,6 +22,7 @@ import com.the412banner.steamdeck.core.EnvironmentComponent
 import com.the412banner.steamdeck.core.FileUtils
 import com.the412banner.steamdeck.core.ProcessHelper
 import com.the412banner.steamdeck.gpu.TurnipDriver
+import com.the412banner.steamdeck.input.EvdevKeys
 import com.the412banner.steamdeck.input.FakeInputWriter
 import com.the412banner.steamdeck.input.PadBridge
 import com.the412banner.steamdeck.runtime.LinuxNetworkLinkComponent
@@ -173,7 +174,7 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
         val sessionRoot = LinuxRuntime.sessionRoot(this).apply { mkdirs() }
         stageSessionFiles(root)
 
-        val logDir = LinuxRuntime.debugLogDir().apply { mkdirs() }
+        val logDir = logDirectory()
         val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
         sessionLog = File(logDir, "session-$stamp.log")
 
@@ -274,6 +275,29 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
     }
 
     /**
+     * Where the session writes its log. Downloads is the point — a failed run is handed over as a
+     * folder rather than dug out of app-private storage — but the session script redirects its own
+     * output there with `exec`, and a redirection a non-interactive shell cannot open ends that
+     * shell. So a public directory is used only once it is proven writable; otherwise the app's
+     * own files directory, which is bound into the session anyway, stands in.
+     */
+    private fun logDirectory(): File {
+        val public = LinuxRuntime.debugLogDir()
+        if (public.isDirectory || public.mkdirs()) {
+            val probe = File(public, ".writable")
+            try {
+                if (probe.createNewFile() || probe.isFile) {
+                    probe.delete()
+                    return public
+                }
+            } catch (ignored: Exception) {
+            }
+        }
+        Log.w(TAG, "$public is not writable (storage permission?); logging to files/logs")
+        return File(filesDir, "logs").apply { mkdirs() }
+    }
+
+    /**
      * The libraries and scripts the session runs, refreshed from the apk at every launch.
      *
      * The runtime image carries its own copies, but a runtime installed months ago carries the
@@ -361,12 +385,28 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
     }
 
     private fun sessionLogName(): String =
-        if (::sessionLog.isInitialized) "${LinuxRuntime.DEBUG_LOG_DIR}/${sessionLog.name}" else "-"
+        if (::sessionLog.isInitialized) sessionLog.path else "-"
 
     // ── Input ───────────────────────────────────────────────────────────────────────────────
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (padBridge?.onKeyEvent(event) == true) return true
+        // A hardware keyboard, forwarded to the compositor's wl_keyboard. This is how an account
+        // name and password get typed on the client's first run; the client's own on-screen
+        // keyboard covers a device without one, driven by touch or the pad.
+        if (compositorStarted && event.device != null && !PadBridge.isFromController(event.device)) {
+            val down = event.action == KeyEvent.ACTION_DOWN
+            if (down || event.action == KeyEvent.ACTION_UP) {
+                // An unmapped key may still be a real one on a foreign layout: its scan code is
+                // the evdev code the kernel gave Android in the first place.
+                var evdev = EvdevKeys.fromKeyCode(event.keyCode)
+                if (evdev < 0 && event.scanCode > 0) evdev = event.scanCode
+                if (evdev > 0) {
+                    WaylandCompositor.nativeSendKey(evdev, if (down) 1 else 0)
+                    return true
+                }
+            }
+        }
         return super.dispatchKeyEvent(event)
     }
 
