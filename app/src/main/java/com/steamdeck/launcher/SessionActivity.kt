@@ -104,6 +104,9 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
 
         loading = LoadingState(this)
         hud = PerfHud(this)
+        hud.onPresentingWindowChanged = {
+            if (FrameGen.engine(this) != FrameGen.ENGINE_OFF) CompositorHost.rearmFrameGen { applyFrameGen() }
+        }
         // A session that has already drawn is past its milestones; do not cover its picture.
         if (SessionState.running && SessionState.firstFrameSeen) {
             loading.visible = false

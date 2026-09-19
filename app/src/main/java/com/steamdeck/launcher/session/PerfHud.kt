@@ -38,8 +38,19 @@ class PerfHud(context: Context) {
         get() = SessionPrefs.hudEnabled(context)
             && !File(Environment.getExternalStorageDirectory(), "Download/steamdeck-no-hud").exists()
 
+    /** Told, on the main thread, when the window presenting frames changes. */
+    var onPresentingWindowChanged: (() -> Unit)? = null
+    private var lastWindow: String? = null
+
     private val listener = object : WaylandCompositor.GameListener {
-        override fun onGameSurface(window: String?, gpuName: String?) {}
+        override fun onGameSurface(window: String?, gpuName: String?) {
+            // gamescope forwards a fullscreen game's own buffers straight through and its composited
+            // output when the Steam menu is up; each is a different window here. Compositor thread.
+            if (window != null && window != lastWindow) {
+                lastWindow = window
+                handler.post { onPresentingWindowChanged?.invoke() }
+            }
+        }
         override fun onGameFrame() { frames.incrementAndGet() }
     }
 
