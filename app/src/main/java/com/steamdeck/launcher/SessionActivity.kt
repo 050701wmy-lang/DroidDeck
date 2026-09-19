@@ -226,9 +226,22 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         applyFrameGen()
     }
 
-    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {}
+    private var surfaceW = 0
+    private var surfaceH = 0
+
+    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+        val resized = surfaceW != 0 && (width != surfaceW || height != surfaceH)
+        surfaceW = width
+        surfaceH = height
+        if (resized) {
+            Log.i(TAG, "surface resized to ${width}x$height — rebinding the compositor")
+            CompositorHost.resize(holder.surface)
+        }
+    }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
+        surfaceW = 0
+        surfaceH = 0
         CompositorHost.detach()
     }
 

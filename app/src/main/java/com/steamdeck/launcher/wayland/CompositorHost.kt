@@ -49,6 +49,20 @@ object CompositorHost {
     }
 
     /**
+     * The Surface changed size under the compositor (a foldable opening or closing). Android does
+     * not always recreate the Surface for that, and a swapchain built for the old size keeps
+     * presenting: the system then scales those buffers onto the new window, which on a Fold showed
+     * a 16:9 picture stretched to the square panel. Rebinding the window rebuilds the swapchain at
+     * the new size, and the scale mode letterboxes as it should.
+     */
+    @Synchronized
+    fun resize(surface: Surface) {
+        if (!started) return
+        WaylandCompositor.nativeSetSurface(null)
+        WaylandCompositor.nativeSetSurface(surface)
+    }
+
+    /**
      * The activity is going away. The compositor keeps running with nothing to present into —
      * the guest carries on, and its next frames land on the Surface the next activity brings.
      */
