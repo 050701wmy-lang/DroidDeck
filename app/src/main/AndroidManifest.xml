@@ -40,13 +40,18 @@
             A session keeps a Surface, a compositor thread and a proot tree alive; a configuration
             change must not tear that down and rebuild it, so the activity handles them itself.
             Landscape only: gamescope is told one output size when it starts.
+
+            Resizable, deliberately: a foldable opening or closing changes the window, and the
+            compositor re-fits the picture with bars. Declared non-resizable, the system keeps a
+            fixed-shape window instead and STRETCHES it onto the other panel — the app never sees a
+            size change, so nothing it does can help.
         -->
         <activity
             android:name=".SessionActivity"
             android:exported="false"
             android:theme="@style/SessionTheme"
             android:screenOrientation="sensorLandscape"
-            android:resizeableActivity="false"
+            android:resizeableActivity="true"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density" />
 
         <!--
