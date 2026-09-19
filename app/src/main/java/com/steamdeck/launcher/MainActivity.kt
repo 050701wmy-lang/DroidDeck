@@ -1,95 +1,117 @@
 package com.steamdeck.launcher
 
 import android.Manifest
-import android.app.Activity
-import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import android.view.View
-import android.widget.Button
-import android.widget.ProgressBar
-import android.widget.TextView
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.steamdeck.launcher.core.FileUtils
 import com.steamdeck.launcher.gpu.FrameGen
+import com.steamdeck.launcher.gpu.LsfgNative
 import com.steamdeck.launcher.runtime.LinuxRuntime
 import com.steamdeck.launcher.runtime.LinuxRuntimeInstaller
+import com.steamdeck.launcher.ui.ConfirmDialog
+import com.steamdeck.launcher.ui.CreditsDialog
+import com.steamdeck.launcher.ui.FrameGenDialog
+import com.steamdeck.launcher.ui.MainScreen
+import com.steamdeck.launcher.ui.MainUiState
+import com.steamdeck.launcher.ui.SteamDeckTheme
 
 /**
- * The whole app outside a session: is the runtime installed, is there a newer one, and one button
- * that starts Steam. Everything a Steam client can do — the library, the store, downloads,
- * settings — is the client's own job once {@link SessionActivity} has it on screen.
+ * The whole app outside a session: is the runtime installed, is there a newer one, frame
+ * generation, and one button that starts Steam. Everything a Steam client can do — the library,
+ * the store, downloads, settings — is the client's own job once [SessionActivity] has it on screen.
  */
-class MainActivity : Activity() {
-    private lateinit var status: TextView
-    private lateinit var detail: TextView
-    private lateinit var progress: ProgressBar
-    private lateinit var playButton: Button
-    private lateinit var runtimeButton: Button
-    private lateinit var frameGenButton: Button
-
+class MainActivity : ComponentActivity() {
     private val ui = Handler(Looper.getMainLooper())
-    @Volatile private var busy = false
-    @Volatile private var available: LinuxRuntimeInstaller.Release? = null
+
+    // The screen's state. Compose redraws whatever reads these when they change.
+    private var installed by mutableStateOf<String?>(null)
+    private var ready by mutableStateOf(false)
+    private var available by mutableStateOf<LinuxRuntimeInstaller.Release?>(null)
+    private var busy by mutableStateOf(false)
+    private var stage by mutableStateOf("")
+    private var percent by mutableIntStateOf(-1)
+    private var failed by mutableStateOf(false)
+    private var frameGenLabel by mutableStateOf("Off")
+    private var showRemove by mutableStateOf(false)
+    private var showFrameGen by mutableStateOf(false)
+    private var showCredits by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-        status = findViewById(R.id.status)
-        detail = findViewById(R.id.detail)
-        progress = findViewById(R.id.progress)
-        playButton = findViewById(R.id.play)
-        runtimeButton = findViewById(R.id.runtime)
-        frameGenButton = findViewById(R.id.frame_gen)
-        frameGenButton.setOnClickListener { FrameGen.showPicker(this) { render() } }
-
-        playButton.setOnClickListener { startActivity(Intent(this, SessionActivity::class.java)) }
-        runtimeButton.setOnClickListener { onRuntimeButton() }
-        findViewById<TextView>(R.id.credits).setOnClickListener {
-            AlertDialog.Builder(this)
-                .setTitle(R.string.credits_title)
-                .setMessage(R.string.credits_body)
-                .setPositiveButton(android.R.string.ok, null)
-                .show()
+        setContent {
+            SteamDeckTheme {
+                MainScreen(
+                    state = MainUiState(
+                        installed = installed, ready = ready,
+                        available = available?.version,
+                        availableSize = available?.let { FileUtils.sizeToString(it.size) },
+                        busy = busy, stage = stage, percent = percent, failed = failed,
+                        frameGenLabel = frameGenLabel,
+                    ),
+                    onPlay = { startActivity(Intent(this, SessionActivity::class.java)) },
+                    onRuntime = { onRuntimeButton() },
+                    onFrameGen = { showFrameGen = true },
+                    onCredits = { showCredits = true },
+                )
+                if (showRemove) ConfirmDialog(
+                    title = "Remove Linux runtime",
+                    text = "This deletes the runtime, the Steam client inside it, and every game installed there.",
+                    confirm = "Remove",
+                    onConfirm = { Thread({ LinuxRuntimeInstaller.uninstall(this); ui.post { refresh() } }, "uninstall").start() },
+                    onDismiss = { showRemove = false },
+                )
+                if (showFrameGen) FrameGenDialog(
+                    engine = FrameGen.engine(this), multiplier = FrameGen.multiplier(this),
+                    lsfgReady = LsfgNative.isInstalled(this),
+                    onPick = { engine, multiplier ->
+                        FrameGen.set(this, engine, multiplier)
+                        frameGenLabel = FrameGen.label(this)
+                        showFrameGen = false
+                    },
+                    onDismiss = { showFrameGen = false },
+                )
+                if (showCredits) CreditsDialog { showCredits = false }
+            }
         }
 
         // The session's logs land in Downloads so a failed run can be handed over as a folder
         // rather than dug out of app-private storage. targetSdk 28 means the old permission still
         // grants exactly that.
-        if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            != PackageManager.PERMISSION_GRANTED) {
+        if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 1)
         }
     }
 
     override fun onResume() {
         super.onResume()
-        render()
+        refresh()
         if (!busy) Thread({ checkCatalog() }, "catalog").start()
+    }
+
+    private fun refresh() {
+        installed = LinuxRuntimeInstaller.installedVersion(this)
+        ready = LinuxRuntime.isInstalled(this)
+        frameGenLabel = FrameGen.label(this)
     }
 
     private fun onRuntimeButton() {
         if (busy) return
-        val installed = LinuxRuntimeInstaller.installedVersion(this)
-        if (installed != null && available?.version == installed) {
+        val release = available
+        if (installed != null && release?.version == installed) {
             // Nothing to install: offer the one destructive thing this screen can do.
-            AlertDialog.Builder(this)
-                .setTitle(R.string.remove_runtime)
-                .setMessage(R.string.remove_runtime_message)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.remove) { _, _ ->
-                    Thread({
-                        LinuxRuntimeInstaller.uninstall(this)
-                        ui.post { render() }
-                    }, "uninstall").start()
-                }
-                .show()
+            showRemove = true
             return
         }
-        val release = available
         if (release == null) {
             Thread({ checkCatalog() }, "catalog").start()
             return
@@ -99,65 +121,25 @@ class MainActivity : Activity() {
 
     private fun install(release: LinuxRuntimeInstaller.Release) {
         busy = true
-        render()
+        failed = false
+        stage = "Starting…"
+        percent = -1
         Thread({
-            val ok = LinuxRuntimeInstaller.install(this, release) { stage, percent ->
-                ui.post {
-                    progress.isIndeterminate = percent < 0
-                    if (percent >= 0) progress.progress = percent
-                    detail.text = if (percent >= 0) "$stage $percent%" else stage
-                }
+            val ok = LinuxRuntimeInstaller.install(this, release) { s, p ->
+                ui.post { stage = s; percent = p }
             }
-            busy = false
             ui.post {
-                if (!ok) detail.text = getString(R.string.install_failed)
-                render()
+                busy = false
+                failed = !ok
+                refresh()
             }
         }, "install").start()
     }
 
     private fun checkCatalog() {
         val release = LinuxRuntimeInstaller.fetchRelease()
-        if (release != null) available = release
         Log.i(TAG, "catalog: " + (release?.version ?: "unreachable"))
-        ui.post { render() }
-    }
-
-    private fun render() {
-        frameGenButton.text = getString(R.string.frame_gen, FrameGen.label(this))
-        val installed = LinuxRuntimeInstaller.installedVersion(this)
-        val ready = LinuxRuntime.isInstalled(this)
-        progress.visibility = if (busy) View.VISIBLE else View.GONE
-        playButton.isEnabled = ready && !busy
-        runtimeButton.isEnabled = !busy
-
-        val offered = available
-        when {
-            busy -> {
-                status.setText(R.string.working)
-                runtimeButton.setText(R.string.working)
-            }
-            !ready -> {
-                status.setText(R.string.runtime_missing)
-                runtimeButton.setText(R.string.install_runtime)
-                detail.text = if (offered != null) {
-                    getString(R.string.runtime_download_size,
-                        offered.version, FileUtils.sizeToString(offered.size))
-                } else {
-                    getString(R.string.catalog_unreachable)
-                }
-            }
-            offered != null && offered.version != installed -> {
-                status.setText(R.string.ready)
-                runtimeButton.setText(R.string.update_runtime)
-                detail.text = getString(R.string.runtime_update, installed ?: "?", offered.version)
-            }
-            else -> {
-                status.setText(R.string.ready)
-                runtimeButton.setText(R.string.remove_runtime)
-                detail.text = getString(R.string.runtime_installed, installed ?: "?")
-            }
-        }
+        ui.post { if (release != null) available = release }
     }
 
     companion object {

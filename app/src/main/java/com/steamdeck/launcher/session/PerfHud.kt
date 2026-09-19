@@ -1,17 +1,13 @@
 package com.steamdeck.launcher.session
 
 import android.content.Context
-import android.graphics.Color
-import android.graphics.Typeface
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
-import android.util.TypedValue
-import android.view.Gravity
-import android.view.View
-import android.widget.FrameLayout
-import android.widget.TextView
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.steamdeck.launcher.gpu.FrameGen
 import com.steamdeck.launcher.wayland.WaylandCompositor
 import java.io.File
@@ -19,36 +15,24 @@ import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * A line of numbers in the top-right corner: the game's own frame rate and, when frame generation
- * is on, what the screen is actually being shown — "60 → 118 fps" is the proof that the engine is
- * doing something, and "FG starting" or a reason is the proof that it is not.
+ * The numbers behind the top-right line: the game's own frame rate and, when frame generation
+ * is on, what the screen is actually being shown — "60 → 118 fps" is the proof that the engine
+ * is doing something, and "FG starting" or a reason is the proof that it is not.
  *
  * The base rate is counted here from the compositor's per-frame callback, so it is right with or
  * without an engine. The presented rate comes from the engine's own telemetry while it generates.
- * `steamdeck-no-hud` in Downloads hides it.
  */
 class PerfHud(context: Context) {
-    val view: TextView = TextView(context).apply {
-        typeface = Typeface.MONOSPACE
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-        setTextColor(Color.WHITE)
-        setBackgroundColor(Color.argb(140, 0, 0, 0))
-        setPadding(14, 6, 14, 6)
-        // Numbers only; every touch goes through to the game.
-        isClickable = false
-        isFocusable = false
-        visibility = View.GONE
-        layoutParams = FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP or Gravity.END,
-        ).apply { topMargin = 12; rightMargin = 12 }
-    }
+    /** Empty when the HUD is off or not yet started. */
+    var text by mutableStateOf("")
+        private set
 
     private val context = context.applicationContext
     private val frames = AtomicInteger()
     private var lastTick = 0L
     private var running = false
     private val handler = Handler(Looper.getMainLooper())
+
     /** The session's own switch (drawer), with the Downloads file as a device-side override. */
     private val enabled: Boolean
         get() = SessionPrefs.hudEnabled(context)
@@ -65,8 +49,7 @@ class PerfHud(context: Context) {
             val now = SystemClock.elapsedRealtime()
             val dt = (now - lastTick).coerceAtLeast(1L) / 1000f
             lastTick = now
-            val base = frames.getAndSet(0) / dt
-            view.text = line(base)
+            text = line(frames.getAndSet(0) / dt)
             handler.postDelayed(this, 1000)
         }
     }
@@ -82,14 +65,13 @@ class PerfHud(context: Context) {
         lastTick = SystemClock.elapsedRealtime()
         frames.set(0)
         WaylandCompositor.setGameListener(listener)
-        view.visibility = View.VISIBLE
         handler.post(tick)
     }
 
     fun stop() {
         running = false
         WaylandCompositor.setGameListener(null)
-        view.visibility = View.GONE
+        text = ""
     }
 
     private fun line(base: Float): String {
