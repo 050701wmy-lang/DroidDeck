@@ -235,7 +235,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         surfaceH = height
         if (resized) {
             Log.i(TAG, "surface resized to ${width}x$height — rebinding the compositor")
-            CompositorHost.resize(holder.surface)
+            CompositorHost.resize(holder.surface) { applyFrameGen() }
         }
     }
 

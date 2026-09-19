@@ -56,10 +56,18 @@ object CompositorHost {
      * the new size, and the scale mode letterboxes as it should.
      */
     @Synchronized
-    fun resize(surface: Surface) {
+    fun resize(surface: Surface, rearm: () -> Unit) {
         if (!started) return
+        // Frame generation does not live through a resize: its ring, its effects chain and its
+        // multi-present pacing were all built against the old extent, and on a Fold the picture
+        // came back stretched with an engine on and right with it off. Disarmed, the window is
+        // rebound and the swapchain rebuilt; the caller re-arms once that has settled, and every
+        // engine-side object is made again for the new size.
+        WaylandCompositor.nativeSetFrameGenArmed(false, 0)
+        WaylandCompositor.nativeLog("screen", "surface resized: rebinding the window, frame generation re-armed after")
         WaylandCompositor.nativeSetSurface(null)
         WaylandCompositor.nativeSetSurface(surface)
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(rearm, 600)
     }
 
     /**
