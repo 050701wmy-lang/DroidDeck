@@ -61,6 +61,7 @@ fun MainScreen(
             .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.TopCenter,
     ) {
+        val wide = maxWidth > 600.dp
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
@@ -76,7 +77,7 @@ fun MainScreen(
                 Image(
                     painter = painterResource(R.drawable.logo),
                     contentDescription = null,
-                    modifier = Modifier.size(if (maxWidth > 600.dp) 88.dp else 72.dp),
+                    modifier = Modifier.size(if (wide) 88.dp else 72.dp),
                 )
                 Spacer(Modifier.height(8.dp))
                 Text("SteamDeck", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onBackground)

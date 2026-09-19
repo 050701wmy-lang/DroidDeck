@@ -200,9 +200,13 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         val turnip = TurnipDriver(this)
         val driverId = if (CompositorHost.isStarted) null else turnip.install()
 
-        val size = outputSize()
+        // The output size belongs to the session, not to the Surface: gamescope's display is
+        // sized once when the session starts and cannot change. A foldable recreates the Surface
+        // on the other panel, and recomputing the size there told the compositor a 21:9 buffer
+        // was 16:9 — the picture came back squashed sideways. While a session runs, keep its size.
+        val size = if (SessionState.running) SessionState.outputSize else outputSize()
         SessionState.outputSize = size
-        SessionState.refreshHz = refreshHz()
+        if (!SessionState.running) SessionState.refreshHz = refreshHz()
         // Letterbox, never stretch or crop: the output can be a different shape from the panel,
         // and a game's picture must keep its proportions with bars, not lose its edges.
         WaylandCompositor.nativeSetScaleMode(SCALE_FIT, ALIGN_CENTER)
