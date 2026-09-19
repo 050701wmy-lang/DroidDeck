@@ -37,7 +37,10 @@ public final class ProcessHelper {
             ProcessBuilder builder = new ProcessBuilder(splitCommand(command));
             if (workingDir != null) builder.directory(workingDir);
             if (envp != null) {
-                builder.environment().clear();
+                // Added to the app's own environment rather than replacing it, which is what
+                // Bannerlator does on the path this was taken from. proot needs nothing from the
+                // inherited set, but the guest command starts with `env -i` anyway, so clearing
+                // here buys nothing and only differs from the configuration proven on a device.
                 for (String entry : envp) {
                     int eq = entry.indexOf('=');
                     if (eq > 0) builder.environment().put(entry.substring(0, eq), entry.substring(eq + 1));
