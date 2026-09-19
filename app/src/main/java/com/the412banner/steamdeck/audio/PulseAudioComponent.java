@@ -91,7 +91,7 @@ public class PulseAudioComponent extends EnvironmentComponent {
 
     private void copyFromLibraryDir() {
         String[] libs = {"libltdl.so", "libpulseaudio.so", "libpulse.so",
-                "libpulsecommon-13.0.so", "libpulsecore-13.0.so"};
+                "libpulsecommon-13.0.so", "libpulsecore-13.0.so", "libsndfile.so", "libffi.so"};
         ClassLoader loader = PulseAudioComponent.class.getClassLoader();
         for (String lib : libs) {
             URL resource = loader != null ? loader.getResource("lib/arm64-v8a/" + lib) : null;
