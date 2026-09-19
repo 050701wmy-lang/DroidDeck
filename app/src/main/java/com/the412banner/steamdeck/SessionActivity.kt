@@ -140,9 +140,19 @@ class SessionActivity : Activity(), SurfaceHolder.Callback {
      * the panel is, so a 1440p phone can run the client at 1080p without the client knowing.
      */
     private fun outputSize(): Pair<Int, Int> {
-        val metrics = resources.displayMetrics
-        var width = maxOf(metrics.widthPixels, metrics.heightPixels)
-        var height = minOf(metrics.widthPixels, metrics.heightPixels)
+        // The panel, not the window: resources.displayMetrics is what is left after the system
+        // bars and the cutout are taken out, which sized the first session 1920x968 on a 1080p
+        // device and had gamescope patch its EDID to match.
+        val bounds = if (Build.VERSION.SDK_INT >= 30) {
+            windowManager.maximumWindowMetrics.bounds
+        } else {
+            val metrics = android.util.DisplayMetrics()
+            @Suppress("DEPRECATION")
+            windowManager.defaultDisplay.getRealMetrics(metrics)
+            android.graphics.Rect(0, 0, metrics.widthPixels, metrics.heightPixels)
+        }
+        var width = maxOf(bounds.width(), bounds.height())
+        var height = minOf(bounds.width(), bounds.height())
         // The client's CEF is the heaviest thing in the session; above 1080p it costs frames for
         // nothing anyone can see on a phone panel.
         if (height > 1080) {
