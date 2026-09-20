@@ -173,6 +173,10 @@ class SessionService : Service() {
         val prootLibs = LinuxRuntime.prootLibraryPath(this)
         if (prootLibs.isNotEmpty()) hostEnv.put("LD_LIBRARY_PATH", prootLibs)
 
+        // Whether the client signs in to Valve or starts offline: read once, while it starts, and
+        // rewritten by the client when it exits, so it is set again here at every session start.
+        if (SessionState.mode == MODE_STEAM) OfflineMode.apply(this, root)
+
         val networkLink = LinuxNetworkLinkComponent(this, root)
         networkLink.setContext(this)
         networkLink.publish()

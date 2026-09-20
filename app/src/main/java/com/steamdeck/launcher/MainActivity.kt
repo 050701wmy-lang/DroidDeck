@@ -22,6 +22,7 @@ import com.steamdeck.launcher.runtime.LinuxRuntimeInstaller
 import com.steamdeck.launcher.session.SessionService
 import com.steamdeck.launcher.ui.DesktopAppsDialog
 import com.steamdeck.launcher.ui.PackageRow
+import com.steamdeck.launcher.session.OfflineMode
 import com.steamdeck.launcher.session.ProtonExtras
 import com.steamdeck.launcher.ui.ProtonDialog
 import com.steamdeck.launcher.ui.ProtonRow
@@ -59,6 +60,8 @@ class MainActivity : ComponentActivity() {
     private var pkgStage by mutableStateOf<String?>(null)
     private var pkgPercent by mutableIntStateOf(-1)
     private var desktopInstalled by mutableStateOf(false)
+    private var offlineAccount by mutableStateOf<String?>(null)
+    private var offline by mutableStateOf(false)
     private var protonRows by mutableStateOf<List<ProtonRow>>(emptyList())
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,6 +76,7 @@ class MainActivity : ComponentActivity() {
                         busy = busy, stage = stage, percent = percent, failed = failed,
                         frameGenLabel = frameGenLabel,
                         desktopInstalled = desktopInstalled,
+                        offlineAccount = offlineAccount, offline = offline,
                     ),
                     onPlay = { startActivity(Intent(this, SessionActivity::class.java)) },
                     onDesktop = {
@@ -80,6 +84,10 @@ class MainActivity : ComponentActivity() {
                             .putExtra(SessionService.EXTRA_MODE, SessionService.MODE_DESKTOP))
                     },
                     onApps = { openApps() },
+                    onOffline = {
+                        OfflineMode.setEnabled(this, !OfflineMode.enabled(this))
+                        offline = OfflineMode.enabled(this)
+                    },
                     onRuntime = { onRuntimeButton() },
                     onFrameGen = { showFrameGen = true },
                     onProtons = { refreshProtons(); showProtons = true },
@@ -172,6 +180,8 @@ class MainActivity : ComponentActivity() {
 
     private fun refresh() {
         desktopInstalled = DesktopCatalog.desktopInstalled(this)
+        offlineAccount = OfflineMode.account(this)
+        offline = OfflineMode.enabled(this)
         installed = LinuxRuntimeInstaller.installedVersion(this)
         ready = LinuxRuntime.isInstalled(this)
         frameGenLabel = FrameGen.label(this)
