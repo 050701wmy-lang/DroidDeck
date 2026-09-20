@@ -149,6 +149,10 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                     if (loading.visible) LoadingOverlay(loading.step, loading.percent, loading.elapsed, loading.hint, loading.ended)
                     if (drawerOpen) SessionDrawer(DrawerActions(
                         hudOn = hudOn, frameGenLabel = frameGenLabel, oscMode = oscMode,
+                        touchMode = when (touchMode) {
+                            SessionPrefs.TOUCH_PAD -> "touchpad"; SessionPrefs.TOUCH_DIRECT -> "direct"
+                            else -> "auto (" + (if (usingTouchpad()) "touchpad" else "direct") + ")"
+                        },
                         shapeMode = if (shapeMode == SessionPrefs.SHAPE_WIDE) "16:9" else "panel",
                         onHud = { on -> SessionPrefs.setHudEnabled(this@SessionActivity, on); hudOn = on; hud.refresh() },
                         onFrameGen = { showFrameGen = true },
