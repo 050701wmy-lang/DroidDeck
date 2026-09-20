@@ -19,14 +19,22 @@ cp -f /etc/xdg/labwc/rc.xml "$HOME/.config/labwc/rc.xml"
 cp -f /etc/xdg/labwc/autostart "$HOME/.config/labwc/autostart"
 [ -f "$HOME/.config/lxqt/panel.conf" ] || cp /etc/xdg/lxqt/panel.conf "$HOME/.config/lxqt/panel.conf"
 [ -f "$HOME/.config/lxqt/lxqt.conf" ] || cp /etc/xdg/lxqt/lxqt.conf "$HOME/.config/lxqt/lxqt.conf"
+# pcmanfm-qt paints the desktop; left unconfigured it paints it black, over swaybg's wallpaper.
+if [ ! -f "$HOME/.config/pcmanfm-qt/lxqt/settings.conf" ]; then
+  mkdir -p "$HOME/.config/pcmanfm-qt/lxqt"
+  printf '[Desktop]\nWallpaper=/usr/share/backgrounds/steamdeck.png\nWallpaperMode=zoom\nBgColor=#1b1030\nShowHidden=false\n' \
+    > "$HOME/.config/pcmanfm-qt/lxqt/settings.conf"
+fi
 # The runtime directory outlives a session. lxqt-panel and pcmanfm-qt are single-instance
 # programs that leave a lock and a socket there; finding last session's, they decide they are
 # already running and exit without a word - a desktop with a wallpaper and nothing on it.
 # Only the app's own compositor socket (wayland-0) is kept.
 find "$XDG_RUNTIME_DIR" -mindepth 1 -maxdepth 1 ! -name 'wayland-0*' ! -name 'keymap.xkb' -exec rm -rf {} + 2>/dev/null
 echo "== steamdeck-desktop: labwc ($WLR_RENDERER) on $WAYLAND_DISPLAY"
+# ~/.steamdeck-desktop-debug: labwc's own debug log (views and layer surfaces mapping) too.
+DEBUG=; [ -f "$HOME/.steamdeck-desktop-debug" ] && DEBUG=-d
 # A session bus: the panel's menus, the file manager and the portal all expect one.
 if command -v dbus-run-session >/dev/null 2>&1; then
-  exec dbus-run-session -- labwc -C "$HOME/.config/labwc"
+  exec dbus-run-session -- labwc $DEBUG -C "$HOME/.config/labwc"
 fi
-exec labwc -C "$HOME/.config/labwc"
+exec labwc $DEBUG -C "$HOME/.config/labwc"
