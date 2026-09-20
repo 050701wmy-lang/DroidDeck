@@ -24,6 +24,13 @@ if [ -f "$HOME/.steamdeck-desktop-debug" ]; then
     done
   ) &
 fi
+# In debug runs Firefox (started from the panel or the menu, so it inherits this) writes its
+# own network log: name lookups, connects, HTTP transactions, the link/offline decisions.
+if [ -f "$HOME/.steamdeck-desktop-debug" ]; then
+  mkdir -p "$HOME/.cache/steamdeck"
+  export MOZ_LOG="nsHttp:3,nsSocketTransport:3,nsHostResolver:4,NetworkLinkService:5,NetworkConnectivityService:5,nsIOService:5"
+  export MOZ_LOG_FILE="$HOME/.cache/steamdeck/firefox-net.log"
+fi
 swaybg -m fill -i /usr/share/backgrounds/steamdeck.png &
 # Desktop icons (pcmanfm-qt manages the desktop surface) and the panel with the app menu.
 run pcmanfm-qt pcmanfm-qt --desktop --profile lxqt
