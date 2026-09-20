@@ -67,7 +67,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: app/src/main/assets/linuxfs
-          key: preloads-${{ env.PRELOAD_CACHE_VERSION }}-${{ hashFiles('app/src/main/cpp/fakeinput.cpp', 'tools/linuxfs/preload/*.c', 'tools/linuxfs/overlay/usr/local/bin/*') }}
+          key: preloads-${{ env.PRELOAD_CACHE_VERSION }}-${{ hashFiles('app/src/main/cpp/fakeinput_steam.cpp', 'tools/linuxfs/preload/*.c', 'tools/linuxfs/overlay/usr/local/bin/*') }}
 
       - name: Build libfakeinput.so and libblsession.so (glibc aarch64)
         if: steps.preloads.outputs.cache-hit != 'true'
@@ -82,7 +82,7 @@ jobs:
           # ahead of it is a version conflict waiting to happen. Only libc is left as a dependency.
           aarch64-linux-gnu-g++ -shared -fPIC -O2 -Wall -Wno-attributes -Wno-nonnull-compare \
             -pthread -std=c++17 -static-libstdc++ -static-libgcc \
-            -o "$D/libfakeinput.so" app/src/main/cpp/fakeinput.cpp -ldl
+            -o "$D/libfakeinput.so" app/src/main/cpp/fakeinput_steam.cpp -ldl
           aarch64-linux-gnu-strip --strip-unneeded "$D/libfakeinput.so"
           aarch64-linux-gnu-gcc -shared -fPIC -O2 -Wall -pthread \
             -o "$D/libblsession.so" tools/linuxfs/preload/*.c -ldl
@@ -113,10 +113,11 @@ jobs:
             grep -qx "$sym" <<<"$FAKE" || { echo "::error::libfakeinput.so does not export $sym"; exit 1; }
           done
           SESSION=$(syms "$D/libblsession.so")
-          for sym in socket bind getsockname setsockopt; do
+          for sym in socket bind getsockname setsockopt statfs statvfs; do
             grep -qx "$sym" <<<"$SESSION" || { echo "::error::libblsession.so does not export $sym"; exit 1; }
           done
           test -f "$D/usr/local/bin/bannerlator-session"
+          test -f "$D/usr/local/bin/bannerlator-proton-extra"
           echo "preloads check out"
 
       # ── The native build ─────────────────────────────────────────────────────────────────

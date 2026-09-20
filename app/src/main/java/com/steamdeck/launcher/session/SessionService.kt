@@ -175,6 +175,66 @@ class SessionService : Service() {
         Log.i(TAG, "session pid $sessionPid, log ${sessionLog.path}")
     }
 
+    private fun teardown(prootPid: Int) {
+        val tree = descendants(prootPid)
+        android.os.Process.sendSignal(prootPid, 15) // SIGTERM
+        if (!waitForExit(prootPid, GRACE_MS)) {
+            Log.w(TAG, "proot $prootPid did not exit on SIGTERM; killing it")
+            android.os.Process.killProcess(prootPid)
+        }
+        var killed = 0
+        for ((pid, started) in tree) {
+            val stat = readStat(pid) ?: continue       // already gone
+            if (stat.second != started) continue        // same number, different process
+            android.os.Process.killProcess(pid)
+            killed++
+        }
+        if (killed > 0) Log.i(TAG, "swept $killed process(es) proot left behind")
+    }
+
+    /** Every process under [root], as (pid, start time), from a single walk of /proc. */
+    private fun descendants(root: Int): List<Pair<Int, Long>> {
+        val started = HashMap<Int, Long>()
+        val children = HashMap<Int, MutableList<Int>>()
+        File("/proc").listFiles()?.forEach { entry ->
+            val pid = entry.name.toIntOrNull() ?: return@forEach
+            val stat = readStat(pid) ?: return@forEach
+            started[pid] = stat.second
+            children.getOrPut(stat.first) { ArrayList() }.add(pid)
+        }
+        val out = ArrayList<Pair<Int, Long>>()
+        val queue = ArrayDeque<Int>().apply { add(root) }
+        val me = android.os.Process.myPid()
+        while (queue.isNotEmpty()) {
+            for (kid in children[queue.removeFirst()] ?: continue) {
+                if (kid <= 1 || kid == me || kid == root) continue
+                val when_ = started[kid] ?: continue
+                out.add(Pair(kid, when_))
+                queue.add(kid)
+            }
+        }
+        return out
+    }
+
+    /** (parent pid, start time) from /proc/pid/stat, or null when the process is gone. */
+    private fun readStat(pid: Int): Pair<Int, Long>? {
+        val stat = try { File("/proc/$pid/stat").readText() } catch (e: Exception) { return null }
+        val close = stat.lastIndexOf(')')
+        if (close < 0 || close + 2 >= stat.length) return null
+        val fields = stat.substring(close + 2).trim().split(Regex("\\s+"))
+        if (fields.size < 20) return null
+        return try { Pair(fields[1].toInt(), fields[19].toLong()) } catch (e: NumberFormatException) { null }
+    }
+
+    private fun waitForExit(pid: Int, timeoutMs: Long): Boolean {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            if (!File("/proc/$pid").exists()) return true
+            try { Thread.sleep(50) } catch (e: InterruptedException) { return false }
+        }
+        return !File("/proc/$pid").exists()
+    }
+
     /**
      * proot's --kill-on-exit takes its tracees down, but a session that died from the inside
      * (the client asserting, Xwayland going) leaves gamescopereaper and the session script
@@ -203,10 +263,17 @@ class SessionService : Service() {
     private fun stopSession(status: Int) {
         if (!SessionState.running) return
         SessionState.running = false
-        // proot runs with --kill-on-exit, so killing it takes the whole guest tree with it.
+        // proot's --kill-on-exit takes the guest tree down only if proot gets to run it, and
+        // SIGKILL never lets it. A SIGKILLed proot left its tracees alive with no tracer: every
+        // seccomp-trapped syscall then failed with ENOSYS, they spun on retries at a full core
+        // for over an hour, and the reaper could not even open /proc to kill them. So: SIGTERM,
+        // a grace for proot's own cleanup, SIGKILL only if it will not go, then a sweep of the
+        // tree it had — snapshotted first, each pid checked against its start time so a number
+        // reused by a new process is never touched. Same shape as Bannerlator's fix (4509d788).
         if (sessionPid != -1) {
-            android.os.Process.killProcess(sessionPid)
+            val prootPid = sessionPid
             sessionPid = -1
+            Thread({ teardown(prootPid) }, "session-teardown").start()
         }
         components.reversed().forEach {
             try {
@@ -330,6 +397,8 @@ class SessionService : Service() {
         /** Command lines that can only belong to a session of ours. */
         private val STRAGGLERS = listOf("bannerlator-session", "gamescope", "Xwayland", "steamrtarm64",
             "steamwebhelper", "linuxfs/opt/android-host/proot", "pulseaudio/libpulseaudio.so")
+        /** How long proot gets to run its own cleanup before it is killed outright. */
+        private const val GRACE_MS = 1200L
         private const val NO_PAD_SWITCH = "Download/steamdeck-no-pad"
         private const val PAD_LOG_SWITCH = "Download/steamdeck-pad-log"
 
