@@ -100,6 +100,9 @@ Session logs land in `/sdcard/Download/SteamDeck/`.
 ## Lineage and licence
 
 GPL-3.0. The gamescope runtime, the session shim and the fake-evdev interposer come from
-maxjivi05's WinNative work and from Bannerlator, both GPL-3.0; the Wayland compositor and the
-runtime plumbing are Bannerlator's. Valve, Steam and Proton are Valve Corporation's; this project
+maxjivi05's WinNative work and from Bannerlator, both GPL-3.0; the Wayland compositor, the frame
+generation engines and the runtime plumbing are Bannerlator's. Underneath all of it is Winlator
+(brunodev85, GPL-3.0): the PulseAudio-on-AAudio audio stack, the gamepad state model and the shape
+of a session's host-side components are his, and WinNative and Bannerlator are both Winlator
+lineage. Valve, Steam and Proton are Valve Corporation's; this project
 is not affiliated with Valve.
