@@ -32,7 +32,15 @@ object SessionFiles {
             "usr/local/bin/bannerlator-seed-redists" to "usr/local/bin/bannerlator-seed-redists",
             "usr/local/bin/bannerlator-proton-extra" to "usr/local/bin/bannerlator-proton-extra",
         )
-        for ((asset, relative) in files) {
+        // The desktop's launcher and labwc defaults, only where the desktop package is installed:
+        // staging them into a runtime without it would make the desktop look present when it is not.
+        val desktop = arrayOf(
+            "usr/local/bin/steamdeck-desktop" to "usr/local/bin/steamdeck-desktop",
+            "etc/xdg/labwc/autostart" to "etc/xdg/labwc/autostart",
+            "etc/xdg/labwc/rc.xml" to "etc/xdg/labwc/rc.xml",
+        )
+        val all = if (File(root, "usr/bin/labwc").isFile) files + desktop else files
+        for ((asset, relative) in all) {
             val target = File(root, relative)
             val staged = File(target.parentFile, target.name + ".staged")
             var installed = false

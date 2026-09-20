@@ -1,0 +1,32 @@
+#!/bin/bash
+# The desktop session: labwc nested as a client of the app's compositor, with LXQt's panel and
+# file manager started from its autostart, and Xwayland for the X11 programs (the Steam client,
+# most emulators). Run by bannerlator-session in place of gamescope for mode "lxqt".
+# Staged by the app over the desktop package's copy on every launch, so a fix here reaches an
+# installed desktop without re-downloading the package.
+set -u
+export XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=LXQt XDG_SESSION_DESKTOP=lxqt
+export QT_QPA_PLATFORM=wayland GDK_BACKEND=wayland,x11 SDL_VIDEODRIVER=wayland,x11
+export QT_QPA_PLATFORMTHEME=lxqt
+# wlroots allocates through gbm on a real DRM node, which the KGSL stand-in is not: pixman
+# (software, shm) is what boots here. BL_WLR_RENDERER=vulkan/gles2 tries acceleration.
+export WLR_RENDERER=${BL_WLR_RENDERER:-pixman}
+export WLR_BACKENDS=wayland
+mkdir -p "$HOME/.config/labwc" "$HOME/.config/lxqt"
+# Our defaults for labwc and the panel, refreshed every session. What a user changes in the
+# panel's own settings lands in panel.conf and is kept; only rc.xml and autostart are ours.
+cp -f /etc/xdg/labwc/rc.xml "$HOME/.config/labwc/rc.xml"
+cp -f /etc/xdg/labwc/autostart "$HOME/.config/labwc/autostart"
+[ -f "$HOME/.config/lxqt/panel.conf" ] || cp /etc/xdg/lxqt/panel.conf "$HOME/.config/lxqt/panel.conf"
+[ -f "$HOME/.config/lxqt/lxqt.conf" ] || cp /etc/xdg/lxqt/lxqt.conf "$HOME/.config/lxqt/lxqt.conf"
+# The runtime directory outlives a session. lxqt-panel and pcmanfm-qt are single-instance
+# programs that leave a lock and a socket there; finding last session's, they decide they are
+# already running and exit without a word - a desktop with a wallpaper and nothing on it.
+# Only the app's own compositor socket (wayland-0) is kept.
+find "$XDG_RUNTIME_DIR" -mindepth 1 -maxdepth 1 ! -name 'wayland-0*' ! -name 'keymap.xkb' -exec rm -rf {} + 2>/dev/null
+echo "== steamdeck-desktop: labwc ($WLR_RENDERER) on $WAYLAND_DISPLAY"
+# A session bus: the panel's menus, the file manager and the portal all expect one.
+if command -v dbus-run-session >/dev/null 2>&1; then
+  exec dbus-run-session -- labwc -C "$HOME/.config/labwc"
+fi
+exec labwc -C "$HOME/.config/labwc"

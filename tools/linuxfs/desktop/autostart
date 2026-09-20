@@ -1,0 +1,6 @@
+# What the desktop is made of, started once labwc is up. Everything logs into the session log.
+swaybg -m fill -i /usr/share/backgrounds/steamdeck.png &
+# Desktop icons (pcmanfm-qt manages the desktop surface) and the panel with the app menu.
+pcmanfm-qt --desktop --profile lxqt 2>&1 | sed 's/^/[pcmanfm-qt] /' &
+lxqt-panel 2>&1 | sed 's/^/[lxqt-panel] /' &
+/usr/lib/xdg-desktop-portal-wlr >/dev/null 2>&1 &
