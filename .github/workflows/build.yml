@@ -96,6 +96,7 @@ jobs:
           install -Dm644 tools/linuxfs/desktop/autostart "$D/etc/xdg/labwc/autostart"
           install -Dm644 tools/linuxfs/desktop/rc.xml "$D/etc/xdg/labwc/rc.xml"
           install -Dm644 tools/linuxfs/desktop/panel.conf "$D/etc/xdg/lxqt/panel.conf"
+          install -Dm644 tools/linuxfs/desktop/firefox-steamdeck.js "$D/usr/lib/firefox/defaults/pref/steamdeck.js"
           ls -lR "$D"
 
       # Runs whether the preloads were built or restored: readelf reads any ELF whatever the host,

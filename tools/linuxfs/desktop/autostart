@@ -14,6 +14,16 @@ run() {
 }
 # The output at the app's real size, in case rc.xml's mode did not take.
 [ -n "${BL_WIDTH:-}" ] && wlr-randr --output WL-1 --custom-mode "${BL_WIDTH}x${BL_HEIGHT}" 2>&1 | sed 's/^/[wlr-randr] /'
+# In debug runs, ground truth on the network from inside the session: name lookup, then a
+# fetch over IPv4 and over IPv6, so a browser's "no internet" can be placed.
+if [ -f "$HOME/.steamdeck-desktop-debug" ]; then
+  (
+    echo "[net] getent: $(getent hosts example.com 2>&1 | head -2 | tr '\n' ' ')"
+    for f in 4 6; do
+      echo "[net] curl -$f: $(curl -$f -sS -m 8 -o /dev/null -w '%{http_code} %{remote_ip}' https://example.com 2>&1)"
+    done
+  ) &
+fi
 swaybg -m fill -i /usr/share/backgrounds/steamdeck.png &
 # Desktop icons (pcmanfm-qt manages the desktop surface) and the panel with the app menu.
 run pcmanfm-qt pcmanfm-qt --desktop --profile lxqt
