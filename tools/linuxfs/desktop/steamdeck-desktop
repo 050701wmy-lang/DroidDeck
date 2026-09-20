@@ -37,6 +37,13 @@ fi
 # already running and exit without a word - a desktop with a wallpaper and nothing on it.
 # Only the app's own compositor socket (wayland-0) is kept.
 find "$XDG_RUNTIME_DIR" -mindepth 1 -maxdepth 1 ! -name 'wayland-0*' ! -name 'keymap.xkb' -exec rm -rf {} + 2>/dev/null
+# fontconfig's rules (sans-serif -> DejaVu Sans and the rest) live as links in /etc/fonts/conf.d,
+# and the rootfs has none: applications then find fonts but no default font. Firefox logs
+# "no fonts" and draws pages without text.
+if [ -d /usr/share/fontconfig/conf.default ] && ! ls /etc/fonts/conf.d/*.conf >/dev/null 2>&1; then
+  for f in /usr/share/fontconfig/conf.default/*.conf; do ln -sf "$f" /etc/fonts/conf.d/; done
+  echo "== fontconfig: linked $(ls /etc/fonts/conf.d/*.conf | wc -l) default rules"
+fi
 echo "== steamdeck-desktop: labwc ($WLR_RENDERER) on $WAYLAND_DISPLAY"
 # ~/.steamdeck-desktop-debug: labwc's own debug log (views and layer surfaces mapping) too.
 DEBUG=; [ -f "$HOME/.steamdeck-desktop-debug" ] && DEBUG=-d
