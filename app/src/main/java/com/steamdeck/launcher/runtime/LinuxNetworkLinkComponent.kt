@@ -67,6 +67,42 @@ class LinuxNetworkLinkComponent(
             } catch (e: IOException) {
                 Log.w(TAG, "Could not publish the network link", e)
             }
+            writeResolver(properties)
+        }
+    }
+
+    /**
+     * The guest's resolver, from the network it is actually on. glibc reads /etc/resolv.conf,
+     * and the image ships two public servers there, which is why Steam resolves at all — but a
+     * captive portal, a private-DNS network or a v6-only carrier wants the network's own
+     * servers. Those come first, IPv4 before IPv6 and never a link-local one (Android lists
+     * fe80:: resolvers a guest cannot reach; handing Bannerlator's Wine guests exactly that was
+     * the Pale Moon "no internet"). The public ones stay as fallback so nothing is ever worse
+     * than the image was.
+     */
+    private fun writeResolver(properties: LinkProperties?) {
+        val own = properties?.dnsServers.orEmpty()
+            .filter { !it.isLinkLocalAddress && !it.isLoopbackAddress && !it.isAnyLocalAddress }
+            .sortedBy { if (it is Inet4Address) 0 else 1 }
+            .mapNotNull { it.hostAddress?.substringBefore('%') }
+        val servers = (own + listOf("8.8.8.8", "1.1.1.1", "2001:4860:4860::8888")).distinct().take(6)
+        val text = buildString {
+            append("# Written by the app from the device's active network; edits are overwritten.\n")
+            for (server in servers) append("nameserver $server\n")
+            append("options timeout:2 attempts:2\n")
+        }
+        try {
+            val etc = File(rootDir, "etc")
+            val staged = File(etc, "resolv.conf.staged")
+            staged.writeText(text)
+            if (!staged.renameTo(File(etc, "resolv.conf"))) throw IOException("Could not replace resolv.conf")
+            val hosts = File(etc, "hosts")
+            if (!hosts.isFile || !hosts.readText().contains("localhost")) {
+                hosts.writeText("127.0.0.1 localhost\n::1 localhost\n")
+            }
+            Log.i(TAG, "resolver: " + servers.joinToString(" "))
+        } catch (e: IOException) {
+            Log.w(TAG, "Could not write the resolver", e)
         }
     }
 

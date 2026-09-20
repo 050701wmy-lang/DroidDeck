@@ -30,6 +30,7 @@ import com.steamdeck.launcher.input.KeyboardHost
 import com.steamdeck.launcher.input.OnScreenControls
 import com.steamdeck.launcher.input.PadBridge
 import com.steamdeck.launcher.input.PointerGestures
+import com.steamdeck.launcher.input.TouchpadGestures
 import com.steamdeck.launcher.runtime.LinuxRuntime
 import com.steamdeck.launcher.session.LoadingState
 import com.steamdeck.launcher.session.PerfHud
@@ -70,6 +71,8 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     private var keyboard: KeyboardHost? = null
     private var watching = true
     private lateinit var gestures: PointerGestures
+    private lateinit var touchpad: TouchpadGestures
+    private var touchMode by mutableStateOf(SessionPrefs.TOUCH_AUTO)
     private var cursorPos by mutableStateOf(androidx.compose.ui.geometry.Offset(-100f, -100f))
     private var cursorVisible by mutableStateOf(false)
     private val cursorHide = Runnable { cursorVisible = false }
@@ -117,6 +120,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         onScreenControls = OnScreenControls(this, bridge).also { root.addView(it) }
         keyboard = KeyboardHost(this).also { root.addView(it) }
         gestures = PointerGestures(PointerGestures.slop(this), pointerListener)
+        touchpad = TouchpadGestures(PointerGestures.slop(this), pointerListener)
         // One arrow, ours: Android draws a system pointer for a mouse over any window, and the
         // session already draws the pointer it is sent.
         val noCursor = android.view.PointerIcon.getSystemIcon(this, android.view.PointerIcon.TYPE_NULL)
@@ -159,6 +163,15 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                             SessionPrefs.setOscMode(this@SessionActivity, next)
                             readPrefs()
                             updateOnScreenControls()
+                        },
+                        onTouch = {
+                            val next = when (SessionPrefs.touchMode(this@SessionActivity)) {
+                                SessionPrefs.TOUCH_AUTO -> SessionPrefs.TOUCH_PAD
+                                SessionPrefs.TOUCH_PAD -> SessionPrefs.TOUCH_DIRECT
+                                else -> SessionPrefs.TOUCH_AUTO
+                            }
+                            SessionPrefs.setTouchMode(this@SessionActivity, next)
+                            readPrefs()
                         },
                         onShape = {
                             val next = if (SessionPrefs.shapeMode(this@SessionActivity) == SessionPrefs.SHAPE_WIDE)
@@ -226,6 +239,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
 
     private fun readPrefs() {
         hudOn = SessionPrefs.hudEnabled(this)
+        touchMode = SessionPrefs.touchMode(this)
         frameGenLabel = FrameGen.label(this)
         oscMode = SessionPrefs.oscMode(this)
         shapeMode = SessionPrefs.shapeMode(this)
@@ -462,8 +476,37 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         if (SessionState.mode != SessionService.MODE_DESKTOP) uiHandler.postDelayed(cursorHide, 2500)
     }
 
+    /** Touchpad on the desktop, direct in Steam, unless the drawer says otherwise. */
+    private fun usingTouchpad(): Boolean = when (SessionPrefs.touchMode(this)) {
+        SessionPrefs.TOUCH_PAD -> true
+        SessionPrefs.TOUCH_DIRECT -> false
+        else -> SessionState.mode == SessionService.MODE_DESKTOP
+    }
+
+    /** The picture's rectangle inside the view: where the pointer may go. */
+    private fun drawnRect(): android.graphics.RectF? {
+        val width = surfaceView.width.takeIf { it > 0 } ?: return null
+        val height = surfaceView.height.takeIf { it > 0 } ?: return null
+        val out = SessionState.outputSize
+        val scale = minOf(width / out.first.toFloat(), height / out.second.toFloat())
+        val drawnW = out.first * scale
+        val drawnH = out.second * scale
+        val left = (width - drawnW) / 2f
+        val top = (height - drawnH) / 2f
+        return android.graphics.RectF(left, top, left + drawnW, top + drawnH)
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.isFromSource(android.view.InputDevice.SOURCE_MOUSE)) return onMouse(event)
+        if (usingTouchpad()) {
+            val rect = drawnRect() ?: return false
+            if (touchpad.bounds != rect) {
+                val fresh = touchpad.bounds.width() <= 1f
+                touchpad.bounds = rect
+                if (fresh) touchpad.place(rect.centerX(), rect.centerY())
+            }
+            return touchpad.onTouch(event)
+        }
         return gestures.onTouch(event)
     }
 

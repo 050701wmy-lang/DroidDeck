@@ -89,12 +89,14 @@ class DrawerActions(
     val hudOn: Boolean,
     val frameGenLabel: String,
     val oscMode: String,
+    val touchMode: String,
     val shapeMode: String,
     val onHud: (Boolean) -> Unit,
     val onFrameGen: () -> Unit,
     val onKeyboard: () -> Unit,
     val onProtons: () -> Unit,
     val onOsc: () -> Unit,
+    val onTouch: () -> Unit,
     val onShape: () -> Unit,
     val onBackground: () -> Unit,
     val onStop: () -> Unit,
@@ -142,6 +144,9 @@ fun SessionDrawer(a: DrawerActions) {
             }
             OutlinedButton(onClick = a.onOsc, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
                 Text("On-screen controls: ${a.oscMode}", fontSize = 13.sp)
+            }
+            OutlinedButton(onClick = a.onTouch, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                Text("Touch: ${a.touchMode}", fontSize = 13.sp)
             }
             OutlinedButton(onClick = a.onShape, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
                 Text("Display shape: ${a.shapeMode} · next session", fontSize = 13.sp)
