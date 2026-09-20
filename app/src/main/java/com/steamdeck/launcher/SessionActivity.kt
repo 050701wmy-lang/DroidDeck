@@ -29,6 +29,7 @@ import com.steamdeck.launcher.input.EvdevKeys
 import com.steamdeck.launcher.input.KeyboardHost
 import com.steamdeck.launcher.input.OnScreenControls
 import com.steamdeck.launcher.input.PadBridge
+import com.steamdeck.launcher.input.PointerGestures
 import com.steamdeck.launcher.runtime.LinuxRuntime
 import com.steamdeck.launcher.session.LoadingState
 import com.steamdeck.launcher.session.PerfHud
@@ -36,6 +37,7 @@ import com.steamdeck.launcher.session.ProtonExtras
 import com.steamdeck.launcher.session.SessionPrefs
 import com.steamdeck.launcher.session.SessionService
 import com.steamdeck.launcher.session.SessionState
+import com.steamdeck.launcher.ui.CursorOverlay
 import com.steamdeck.launcher.ui.DrawerActions
 import com.steamdeck.launcher.ui.FrameGenDialog
 import com.steamdeck.launcher.ui.HudText
@@ -67,6 +69,11 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     private var onScreenControls: OnScreenControls? = null
     private var keyboard: KeyboardHost? = null
     private var watching = true
+    private lateinit var gestures: PointerGestures
+    private var cursorPos by mutableStateOf(androidx.compose.ui.geometry.Offset(-100f, -100f))
+    private var cursorVisible by mutableStateOf(false)
+    private val cursorHide = Runnable { cursorVisible = false }
+    private val uiHandler = Handler(Looper.getMainLooper())
 
     // Compose reads these; the activity writes them.
     private var drawerOpen by mutableStateOf(false)
@@ -109,6 +116,12 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         padBridge = bridge
         onScreenControls = OnScreenControls(this, bridge).also { root.addView(it) }
         keyboard = KeyboardHost(this).also { root.addView(it) }
+        gestures = PointerGestures(PointerGestures.slop(this), pointerListener)
+        // One arrow, ours: Android draws a system pointer for a mouse over any window, and the
+        // session already draws the pointer it is sent.
+        val noCursor = android.view.PointerIcon.getSystemIcon(this, android.view.PointerIcon.TYPE_NULL)
+        root.pointerIcon = noCursor
+        surfaceView.pointerIcon = noCursor
 
         loading = LoadingState(this)
         hud = PerfHud(this)
@@ -127,6 +140,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         root.addView(ComposeView(this).apply {
             setContent {
                 SteamDeckTheme {
+                    CursorOverlay(cursorPos, cursorVisible, resources.displayMetrics.density)
                     if (hud.text.isNotEmpty()) HudText(hud.text)
                     if (loading.visible) LoadingOverlay(loading.step, loading.percent, loading.elapsed, loading.hint, loading.ended)
                     if (drawerOpen) SessionDrawer(DrawerActions(
@@ -402,33 +416,79 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
 
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
         if (padBridge?.onMotionEvent(event) == true) return true
+        if (event.isFromSource(android.view.InputDevice.SOURCE_MOUSE) && !drawerOpen && onMouse(event)) return true
         return super.dispatchGenericMotionEvent(event)
     }
 
     /**
-     * Touch as a mouse: where you touch is where the pointer goes, and a tap is a left click.
-     * The compositor's pointer space is a fixed 1920x1080, and the picture is letterboxed inside
-     * the view when the panel is a different shape from the output, so a touch is mapped through
-     * the fitted rectangle.
+     * The pointer. Touch goes through [PointerGestures] (tap, hold, drag, two-finger scroll); a
+     * mouse arrives with real buttons and a wheel and is forwarded as it is. Every position is
+     * mapped through the letterboxed rectangle into the compositor's fixed 1920x1080 pointer
+     * space, and the arrow is drawn where the app last sent the pointer.
      */
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        val width = surfaceView.width.takeIf { it > 0 } ?: return false
-        val height = surfaceView.height.takeIf { it > 0 } ?: return false
-        val action = when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> 0
-            MotionEvent.ACTION_MOVE -> 1
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> 2
-            else -> return false
+    private val pointerListener = object : PointerGestures.Listener {
+        override fun onMove(x: Float, y: Float) = movePointer(x, y)
+        override fun onButton(button: Int, pressed: Boolean, x: Float, y: Float) {
+            movePointer(x, y)
+            WaylandCompositor.nativeSendSceneInput(3, button, if (pressed) 1 else 0)
         }
+        override fun onWheel(steps: Int) { WaylandCompositor.nativeSendSceneInput(4, steps, 0) }
+        override fun onLongPress() {
+            @Suppress("DEPRECATION")
+            (getSystemService(VIBRATOR_SERVICE) as? android.os.Vibrator)?.vibrate(15)
+        }
+    }
+
+    private fun movePointer(x: Float, y: Float) {
+        val width = surfaceView.width.takeIf { it > 0 } ?: return
+        val height = surfaceView.height.takeIf { it > 0 } ?: return
         val out = SessionState.outputSize
         val scale = minOf(width / out.first.toFloat(), height / out.second.toFloat())
         val drawnW = out.first * scale
         val drawnH = out.second * scale
         val left = (width - drawnW) / 2f
         val top = (height - drawnH) / 2f
-        val x = ((event.x - left) / drawnW * 1920f).toInt().coerceIn(0, 1919)
-        val y = ((event.y - top) / drawnH * 1080f).toInt().coerceIn(0, 1079)
-        WaylandCompositor.nativeSendPointer(action, x, y)
+        val px = ((x - left) / drawnW * 1920f).toInt().coerceIn(0, 1919)
+        val py = ((y - top) / drawnH * 1080f).toInt().coerceIn(0, 1079)
+        WaylandCompositor.nativeSendPointer(1, px, py)
+        showCursor(x.coerceIn(left, left + drawnW), y.coerceIn(top, top + drawnH))
+    }
+
+    /** The arrow stays on a desktop; in a Steam session it shows for a moment after each move. */
+    private fun showCursor(x: Float, y: Float) {
+        cursorPos = androidx.compose.ui.geometry.Offset(x, y)
+        cursorVisible = true
+        uiHandler.removeCallbacks(cursorHide)
+        if (SessionState.mode != SessionService.MODE_DESKTOP) uiHandler.postDelayed(cursorHide, 2500)
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (event.isFromSource(android.view.InputDevice.SOURCE_MOUSE)) return onMouse(event)
+        return gestures.onTouch(event)
+    }
+
+    /** A mouse: hover moves, buttons press, the wheel scrolls. Android sends buttons as touch
+     *  actions and hover as generic motion, so both paths land here. */
+    private fun onMouse(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_HOVER_MOVE, MotionEvent.ACTION_MOVE, MotionEvent.ACTION_HOVER_ENTER ->
+                movePointer(event.x, event.y)
+            MotionEvent.ACTION_BUTTON_PRESS, MotionEvent.ACTION_BUTTON_RELEASE -> {
+                movePointer(event.x, event.y)
+                val button = when (event.actionButton) {
+                    MotionEvent.BUTTON_SECONDARY -> PointerGestures.BTN_RIGHT
+                    MotionEvent.BUTTON_TERTIARY -> PointerGestures.BTN_MIDDLE
+                    else -> PointerGestures.BTN_LEFT
+                }
+                WaylandCompositor.nativeSendSceneInput(3, button, if (event.actionMasked == MotionEvent.ACTION_BUTTON_PRESS) 1 else 0)
+            }
+            MotionEvent.ACTION_SCROLL -> {
+                val v = event.getAxisValue(MotionEvent.AXIS_VSCROLL)
+                if (v != 0f) WaylandCompositor.nativeSendSceneInput(4, -Math.round(v), 0)
+            }
+            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP -> {} // the BUTTON_* events carry these
+            else -> return false
+        }
         return true
     }
 
