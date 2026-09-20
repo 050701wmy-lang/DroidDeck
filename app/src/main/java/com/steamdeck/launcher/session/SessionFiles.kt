@@ -38,6 +38,7 @@ object SessionFiles {
             "usr/local/bin/steamdeck-desktop" to "usr/local/bin/steamdeck-desktop",
             "etc/xdg/labwc/autostart" to "etc/xdg/labwc/autostart",
             "etc/xdg/labwc/rc.xml" to "etc/xdg/labwc/rc.xml",
+            "etc/xdg/lxqt/panel.conf" to "etc/xdg/lxqt/panel.conf",
         )
         val all = if (File(root, "usr/bin/labwc").isFile) files + desktop else files
         for ((asset, relative) in all) {

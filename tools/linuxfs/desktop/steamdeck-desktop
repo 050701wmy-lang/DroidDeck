@@ -15,9 +15,16 @@ export WLR_BACKENDS=wayland
 mkdir -p "$HOME/.config/labwc" "$HOME/.config/lxqt"
 # Our defaults for labwc and the panel, refreshed every session. What a user changes in the
 # panel's own settings lands in panel.conf and is kept; only rc.xml and autostart are ours.
-cp -f /etc/xdg/labwc/rc.xml "$HOME/.config/labwc/rc.xml"
+# The nested output takes the app's surface size; left alone, wlroots' Wayland backend opens
+# a 1280x720 window and the whole desktop is upscaled from that.
+sed "s/@MODE@/${BL_WIDTH:-1280}x${BL_HEIGHT:-720}/" /etc/xdg/labwc/rc.xml > "$HOME/.config/labwc/rc.xml"
 cp -f /etc/xdg/labwc/autostart "$HOME/.config/labwc/autostart"
-[ -f "$HOME/.config/lxqt/panel.conf" ] || cp /etc/xdg/lxqt/panel.conf "$HOME/.config/lxqt/panel.conf"
+# panel.conf is the user's once the panel has written it, except the one our first package
+# shipped: it never named its panel ([General] panels=), so lxqt-panel built an empty default
+# one. That file is replaced; one that names its panels is kept.
+if ! grep -q '^panels=' "$HOME/.config/lxqt/panel.conf" 2>/dev/null; then
+  cp -f /etc/xdg/lxqt/panel.conf "$HOME/.config/lxqt/panel.conf"
+fi
 [ -f "$HOME/.config/lxqt/lxqt.conf" ] || cp /etc/xdg/lxqt/lxqt.conf "$HOME/.config/lxqt/lxqt.conf"
 # pcmanfm-qt paints the desktop; left unconfigured it paints it black, over swaybg's wallpaper.
 if [ ! -f "$HOME/.config/pcmanfm-qt/lxqt/settings.conf" ]; then

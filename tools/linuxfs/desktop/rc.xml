@@ -8,6 +8,7 @@
     <cornerRadius>6</cornerRadius>
     <font place="ActiveWindow"><name>DejaVu Sans</name><size>11</size></font>
   </theme>
+  <output name="WL-1" mode="@MODE@"/>
   <placement><policy>center</policy></placement>
   <windowSwitcher><osd show="yes" preview="yes"/></windowSwitcher>
   <keyboard>

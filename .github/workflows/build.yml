@@ -95,6 +95,7 @@ jobs:
           install -Dm644 tools/linuxfs/desktop/steamdeck-desktop "$D/usr/local/bin/steamdeck-desktop"
           install -Dm644 tools/linuxfs/desktop/autostart "$D/etc/xdg/labwc/autostart"
           install -Dm644 tools/linuxfs/desktop/rc.xml "$D/etc/xdg/labwc/rc.xml"
+          install -Dm644 tools/linuxfs/desktop/panel.conf "$D/etc/xdg/lxqt/panel.conf"
           ls -lR "$D"
 
       # Runs whether the preloads were built or restored: readelf reads any ELF whatever the host,

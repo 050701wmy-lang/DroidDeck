@@ -4,11 +4,16 @@
 run() {
   local tag=$1; shift
   if [ -f "$HOME/.steamdeck-desktop-debug" ]; then
-    WAYLAND_DEBUG=1 "$@" 2>&1 | awk -v t="[$tag]" 'c<120 && /layer_s|xdg_toplevel|xdg_surface@[0-9]+\.(set_|get_)|fullscreen|wl_output|xdg_output|rror|WARN|configure\(/ {print t, $0; c++}' &
+    # Everything it says goes to ~/.cache/steamdeck/<tag>.log; the window-related protocol
+    # traffic also goes into the session log, capped.
+    mkdir -p "$HOME/.cache/steamdeck"
+    WAYLAND_DEBUG=1 "$@" 2>&1 | tee "$HOME/.cache/steamdeck/$tag.log" | awk -v t="[$tag]" '!/^\[[0-9:.]+\] +\{/ || (c<120 && /layer_s|xdg_toplevel|fullscreen|wl_output|xdg_output|configure\(/) {print t, $0; c++; fflush()}' &
   else
     "$@" 2>&1 | sed "s/^/[$tag] /" &
   fi
 }
+# The output at the app's real size, in case rc.xml's mode did not take.
+[ -n "${BL_WIDTH:-}" ] && wlr-randr --output WL-1 --custom-mode "${BL_WIDTH}x${BL_HEIGHT}" >/dev/null 2>&1
 swaybg -m fill -i /usr/share/backgrounds/steamdeck.png &
 # Desktop icons (pcmanfm-qt manages the desktop surface) and the panel with the app menu.
 run pcmanfm-qt pcmanfm-qt --desktop --profile lxqt
