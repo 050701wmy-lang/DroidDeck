@@ -1215,8 +1215,10 @@ static void xdg_toplevel_resize(struct wl_client *c, struct wl_resource *r, stru
                                 uint32_t serial, uint32_t edges) {}
 static void xdg_toplevel_set_i32(struct wl_client *c, struct wl_resource *r, int32_t w, int32_t h) {}
 static void xdg_toplevel_noop(struct wl_client *c, struct wl_resource *r) {}
-/* Size 0x0 = the client picks; active, and fullscreen when asked. gamescope waits for the
- * fullscreen state before it drops its libdecor frame, and never draws until it arrives. */
+/* The output's size; active, and fullscreen when asked. gamescope waits for the fullscreen
+ * state before it drops its libdecor frame, and never draws until it arrives; it was told the
+ * same size on its command line. A nested wlroots compositor (labwc) has no other way to learn
+ * it: given 0x0 it opens its default 1280x720 and the whole desktop is upscaled from that. */
 static void send_toplevel_configure(struct surface *s) {
     struct wl_array states;
     wl_array_init(&states);
@@ -1226,7 +1228,8 @@ static void send_toplevel_configure(struct surface *s) {
         st = wl_array_add(&states, sizeof(uint32_t));
         *st = XDG_TOPLEVEL_STATE_FULLSCREEN;
     }
-    xdg_toplevel_send_configure(s->xdg_toplevel, 0, 0, &states);
+    xdg_toplevel_send_configure(s->xdg_toplevel, g_output_w > 0 ? g_output_w : 0,
+                                g_output_h > 0 ? g_output_h : 0, &states);
     wl_array_release(&states);
     xdg_surface_send_configure(s->xdg_surface, wl_display_next_serial(g_display));
 }

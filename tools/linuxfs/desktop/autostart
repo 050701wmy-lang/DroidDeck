@@ -13,7 +13,7 @@ run() {
   fi
 }
 # The output at the app's real size, in case rc.xml's mode did not take.
-[ -n "${BL_WIDTH:-}" ] && wlr-randr --output WL-1 --custom-mode "${BL_WIDTH}x${BL_HEIGHT}" >/dev/null 2>&1
+[ -n "${BL_WIDTH:-}" ] && wlr-randr --output WL-1 --custom-mode "${BL_WIDTH}x${BL_HEIGHT}" 2>&1 | sed 's/^/[wlr-randr] /'
 swaybg -m fill -i /usr/share/backgrounds/steamdeck.png &
 # Desktop icons (pcmanfm-qt manages the desktop surface) and the panel with the app menu.
 run pcmanfm-qt pcmanfm-qt --desktop --profile lxqt
