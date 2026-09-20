@@ -6,7 +6,62 @@ Zink for the client's CEF, and the device's Turnip driver underneath. There is n
 no x86 translation for the client itself — it is ARM code running as ARM code. Windows games it
 launches go through Valve's own ARM64 Proton build, which is where FEX comes in.
 
-One screen, one button: install the runtime, press Play, Big Picture comes up.
+One screen, one button: install the runtime, press Play, Big Picture comes up. Or start the
+**desktop** instead — LXQt, a browser and a shelf of emulators, in the same session.
+
+## Requirements
+
+- An **arm64 Android device with an Adreno GPU**. The compositor loads a Turnip driver; Mali,
+  Xclipse and PowerVR are not supported here.
+- **Android 9 or newer**, and roughly **3 GB free** for the runtime before any games. The desktop
+  and its emulator packages are another ~1.1 GB if you install them.
+- **No root required.** Root only helps if you want to copy an existing Bannerlator runtime across
+  instead of downloading one.
+
+## Installing
+
+1. Install the APK from the release page.
+2. Launch it and press **Install Linux runtime** — about 790 MB, once.
+3. Press **Play**. On the very first run the app fetches Valve's client (a minute or two with
+   nothing on screen), then Big Picture comes up and you sign in.
+
+For a desktop, open **Desktop & apps**, install the *Desktop* package, then press **Desktop** on
+the main screen.
+
+## What works today
+
+This is version 0.1, and most of it has been exercised on one or two devices only. An honest
+ledger rather than a feature list:
+
+| | State |
+|---|---|
+| Steam sign-in, store, install, launch | ✅ proven — *FlatOut* at 144 Hz through ARM64 Proton |
+| Frame generation (LSFG 2×) | ✅ proven — 30 → 61, 60 → 118, 61 → 123 fps |
+| Performance HUD | ✅ proven |
+| Desktop, panel, file manager | ✅ proven at the panel's native resolution |
+| Firefox and the network (IPv4 + IPv6) | ✅ proven — live pages at 93 fps |
+| Controller as an Xbox 360 pad | ✅ proven |
+| Foldable, opened and closed mid-session | ✅ proven |
+| Background / foreground, wake locks | ✅ proven |
+| The emulators | ⚠️ they build, publish and install — none has been run with a game |
+| Starting Steam offline | ⚠️ built, not yet tested |
+| The soft keyboard | ⚠️ built, not yet tested |
+| GE-Proton / proton-cachyos | ⚠️ built, not yet tested in this app |
+
+## Known limits
+
+- **The desktop composites in software.** wlroots allocates through gbm on a real DRM render node,
+  and the Adreno stand-in is not one, so labwc falls back to pixman. Programs on the desktop still
+  reach the GPU themselves through Vulkan and Turnip — it is the desktop's own compositing that
+  runs on the CPU.
+- **Firefox's child-process sandboxes are off.** Seccomp and namespace sandboxes cannot be set up
+  under proot, and its tabs crash otherwise. This is a genuine reduction in isolation: treat
+  browsing here as less protected than on an ordinary desktop.
+- **The display shape changes at the next session**, not immediately — gamescope fixes its display
+  size when it starts.
+- **No Switch emulator.** Eden's repository was taken down in February; there is nothing to mirror
+  or to build from.
+- PS3 (RPCS3) and Wii U (Cemu) are demanding even on desktop hardware — expect light titles only.
 
 ## How it fits together
 
@@ -155,7 +210,11 @@ Files in `/sdcard/Download`, for a device that cannot be reached with a debugger
 | `steamdeck-no-hud` | Hides the top-right performance line (fps, and `base → generated` while frame generation runs) |
 | `steamdeck-osc` | `always` or `never` — pins the on-screen controls instead of following what is attached |
 
-Session logs land in `/sdcard/Download/SteamDeck/`.
+Session logs land in `/sdcard/Download/SteamDeck/`, one file per session, and are the first
+thing to look at when something does not start. Creating `~/.steamdeck-desktop-debug` inside the
+runtime additionally makes the desktop log labwc at debug level, each program's window-protocol
+traffic, and a name lookup plus an IPv4 and IPv6 fetch from inside the session — which is how to
+tell a broken network apart from a program that only believes it has one.
 
 ## Authors
 
