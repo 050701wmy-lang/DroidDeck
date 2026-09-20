@@ -8,6 +8,12 @@ set -u
 export XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=LXQt XDG_SESSION_DESKTOP=lxqt
 export QT_QPA_PLATFORM=wayland GDK_BACKEND=wayland,x11 SDL_VIDEODRIVER=wayland,x11
 export QT_QPA_PLATFORMTHEME=lxqt
+# Firefox's child processes sandbox themselves with seccomp and namespaces, neither of which
+# behaves under proot: the content process ends up unable to read the font files its parent can,
+# reports "no fonts" and dies - the tab crash, with the chrome around it still drawing text.
+# The prefs for this are only advisory and a profile can override them; the environment is not.
+export MOZ_DISABLE_CONTENT_SANDBOX=1 MOZ_DISABLE_GMP_SANDBOX=1 MOZ_DISABLE_RDD_SANDBOX=1
+export MOZ_DISABLE_SOCKET_PROCESS_SANDBOX=1 MOZ_DISABLE_UTILITY_SANDBOX=1
 # wlroots allocates through gbm on a real DRM node, which the KGSL stand-in is not: pixman
 # (software, shm) is what boots here. BL_WLR_RENDERER=vulkan/gles2 tries acceleration.
 export WLR_RENDERER=${BL_WLR_RENDERER:-pixman}
