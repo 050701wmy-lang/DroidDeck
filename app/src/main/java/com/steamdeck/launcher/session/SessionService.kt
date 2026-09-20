@@ -56,6 +56,7 @@ class SessionService : Service() {
         }
         startForeground(NOTIFICATION_ID, buildNotification())
         if (SessionState.running) return START_NOT_STICKY
+        SessionState.mode = intent?.getStringExtra(EXTRA_MODE) ?: MODE_STEAM
         SessionState.running = true
         SessionState.firstFrameSeen = false
         acquireLocks()
@@ -139,7 +140,7 @@ class SessionService : Service() {
             SessionState.fakeInputDir = fakeInputDir
         }
         guest.add(LinuxRuntime.SESSION_SCRIPT)
-        guest.add(LinuxRuntime.MODE_STEAM)
+        guest.add(SessionState.mode)
 
         // Android has no /dev/shm; the cache stands in for it and, unlike the real thing, keeps
         // whatever a session leaves behind. The client abandons tens of megabytes of streams a run.
@@ -402,8 +403,12 @@ class SessionService : Service() {
         private const val NO_PAD_SWITCH = "Download/steamdeck-no-pad"
         private const val PAD_LOG_SWITCH = "Download/steamdeck-pad-log"
 
-        fun start(context: Context) {
-            val intent = Intent(context, SessionService::class.java)
+        const val EXTRA_MODE = "mode"
+        const val MODE_STEAM = "steam"
+        const val MODE_DESKTOP = "lxqt"
+
+        fun start(context: Context, mode: String = MODE_STEAM) {
+            val intent = Intent(context, SessionService::class.java).putExtra(EXTRA_MODE, mode)
             if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(intent)
             else context.startService(intent)
         }

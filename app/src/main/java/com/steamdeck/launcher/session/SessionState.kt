@@ -11,6 +11,10 @@ object SessionState {
     @Volatile
     var running = false
 
+    /** Which session this is: SessionService.MODE_STEAM or MODE_DESKTOP. */
+    @Volatile
+    var mode = "steam"
+
     /** The size gamescope was told to render at; set by the activity before the service starts. */
     @Volatile
     var outputSize: Pair<Int, Int> = Pair(1920, 1080)

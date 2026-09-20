@@ -251,7 +251,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         // start nothing, and leave the loading panel counting up over a dead session.
         if (!SessionState.running) {
             CompositorHost.newSession()
-            SessionService.start(this)
+            SessionService.start(this, intent.getStringExtra(SessionService.EXTRA_MODE) ?: SessionService.MODE_STEAM)
         }
         applyFrameGen()
     }
