@@ -56,6 +56,30 @@ client sees one pad either way. Connect a controller and the on-screen one disap
 and it comes back. Anywhere the controls are not is a touchpad: touch moves the pointer and a tap
 clicks, which is how the client's own on-screen keyboard is used to sign in.
 
+## Desktop
+
+Besides the Steam client the app can start a **desktop**: LXQt on labwc, in the same session and
+the same compositor, with Xwayland for the X11 programs. It is a second choice on the main
+screen, not a replacement — the Steam button still hands the session to gamescope.
+
+What it is made of is downloaded on request from a catalog hosted beside the runtime, so the app
+stays small and nothing ships that a given device will not use:
+
+| Package | What it brings |
+|---|---|
+| **Desktop** (406 MB) | labwc, LXQt's panel, file manager, terminal, text and image viewers, Firefox, mpv |
+| **Emulators** (694 MB) | PPSSPP and RetroArch with 28 cores — PS1, PS2, N64, SNES, NES, Game Boy, GBA, DS, Genesis, Dreamcast, Saturn, PC Engine, arcade — plus ScummVM, DOSBox, Mednafen, Snes9x |
+| **RPCS3 · DuckStation · melonDS** | PS3, PS1 and DS, mirrored from the projects' own ARM64 builds |
+| **PCSX2 · Dolphin · Cemu** | PS2, GameCube/Wii and Wii U. No ARM64 Linux build exists upstream for any of the three, so they are compiled from source against the same glibc the runtime uses |
+
+The desktop composites in software: wlroots allocates through gbm on a real DRM render node, and
+the Adreno stand-in is not one, so labwc runs on pixman. The programs on it still reach the GPU
+themselves through Vulkan and Turnip — it is the desktop's own compositing that is on the CPU.
+`Download/steamdeck-wlr-renderer` (`pixman`, `gles2` or `vulkan`) overrides the choice.
+
+Programs whose child processes sandbox themselves with seccomp and namespaces cannot set those up
+under proot; Firefox's are turned off in the session's environment, without which its tabs crash.
+
 ## Pointer
 
 The app draws the arrow. On the desktop, touch is a **touchpad** (Bannerlator's desktop-container
@@ -78,6 +102,17 @@ under it are X11 clients of gamescope and know nothing of Wayland text input, so
 keyboard produces is turned into the key presses that would have typed it — Shift included, so
 capitals and the symbol row (`@`, `!`, `_` …) arrive as themselves — and fed to the compositor as
 key events. A hardware keyboard works as it is.
+
+## Starting Steam offline
+
+The client runs without a connection — installed games launch, Proton and the frame generation
+are local — provided it has credentials from a sign-in that succeeded earlier. **Start offline**
+on the main screen is where that is decided, and not in the drawer, because the client reads the
+two keys that control it once, while it starts: changed during a session it would write the file
+and change nothing until the next launch. Without an earlier sign-in the button says so and does
+nothing. The client rewrites those keys when it exits, so the app writes them again at every
+session start. Games with always-online DRM will not start offline, and nothing can be installed
+or updated.
 
 ## Compatibility tools
 
