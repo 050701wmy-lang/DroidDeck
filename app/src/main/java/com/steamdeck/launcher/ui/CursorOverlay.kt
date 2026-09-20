@@ -18,7 +18,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 fun CursorOverlay(position: Offset, visible: Boolean, scale: Float) {
     if (!visible) return
     Canvas(modifier = Modifier.fillMaxSize()) {
-        val s = 22f * scale
+        val s = 11f * scale
         val path = Path().apply {
             moveTo(position.x, position.y)
             lineTo(position.x, position.y + s * 1.45f)
