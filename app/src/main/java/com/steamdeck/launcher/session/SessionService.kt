@@ -139,6 +139,17 @@ class SessionService : Service() {
             }
             SessionState.fakeInputDir = fakeInputDir
         }
+        // The desktop is wlroots (labwc), and wlroots allocates its buffers through gbm on a real
+        // DRM render node. Ours is a KGSL stand-in that gbm cannot use — labwc dies at "unable to
+        // create allocator" — so the desktop shell is composited by pixman (software, a shm
+        // allocator, no DRM). Accelerated clients on it pay a CPU copy; a 2D emulator does not
+        // notice, a demanding one does. steamdeck-wlr-renderer in Downloads (pixman/vulkan/gles2)
+        // overrides it, for trying acceleration on a device that has a real node.
+        if (SessionState.mode == MODE_DESKTOP) {
+            val override = File(Environment.getExternalStorageDirectory(), "Download/steamdeck-wlr-renderer")
+                .takeIf { it.isFile }?.let { FileUtils.readString(it)?.trim() }
+            guest.add("BL_WLR_RENDERER=" + (override?.takeIf { it.isNotEmpty() } ?: "pixman"))
+        }
         guest.add(LinuxRuntime.SESSION_SCRIPT)
         guest.add(SessionState.mode)
 

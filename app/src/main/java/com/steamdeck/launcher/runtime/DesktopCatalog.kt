@@ -75,7 +75,10 @@ object DesktopCatalog {
                 "appimage" -> {
                     val dir = File(root, "opt/appimages").apply { mkdirs() }
                     val target = File(dir, "${entry.id}.AppImage")
-                    if (!download.renameTo(target)) return "Could not place the AppImage"
+                    // Some projects zip the AppImage (melonDS); the one file inside is what we want.
+                    val placed = if (entry.url.endsWith(".zip", ignoreCase = true)) unzipAppImage(download, target)
+                                 else download.renameTo(target)
+                    if (!placed) return "Could not place the AppImage"
                     target.setExecutable(true, false)
                     FileUtils.writeString(File(root, "usr/share/applications/steamdeck-${entry.id}.desktop"),
                         "[Desktop Entry]\nType=Application\nName=${entry.name}\n" +
@@ -92,6 +95,24 @@ object DesktopCatalog {
         } finally {
             download.delete()
         }
+    }
+
+    private fun unzipAppImage(zip: File, target: File): Boolean {
+        try {
+            java.util.zip.ZipInputStream(java.io.BufferedInputStream(java.io.FileInputStream(zip))).use { zin ->
+                var entry = zin.nextEntry
+                while (entry != null) {
+                    if (!entry.isDirectory && entry.name.endsWith(".AppImage", ignoreCase = true)) {
+                        java.io.FileOutputStream(target).use { out -> FileUtils.copy(zin, out) }
+                        return true
+                    }
+                    entry = zin.nextEntry
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "unzip ${zip.name}", e)
+        }
+        return false
     }
 
     /**
