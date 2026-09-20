@@ -42,6 +42,10 @@ class MainUiState(
     val percent: Int,
     val failed: Boolean,
     val frameGenLabel: String,
+    val desktopInstalled: Boolean,
+    /** The account the client would sign in as offline, or null if it has never signed in. */
+    val offlineAccount: String?,
+    val offline: Boolean,
 )
 
 /**
@@ -57,9 +61,12 @@ class MainUiState(
 fun MainScreen(
     state: MainUiState,
     onPlay: () -> Unit,
+    onDesktop: () -> Unit,
+    onApps: () -> Unit,
     onRuntime: () -> Unit,
     onFrameGen: () -> Unit,
     onProtons: () -> Unit,
+    onOffline: () -> Unit,
     onCredits: () -> Unit,
 ) {
     BoxWithConstraints(
@@ -129,6 +136,25 @@ fun MainScreen(
                 onClick = onPlay, enabled = state.ready && !state.busy,
                 modifier = Modifier.fillMaxWidth().height(buttonHeight),
             ) { Text("Play", fontSize = 14.sp * k) }
+            OutlinedButton(
+                onClick = onDesktop, enabled = state.ready && !state.busy && state.desktopInstalled,
+                modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight + 5.dp * k),
+            ) { Text(if (state.desktopInstalled) "Desktop" else "Desktop — install it under Desktop & apps", fontSize = 13.sp * k) }
+            // Offline is read while the client starts, so it is decided here rather than in the
+            // session's drawer, and it needs credentials from an earlier sign-in to be possible.
+            OutlinedButton(
+                onClick = onOffline, enabled = state.offlineAccount != null,
+                modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight + 5.dp * k),
+            ) {
+                Text(
+                    when {
+                        state.offlineAccount == null -> "Start offline — sign in once first"
+                        state.offline -> "Start offline: on · ${state.offlineAccount}"
+                        else -> "Start offline: off"
+                    },
+                    fontSize = 13.sp * k,
+                )
+            }
             val runtimeLabel = when {
                 state.busy -> "Working…"
                 !state.ready -> "Install Linux runtime"
@@ -143,6 +169,10 @@ fun MainScreen(
                 onClick = onFrameGen,
                 modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight + 5.dp * k),
             ) { Text("Frame generation: ${state.frameGenLabel}", fontSize = 13.sp * k) }
+            OutlinedButton(
+                onClick = onApps, enabled = state.ready && !state.busy,
+                modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight + 5.dp * k),
+            ) { Text("Desktop & apps", fontSize = 13.sp * k) }
             OutlinedButton(
                 onClick = onProtons,
                 modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight + 5.dp * k),

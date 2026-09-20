@@ -67,7 +67,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: app/src/main/assets/linuxfs
-          key: preloads-${{ env.PRELOAD_CACHE_VERSION }}-${{ hashFiles('app/src/main/cpp/fakeinput_steam.cpp', 'tools/linuxfs/preload/*.c', 'tools/linuxfs/overlay/usr/local/bin/*') }}
+          key: preloads-${{ env.PRELOAD_CACHE_VERSION }}-${{ hashFiles('app/src/main/cpp/fakeinput_steam.cpp', 'tools/linuxfs/preload/*.c', 'tools/linuxfs/overlay/usr/local/bin/*', 'tools/linuxfs/desktop/*') }}
 
       - name: Build libfakeinput.so and libblsession.so (glibc aarch64)
         if: steps.preloads.outputs.cache-hit != 'true'
@@ -91,6 +91,12 @@ jobs:
           for script in tools/linuxfs/overlay/usr/local/bin/bannerlator-*; do
             install -Dm644 "$script" "$D/usr/local/bin/$(basename "$script")"
           done
+          # And the desktop's launcher and labwc defaults, staged over the desktop package's copies.
+          install -Dm644 tools/linuxfs/desktop/steamdeck-desktop "$D/usr/local/bin/steamdeck-desktop"
+          install -Dm644 tools/linuxfs/desktop/autostart "$D/etc/xdg/labwc/autostart"
+          install -Dm644 tools/linuxfs/desktop/rc.xml "$D/etc/xdg/labwc/rc.xml"
+          install -Dm644 tools/linuxfs/desktop/panel.conf "$D/etc/xdg/lxqt/panel.conf"
+          install -Dm644 tools/linuxfs/desktop/firefox-steamdeck.js "$D/usr/lib/firefox/defaults/pref/steamdeck.js"
           ls -lR "$D"
 
       # Runs whether the preloads were built or restored: readelf reads any ELF whatever the host,

@@ -56,6 +56,7 @@ class SessionService : Service() {
         }
         startForeground(NOTIFICATION_ID, buildNotification())
         if (SessionState.running) return START_NOT_STICKY
+        SessionState.mode = intent?.getStringExtra(EXTRA_MODE) ?: MODE_STEAM
         SessionState.running = true
         SessionState.firstFrameSeen = false
         acquireLocks()
@@ -138,8 +139,19 @@ class SessionService : Service() {
             }
             SessionState.fakeInputDir = fakeInputDir
         }
+        // The desktop is wlroots (labwc), and wlroots allocates its buffers through gbm on a real
+        // DRM render node. Ours is a KGSL stand-in that gbm cannot use — labwc dies at "unable to
+        // create allocator" — so the desktop shell is composited by pixman (software, a shm
+        // allocator, no DRM). Accelerated clients on it pay a CPU copy; a 2D emulator does not
+        // notice, a demanding one does. steamdeck-wlr-renderer in Downloads (pixman/vulkan/gles2)
+        // overrides it, for trying acceleration on a device that has a real node.
+        if (SessionState.mode == MODE_DESKTOP) {
+            val override = File(Environment.getExternalStorageDirectory(), "Download/steamdeck-wlr-renderer")
+                .takeIf { it.isFile }?.let { FileUtils.readString(it)?.trim() }
+            guest.add("BL_WLR_RENDERER=" + (override?.takeIf { it.isNotEmpty() } ?: "pixman"))
+        }
         guest.add(LinuxRuntime.SESSION_SCRIPT)
-        guest.add(LinuxRuntime.MODE_STEAM)
+        guest.add(SessionState.mode)
 
         // Android has no /dev/shm; the cache stands in for it and, unlike the real thing, keeps
         // whatever a session leaves behind. The client abandons tens of megabytes of streams a run.
@@ -160,6 +172,10 @@ class SessionService : Service() {
         // in `logcat -b crash`.
         val prootLibs = LinuxRuntime.prootLibraryPath(this)
         if (prootLibs.isNotEmpty()) hostEnv.put("LD_LIBRARY_PATH", prootLibs)
+
+        // Whether the client signs in to Valve or starts offline: read once, while it starts, and
+        // rewritten by the client when it exits, so it is set again here at every session start.
+        if (SessionState.mode == MODE_STEAM) OfflineMode.apply(this, root)
 
         val networkLink = LinuxNetworkLinkComponent(this, root)
         networkLink.setContext(this)
@@ -402,8 +418,12 @@ class SessionService : Service() {
         private const val NO_PAD_SWITCH = "Download/steamdeck-no-pad"
         private const val PAD_LOG_SWITCH = "Download/steamdeck-pad-log"
 
-        fun start(context: Context) {
-            val intent = Intent(context, SessionService::class.java)
+        const val EXTRA_MODE = "mode"
+        const val MODE_STEAM = "steam"
+        const val MODE_DESKTOP = "lxqt"
+
+        fun start(context: Context, mode: String = MODE_STEAM) {
+            val intent = Intent(context, SessionService::class.java).putExtra(EXTRA_MODE, mode)
             if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(intent)
             else context.startService(intent)
         }

@@ -56,6 +56,21 @@ client sees one pad either way. Connect a controller and the on-screen one disap
 and it comes back. Anywhere the controls are not is a touchpad: touch moves the pointer and a tap
 clicks, which is how the client's own on-screen keyboard is used to sign in.
 
+## Pointer
+
+The app draws the arrow. On the desktop, touch is a **touchpad** (Bannerlator's desktop-container
+feel): drag anywhere and the pointer moves from where it is; tap to click; a second finger tapping
+while one holds, or a two-finger tap, right-clicks; two fingers scroll; hold still then drag, or
+double-tap-and-hold, drags. In Steam, touch is **direct**: the pointer jumps under the finger. The
+drawer's *Touch* switch pins either. A USB or Bluetooth mouse works as itself.
+
+## Networking
+
+The desktop's programs use the phone's network directly — proot makes no network namespace, so
+IPv4 and IPv6 both pass through — and the app writes the runtime's `/etc/resolv.conf` from the
+active network's own DNS servers whenever the link changes (IPv4 first, never a link-local IPv6 one,
+public servers as fallback), which is what Firefox and everything else in the desktop resolve with.
+
 ## Keyboard
 
 **Keyboard** in the drawer opens the soft keyboard over the session. Steam's UI and the games

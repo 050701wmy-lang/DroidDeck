@@ -187,7 +187,7 @@ public final class LinuxRuntimeInstaller {
      * empty file instead of its link target is a rootfs that boots to nothing. Symlinks, hard
      * links and the executable bit are all carried over here.
      */
-    private static boolean extract(File archive, File destination, ProgressListener listener) {
+    public static boolean extract(File archive, File destination, ProgressListener listener) {
         long entries = 0;
         try (InputStream in = new ZstdCompressorInputStream(
                 new BufferedInputStream(new FileInputStream(archive), 1 << 16));
@@ -245,7 +245,7 @@ public final class LinuxRuntimeInstaller {
         }
     }
 
-    private static String sha256(File file) throws Exception {
+    public static String sha256(File file) throws Exception {
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         try (InputStream in = new BufferedInputStream(new FileInputStream(file), 1 << 16)) {
             byte[] buffer = new byte[1 << 16];

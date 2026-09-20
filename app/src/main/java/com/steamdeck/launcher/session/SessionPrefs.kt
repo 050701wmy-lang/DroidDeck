@@ -16,6 +16,18 @@ object SessionPrefs {
         prefs(context).edit().putBoolean("hud", on).apply()
     }
 
+    const val TOUCH_AUTO = "auto"
+    const val TOUCH_PAD = "touchpad"
+    const val TOUCH_DIRECT = "direct"
+
+    /** How touch drives the pointer: a touchpad (drag moves it from where it is) or direct
+     *  (it jumps under the finger). Auto = touchpad on the desktop, direct in Steam. */
+    fun touchMode(context: Context): String = prefs(context).getString("touch", TOUCH_AUTO) ?: TOUCH_AUTO
+
+    fun setTouchMode(context: Context, mode: String) {
+        prefs(context).edit().putString("touch", mode).apply()
+    }
+
     const val SHAPE_AUTO = "auto"
     const val SHAPE_WIDE = "16:9"
 

@@ -17,7 +17,12 @@ import com.steamdeck.launcher.core.FileUtils
 import com.steamdeck.launcher.gpu.FrameGen
 import com.steamdeck.launcher.gpu.LsfgNative
 import com.steamdeck.launcher.runtime.LinuxRuntime
+import com.steamdeck.launcher.runtime.DesktopCatalog
 import com.steamdeck.launcher.runtime.LinuxRuntimeInstaller
+import com.steamdeck.launcher.session.SessionService
+import com.steamdeck.launcher.ui.DesktopAppsDialog
+import com.steamdeck.launcher.ui.PackageRow
+import com.steamdeck.launcher.session.OfflineMode
 import com.steamdeck.launcher.session.ProtonExtras
 import com.steamdeck.launcher.ui.ProtonDialog
 import com.steamdeck.launcher.ui.ProtonRow
@@ -49,6 +54,14 @@ class MainActivity : ComponentActivity() {
     private var showFrameGen by mutableStateOf(false)
     private var showCredits by mutableStateOf(false)
     private var showProtons by mutableStateOf(false)
+    private var showApps by mutableStateOf(false)
+    private var catalog by mutableStateOf<List<DesktopCatalog.Entry>?>(emptyList())
+    private var packageRows by mutableStateOf<List<PackageRow>?>(emptyList())
+    private var pkgStage by mutableStateOf<String?>(null)
+    private var pkgPercent by mutableIntStateOf(-1)
+    private var desktopInstalled by mutableStateOf(false)
+    private var offlineAccount by mutableStateOf<String?>(null)
+    private var offline by mutableStateOf(false)
     private var protonRows by mutableStateOf<List<ProtonRow>>(emptyList())
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -62,12 +75,29 @@ class MainActivity : ComponentActivity() {
                         availableSize = available?.let { FileUtils.sizeToString(it.size) },
                         busy = busy, stage = stage, percent = percent, failed = failed,
                         frameGenLabel = frameGenLabel,
+                        desktopInstalled = desktopInstalled,
+                        offlineAccount = offlineAccount, offline = offline,
                     ),
                     onPlay = { startActivity(Intent(this, SessionActivity::class.java)) },
+                    onDesktop = {
+                        startActivity(Intent(this, SessionActivity::class.java)
+                            .putExtra(SessionService.EXTRA_MODE, SessionService.MODE_DESKTOP))
+                    },
+                    onApps = { openApps() },
+                    onOffline = {
+                        OfflineMode.setEnabled(this, !OfflineMode.enabled(this))
+                        offline = OfflineMode.enabled(this)
+                    },
                     onRuntime = { onRuntimeButton() },
                     onFrameGen = { showFrameGen = true },
                     onProtons = { refreshProtons(); showProtons = true },
                     onCredits = { showCredits = true },
+                )
+                if (showApps) DesktopAppsDialog(
+                    rows = packageRows, busyStage = pkgStage, busyPercent = pkgPercent,
+                    onInstall = { id -> installPackage(id) },
+                    onRemove = { id -> catalog?.firstOrNull { it.id == id }?.let { DesktopCatalog.remove(this, it) }; refreshPackages() },
+                    onDismiss = { showApps = false },
                 )
                 if (showProtons) ProtonDialog(
                     rows = protonRows,
@@ -111,11 +141,47 @@ class MainActivity : ComponentActivity() {
         if (!busy) Thread({ checkCatalog() }, "catalog").start()
     }
 
+    private fun openApps() {
+        showApps = true
+        if (catalog.isNullOrEmpty()) Thread({
+            val fetched = DesktopCatalog.fetch()
+            ui.post { catalog = fetched; refreshPackages() }
+        }, "catalog-desktop").start()
+        else refreshPackages()
+    }
+
+    private fun refreshPackages() {
+        packageRows = catalog?.sortedBy { it.tier }?.map {
+            PackageRow(it.id, it.name, it.tier, it.version, FileUtils.sizeToString(it.size), it.notes,
+                DesktopCatalog.installed(this, it.id))
+        }
+        desktopInstalled = DesktopCatalog.desktopInstalled(this)
+    }
+
+    private fun installPackage(id: String) {
+        val entry = catalog?.firstOrNull { it.id == id } ?: return
+        if (pkgStage != null) return
+        pkgStage = "Starting…"; pkgPercent = -1
+        Thread({
+            val problem = DesktopCatalog.install(this, entry) { stage, percent ->
+                ui.post { pkgStage = stage; pkgPercent = percent }
+            }
+            ui.post {
+                pkgStage = null
+                if (problem != null) android.widget.Toast.makeText(this, "${entry.name}: $problem", android.widget.Toast.LENGTH_LONG).show()
+                refreshPackages()
+            }
+        }, "install-pkg").start()
+    }
+
     private fun refreshProtons() {
         protonRows = ProtonExtras.tools.map { ProtonRow(it.id, it.name, ProtonExtras.installed(this, it), ProtonExtras.queued(this, it)) }
     }
 
     private fun refresh() {
+        desktopInstalled = DesktopCatalog.desktopInstalled(this)
+        offlineAccount = OfflineMode.account(this)
+        offline = OfflineMode.enabled(this)
         installed = LinuxRuntimeInstaller.installedVersion(this)
         ready = LinuxRuntime.isInstalled(this)
         frameGenLabel = FrameGen.label(this)

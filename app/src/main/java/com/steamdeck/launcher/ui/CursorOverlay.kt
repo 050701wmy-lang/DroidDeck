@@ -1,0 +1,35 @@
+package com.steamdeck.launcher.ui
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+
+/**
+ * The pointer, drawn by the app. The nested desktop asks its parent compositor to show a cursor
+ * and ours does not, and the Steam session has none either; this is the arrow for both, at the
+ * position the app last sent. Takes no touches.
+ */
+@Composable
+fun CursorOverlay(position: Offset, visible: Boolean, scale: Float) {
+    if (!visible) return
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val s = 11f * scale
+        val path = Path().apply {
+            moveTo(position.x, position.y)
+            lineTo(position.x, position.y + s * 1.45f)
+            lineTo(position.x + s * 0.36f, position.y + s * 1.12f)
+            lineTo(position.x + s * 0.62f, position.y + s * 1.62f)
+            lineTo(position.x + s * 0.84f, position.y + s * 1.52f)
+            lineTo(position.x + s * 0.58f, position.y + s * 1.02f)
+            lineTo(position.x + s * 1.02f, position.y + s * 1.02f)
+            close()
+        }
+        drawPath(path, Color.White)
+        drawPath(path, Color(0xFF1B0730), style = Stroke(width = 1.5f * scale))
+    }
+}
