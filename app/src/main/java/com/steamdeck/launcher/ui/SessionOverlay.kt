@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -119,6 +121,9 @@ fun SessionDrawer(a: DrawerActions) {
                 .background(Color(0xF2151A22))
                 // The panel swallows its own touches so they do not close it.
                 .clickable(interactionSource = MutableInteractionSource(), indication = null) {}
+                // More entries than a landscape phone has height for: the panel scrolls, and the
+                // two session-leaving actions ride at the end of the list rather than pinned.
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
         ) {
             Text("SteamDeck", color = Color.White, fontSize = 16.sp, modifier = Modifier.padding(bottom = 12.dp))
@@ -141,7 +146,7 @@ fun SessionDrawer(a: DrawerActions) {
             OutlinedButton(onClick = a.onShape, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
                 Text("Display shape: ${a.shapeMode} · next session", fontSize = 13.sp)
             }
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(18.dp))
             OutlinedButton(onClick = a.onBackground, modifier = Modifier.fillMaxWidth()) {
                 Text("Send to background", fontSize = 13.sp)
             }
