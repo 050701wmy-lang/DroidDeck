@@ -59,6 +59,7 @@ fun MainScreen(
     onPlay: () -> Unit,
     onRuntime: () -> Unit,
     onFrameGen: () -> Unit,
+    onProtons: () -> Unit,
     onCredits: () -> Unit,
 ) {
     BoxWithConstraints(
@@ -142,6 +143,10 @@ fun MainScreen(
                 onClick = onFrameGen,
                 modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight + 5.dp * k),
             ) { Text("Frame generation: ${state.frameGenLabel}", fontSize = 13.sp * k) }
+            OutlinedButton(
+                onClick = onProtons,
+                modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight + 5.dp * k),
+            ) { Text("Compatibility tools", fontSize = 13.sp * k) }
             Spacer(Modifier.height(10.dp * k))
             Text(
                 "by The412Banner and maxjivi05 · credits",

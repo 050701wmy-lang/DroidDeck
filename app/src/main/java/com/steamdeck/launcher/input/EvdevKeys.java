@@ -69,4 +69,41 @@ public final class EvdevKeys {
             default: return -1;
         }
     }
+
+    /**
+     * The character a key carries when Shift is not held, for a character that needs it - so '@'
+     * gives '2' and 'A' gives 'a'. Returns 0 when the character is typed without Shift, which is
+     * also the answer for anything this layout does not place on a key. US layout, which is what
+     * the session's keymap is.
+     */
+    public static int unshiftedChar(int ch) {
+        if (ch >= 'A' && ch <= 'Z') return Character.toLowerCase(ch);
+        int at = SHIFTED_CHARS.indexOf(ch);
+        return at >= 0 ? PLAIN_CHARS.charAt(at) : 0;
+    }
+
+    // Index-aligned: the symbol, and the key it shares with Shift held.
+    private static final String SHIFTED_CHARS = "!@#$%^&*()_+{}|:\"<>?~";
+    private static final String PLAIN_CHARS   = "1234567890-=[]\\;',./`";
+
+    /** The Android key code that carries an unshifted character, or 0 when nothing does. */
+    public static int keycodeForChar(int ch) {
+        if (ch >= 'a' && ch <= 'z') return KeyEvent.KEYCODE_A + (ch - 'a');
+        if (ch >= '0' && ch <= '9') return KeyEvent.KEYCODE_0 + (ch - '0');
+        switch (ch) {
+            case '-':  return KeyEvent.KEYCODE_MINUS;
+            case '=':  return KeyEvent.KEYCODE_EQUALS;
+            case '[':  return KeyEvent.KEYCODE_LEFT_BRACKET;
+            case ']':  return KeyEvent.KEYCODE_RIGHT_BRACKET;
+            case '\\': return KeyEvent.KEYCODE_BACKSLASH;
+            case ';':  return KeyEvent.KEYCODE_SEMICOLON;
+            case '\'': return KeyEvent.KEYCODE_APOSTROPHE;
+            case ',':  return KeyEvent.KEYCODE_COMMA;
+            case '.':  return KeyEvent.KEYCODE_PERIOD;
+            case '/':  return KeyEvent.KEYCODE_SLASH;
+            case '`':  return KeyEvent.KEYCODE_GRAVE;
+            case ' ':  return KeyEvent.KEYCODE_SPACE;
+            default:   return 0;
+        }
+    }
 }

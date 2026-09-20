@@ -26,11 +26,13 @@ import com.steamdeck.launcher.gpu.FrameGen
 import com.steamdeck.launcher.gpu.LsfgNative
 import com.steamdeck.launcher.gpu.TurnipDriver
 import com.steamdeck.launcher.input.EvdevKeys
+import com.steamdeck.launcher.input.KeyboardHost
 import com.steamdeck.launcher.input.OnScreenControls
 import com.steamdeck.launcher.input.PadBridge
 import com.steamdeck.launcher.runtime.LinuxRuntime
 import com.steamdeck.launcher.session.LoadingState
 import com.steamdeck.launcher.session.PerfHud
+import com.steamdeck.launcher.session.ProtonExtras
 import com.steamdeck.launcher.session.SessionPrefs
 import com.steamdeck.launcher.session.SessionService
 import com.steamdeck.launcher.session.SessionState
@@ -38,6 +40,8 @@ import com.steamdeck.launcher.ui.DrawerActions
 import com.steamdeck.launcher.ui.FrameGenDialog
 import com.steamdeck.launcher.ui.HudText
 import com.steamdeck.launcher.ui.LoadingOverlay
+import com.steamdeck.launcher.ui.ProtonDialog
+import com.steamdeck.launcher.ui.ProtonRow
 import com.steamdeck.launcher.ui.SessionDrawer
 import com.steamdeck.launcher.ui.SteamDeckTheme
 import com.steamdeck.launcher.wayland.CompositorHost
@@ -61,11 +65,14 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     private lateinit var hud: PerfHud
     private var padBridge: PadBridge? = null
     private var onScreenControls: OnScreenControls? = null
+    private var keyboard: KeyboardHost? = null
     private var watching = true
 
     // Compose reads these; the activity writes them.
     private var drawerOpen by mutableStateOf(false)
     private var showFrameGen by mutableStateOf(false)
+    private var showProtons by mutableStateOf(false)
+    private var protonRows by mutableStateOf<List<ProtonRow>>(emptyList())
     private var hudOn by mutableStateOf(true)
     private var frameGenLabel by mutableStateOf("Off")
     private var oscMode by mutableStateOf(SessionPrefs.OSC_AUTO)
@@ -101,6 +108,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         val bridge = PadBridge(File(LinuxRuntime.sessionRoot(this), "dev/input"))
         padBridge = bridge
         onScreenControls = OnScreenControls(this, bridge).also { root.addView(it) }
+        keyboard = KeyboardHost(this).also { root.addView(it) }
 
         loading = LoadingState(this)
         hud = PerfHud(this)
@@ -126,6 +134,8 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                         shapeMode = if (shapeMode == SessionPrefs.SHAPE_WIDE) "16:9" else "panel",
                         onHud = { on -> SessionPrefs.setHudEnabled(this@SessionActivity, on); hudOn = on; hud.refresh() },
                         onFrameGen = { showFrameGen = true },
+                        onKeyboard = { drawerOpen = false; keyboard?.toggle() },
+                        onProtons = { refreshProtons(); showProtons = true },
                         onOsc = {
                             val next = when (SessionPrefs.oscMode(this@SessionActivity)) {
                                 SessionPrefs.OSC_AUTO -> SessionPrefs.OSC_ALWAYS
@@ -146,6 +156,13 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                         onStop = { drawerOpen = false; SessionService.stop(this@SessionActivity); finish() },
                         onClose = { drawerOpen = false },
                     ))
+                    if (showProtons) ProtonDialog(
+                        rows = protonRows,
+                        onInstall = { id -> ProtonExtras.tools.first { it.id == id }.let { ProtonExtras.queue(this@SessionActivity, it) }; refreshProtons() },
+                        onCancel = { id -> ProtonExtras.tools.first { it.id == id }.let { ProtonExtras.unqueue(this@SessionActivity, it) }; refreshProtons() },
+                        onRemove = { id -> ProtonExtras.tools.first { it.id == id }.let { ProtonExtras.remove(this@SessionActivity, it) }; refreshProtons() },
+                        onDismiss = { showProtons = false },
+                    )
                     if (showFrameGen) FrameGenDialog(
                         engine = FrameGen.engine(this@SessionActivity),
                         multiplier = FrameGen.multiplier(this@SessionActivity),
@@ -177,10 +194,20 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         // from a button a game might also be reading.
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (showFrameGen) showFrameGen = false else drawerOpen = !drawerOpen
+                when {
+                    showFrameGen -> showFrameGen = false
+                    showProtons -> showProtons = false
+                    else -> drawerOpen = !drawerOpen
+                }
             }
         })
         watchSession()
+    }
+
+    private fun refreshProtons() {
+        protonRows = ProtonExtras.tools.map {
+            ProtonRow(it.id, it.name, ProtonExtras.installed(this, it), ProtonExtras.queued(this, it))
+        }
     }
 
     private fun readPrefs() {
@@ -336,14 +363,36 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         if (padBridge?.onKeyEvent(event) == true) return true
         // A hardware keyboard, forwarded to the compositor's wl_keyboard. Back is left to the
         // activity, which opens the drawer.
-        if (CompositorHost.isStarted && event.keyCode != KeyEvent.KEYCODE_BACK
-            && event.device != null && !PadBridge.isFromController(event.device)) {
+        val fromPad = event.device != null && PadBridge.isFromController(event.device)
+        if (CompositorHost.isStarted && event.keyCode != KeyEvent.KEYCODE_BACK && !fromPad) {
             val down = event.action == KeyEvent.ACTION_DOWN
             if (down || event.action == KeyEvent.ACTION_UP) {
                 var evdev = EvdevKeys.fromKeyCode(event.keyCode)
-                if (evdev < 0 && event.scanCode > 0) evdev = event.scanCode
+                // What the key stands for, and the key it would sit on without Shift — non-zero
+                // only for a character Shift puts there: every capital and the symbol row.
+                val ch = event.unicodeChar
+                val plain = if (ch > 0) EvdevKeys.unshiftedChar(ch) else 0
+                // A soft keyboard's symbol keys are in neither the table nor a scan code, so they
+                // reached the session as nothing at all — a sign-in took an address without its @.
+                // Work back from the character instead: which key carries it.
+                if (evdev <= 0 && ch > 0) {
+                    val code = EvdevKeys.fromKeyCode(EvdevKeys.keycodeForChar(if (plain != 0) plain else ch))
+                    if (code > 0) evdev = code
+                }
+                // The modifier has to be made here. A soft keyboard reports Shift in the event's
+                // meta state and sends no Shift key of its own, so a capital arrives as a key this
+                // side already knows and came out lowercase. A hardware keyboard sends its own
+                // Shift, and a second one would release the modifier while the key is still held.
+                val shiftEvdev = if (evdev > 0 && plain != 0 && event.deviceId <= 0) 42 else 0
+                if (evdev <= 0 && event.scanCode > 0) evdev = event.scanCode
                 if (evdev > 0) {
-                    WaylandCompositor.nativeSendKey(evdev, if (down) 1 else 0)
+                    if (down) {
+                        if (shiftEvdev != 0) WaylandCompositor.nativeSendKey(shiftEvdev, 1)
+                        WaylandCompositor.nativeSendKey(evdev, 1)
+                    } else {
+                        WaylandCompositor.nativeSendKey(evdev, 0)
+                        if (shiftEvdev != 0) WaylandCompositor.nativeSendKey(shiftEvdev, 0)
+                    }
                     return true
                 }
             }
@@ -419,6 +468,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         (getSystemService(INPUT_SERVICE) as? InputManager)?.unregisterInputDeviceListener(deviceListener)
         // A button held when the app goes away would stay held in the ring for the whole session.
         onScreenControls?.releaseAll()
+        keyboard?.takeIf { it.shown }?.hide()
         super.onPause()
     }
 

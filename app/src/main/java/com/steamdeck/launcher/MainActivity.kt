@@ -18,6 +18,9 @@ import com.steamdeck.launcher.gpu.FrameGen
 import com.steamdeck.launcher.gpu.LsfgNative
 import com.steamdeck.launcher.runtime.LinuxRuntime
 import com.steamdeck.launcher.runtime.LinuxRuntimeInstaller
+import com.steamdeck.launcher.session.ProtonExtras
+import com.steamdeck.launcher.ui.ProtonDialog
+import com.steamdeck.launcher.ui.ProtonRow
 import com.steamdeck.launcher.ui.ConfirmDialog
 import com.steamdeck.launcher.ui.CreditsDialog
 import com.steamdeck.launcher.ui.FrameGenDialog
@@ -45,6 +48,8 @@ class MainActivity : ComponentActivity() {
     private var showRemove by mutableStateOf(false)
     private var showFrameGen by mutableStateOf(false)
     private var showCredits by mutableStateOf(false)
+    private var showProtons by mutableStateOf(false)
+    private var protonRows by mutableStateOf<List<ProtonRow>>(emptyList())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,7 +66,15 @@ class MainActivity : ComponentActivity() {
                     onPlay = { startActivity(Intent(this, SessionActivity::class.java)) },
                     onRuntime = { onRuntimeButton() },
                     onFrameGen = { showFrameGen = true },
+                    onProtons = { refreshProtons(); showProtons = true },
                     onCredits = { showCredits = true },
+                )
+                if (showProtons) ProtonDialog(
+                    rows = protonRows,
+                    onInstall = { id -> ProtonExtras.tools.first { it.id == id }.let { ProtonExtras.queue(this, it) }; refreshProtons() },
+                    onCancel = { id -> ProtonExtras.tools.first { it.id == id }.let { ProtonExtras.unqueue(this, it) }; refreshProtons() },
+                    onRemove = { id -> ProtonExtras.tools.first { it.id == id }.let { ProtonExtras.remove(this, it) }; refreshProtons() },
+                    onDismiss = { showProtons = false },
                 )
                 if (showRemove) ConfirmDialog(
                     title = "Remove Linux runtime",
@@ -96,6 +109,10 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         refresh()
         if (!busy) Thread({ checkCatalog() }, "catalog").start()
+    }
+
+    private fun refreshProtons() {
+        protonRows = ProtonExtras.tools.map { ProtonRow(it.id, it.name, ProtonExtras.installed(this, it), ProtonExtras.queued(this, it)) }
     }
 
     private fun refresh() {

@@ -90,6 +90,8 @@ class DrawerActions(
     val shapeMode: String,
     val onHud: (Boolean) -> Unit,
     val onFrameGen: () -> Unit,
+    val onKeyboard: () -> Unit,
+    val onProtons: () -> Unit,
     val onOsc: () -> Unit,
     val onShape: () -> Unit,
     val onBackground: () -> Unit,
@@ -124,8 +126,14 @@ fun SessionDrawer(a: DrawerActions) {
                 Text("Performance HUD", color = Color(0xFFDDDDDD), fontSize = 13.sp, modifier = Modifier.weight(1f))
                 Switch(checked = a.hudOn, onCheckedChange = a.onHud)
             }
-            OutlinedButton(onClick = a.onFrameGen, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            OutlinedButton(onClick = a.onKeyboard, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                Text("Keyboard", fontSize = 13.sp)
+            }
+            OutlinedButton(onClick = a.onFrameGen, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
                 Text("Frame generation: ${a.frameGenLabel}", fontSize = 13.sp)
+            }
+            OutlinedButton(onClick = a.onProtons, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                Text("Compatibility tools", fontSize = 13.sp)
             }
             OutlinedButton(onClick = a.onOsc, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
                 Text("On-screen controls: ${a.oscMode}", fontSize = 13.sp)

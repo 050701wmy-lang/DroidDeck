@@ -56,6 +56,22 @@ client sees one pad either way. Connect a controller and the on-screen one disap
 and it comes back. Anywhere the controls are not is a touchpad: touch moves the pointer and a tap
 clicks, which is how the client's own on-screen keyboard is used to sign in.
 
+## Keyboard
+
+**Keyboard** in the drawer opens the soft keyboard over the session. Steam's UI and the games
+under it are X11 clients of gamescope and know nothing of Wayland text input, so what the
+keyboard produces is turned into the key presses that would have typed it — Shift included, so
+capitals and the symbol row (`@`, `!`, `_` …) arrive as themselves — and fed to the compositor as
+key events. A hardware keyboard works as it is.
+
+## Compatibility tools
+
+**Compatibility tools** (main screen and drawer) installs GE-Proton or proton-cachyos — native
+ARM64 builds — beside the ARM64 Proton Valve ships. The runtime's own registrar downloads and
+installs a requested build when the next session starts (several hundred MB), patches it past
+pressure-vessel like Valve's, and it then appears in Steam under Properties → Compatibility for
+any game. The dialog queues or cancels a request and removes an installed build.
+
 ## Frame generation
 
 Extra frames are generated between the real ones on the way to the screen — inside the app's
