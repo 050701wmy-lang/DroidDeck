@@ -105,6 +105,20 @@ object SessionPrefs {
         prefs(context).edit().putString("gameCpus", list).apply()
     }
 
+    /**
+     * Whether Steam's xalia helper is kept out of the session (PROTON_USE_XALIA=0).
+     *
+     * xalia is an x86 Windows program Proton launches to give Windows programs gamepad navigation.
+     * Under FEX it cannot load the session's aarch64 preload shim, so its socket() and memfd calls
+     * reach the vendor's seccomp filter raw; where that answers ENOSYS - a Galaxy Fold, measured -
+     * it storms, and the session dies seconds after Big Picture appears.
+     */
+    fun noXalia(context: Context): Boolean = prefs(context).getBoolean("noXalia", false)
+
+    fun setNoXalia(context: Context, on: Boolean) {
+        prefs(context).edit().putBoolean("noXalia", on).apply()
+    }
+
     /** Turnip's sysmem rendering (TU_DEBUG=sysmem) for the runtime's driver: bypasses GMEM tiling. */
     fun tuSysmem(context: Context): Boolean = prefs(context).getBoolean("tuSysmem", false)
 

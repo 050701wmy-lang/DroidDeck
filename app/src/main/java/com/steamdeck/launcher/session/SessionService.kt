@@ -149,6 +149,10 @@ class SessionService : Service() {
         // the mode Zink recommends where the driver has no descriptor buffer, and what Ludashi ships
         // by default for its Zink path; a switch here because on one Fold the menus run at 14 fps.
         if (SessionPrefs.zinkLazy(this)) guest.add("ZINK_DESCRIPTORS=lazy")
+        // Proton's own gate for its xalia helper (its `proton` script reads this, and sets
+        // XALIA_SUPPORTED_ONLY itself otherwise). Off by default: xalia is Valve's, and on a device
+        // whose seccomp answers its syscalls normally there is no reason to take it away.
+        if (SessionPrefs.noXalia(this)) guest.add("PROTON_USE_XALIA=0")
         // Anything else, for a device that cannot be reached with a debugger: Downloads/steamdeck-env
         // holds KEY=VALUE lines that go into the session's environment as written, after ours, so a
         // line here wins. Zink and Turnip tunables (ZINK_DESCRIPTORS=lazy, MESA_*), gamescope's,

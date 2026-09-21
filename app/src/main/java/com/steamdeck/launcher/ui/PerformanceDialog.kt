@@ -36,9 +36,11 @@ fun PerformanceDialog(
     gameCores: Set<Int>,
     tuSysmem: Boolean,
     zinkLazy: Boolean,
+    noXalia: Boolean,
     onClientOverride: (Boolean) -> Unit,
     onTuSysmem: (Boolean) -> Unit,
     onZinkLazy: (Boolean) -> Unit,
+    onNoXalia: (Boolean) -> Unit,
     onClientCore: (Int, Boolean) -> Unit,
     onGameCore: (Int, Boolean) -> Unit,
     onDismiss: () -> Unit,
@@ -82,9 +84,9 @@ fun PerformanceDialog(
                 HorizontalDivider()
                 Spacer(Modifier.height(10.dp))
 
-                Text("Driver tunables", style = MaterialTheme.typography.titleSmall)
+                Text("Session fixes", style = MaterialTheme.typography.titleSmall)
                 Text(
-                    "Two switches for a runtime that renders slowly, tried one at a time. Both apply at the next session start.",
+                    "For a device the runtime does not sit well on, tried one at a time. All apply at the next session start.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -109,6 +111,17 @@ fun PerformanceDialog(
                         )
                     }
                     Switch(checked = zinkLazy, onCheckedChange = onZinkLazy)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Skip Steam's xalia helper", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "xalia is a Windows program Proton starts to give Windows programs gamepad navigation. On some devices its system calls are refused in a way it cannot cope with, and the session dies seconds after Big Picture appears — 89 refusals then a broken pipe, in the session log. Turn this on if a session will not stay up. Costs gamepad navigation in Windows programs that are not games.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = noXalia, onCheckedChange = onNoXalia)
                 }
             }
         },

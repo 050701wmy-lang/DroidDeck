@@ -214,8 +214,13 @@ separate because they are wanted at the same time and suit different things:
 
 Both apply at the next session start.
 
-Under the same dialog, two **driver tunables** for a runtime that renders slowly, tried one at a
-time: **Turnip: sysmem rendering** (`TU_DEBUG=sysmem`, Banners-Turnip's advice for an Adreno 8xx that
+Under the same dialog, **session fixes** for a device the runtime does not sit well on, tried one at
+a time. **Skip Steam's xalia helper** (`PROTON_USE_XALIA=0`) is the one to reach for when a session
+dies seconds after Big Picture appears: xalia is an x86 Windows program Proton starts for gamepad
+navigation, it cannot load the session's preload shim under FEX, and where the vendor's seccomp
+answers its `socket()` and `memfd` calls with ENOSYS it storms until the session collapses (89
+refusals then a broken pipe, in the log). It costs gamepad navigation in Windows programs that are
+not games. Then two for a runtime that renders slowly: **Turnip: sysmem rendering** (`TU_DEBUG=sysmem`, Banners-Turnip's advice for an Adreno 8xx that
 looks glitchy or slow; a 710/720/722 gets it on its own) and **Zink: lazy descriptors**
 (`ZINK_DESCRIPTORS=lazy`, for Steam's menus, which Chromium draws through Zink — the first thing to
 try when they are slow while games are fast). The `steamdeck-tu-debug` and `steamdeck-env` files in
