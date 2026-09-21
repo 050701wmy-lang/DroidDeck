@@ -119,6 +119,21 @@ object SessionPrefs {
         prefs(context).edit().putBoolean("noXalia", on).apply()
     }
 
+    /**
+     * Whether proot runs without its seccomp acceleration (PROOT_NO_SECCOMP=1).
+     *
+     * proot normally installs a seccomp filter so only the syscalls it must rewrite stop in the
+     * tracer; everything else runs untraced, which is most of proot's speed. Where a vendor kernel
+     * handles that filter badly the wrong calls are trapped or refused - ENOSYS from calls that
+     * plainly exist is the signature - and the fallback is to trace everything instead: slower,
+     * but correct. Max's advice for devices whose kernels "don't work well with it".
+     */
+    fun prootNoSeccomp(context: Context): Boolean = prefs(context).getBoolean("prootNoSeccomp", false)
+
+    fun setProotNoSeccomp(context: Context, on: Boolean) {
+        prefs(context).edit().putBoolean("prootNoSeccomp", on).apply()
+    }
+
     /** Turnip's sysmem rendering (TU_DEBUG=sysmem) for the runtime's driver: bypasses GMEM tiling. */
     fun tuSysmem(context: Context): Boolean = prefs(context).getBoolean("tuSysmem", false)
 

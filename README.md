@@ -287,8 +287,43 @@ Files in `/sdcard/Download`, for a device that cannot be reached with a debugger
 | `steamdeck-env` | `KEY=VALUE` lines added to the session's environment as written, after the app's own — Zink and Turnip tunables (`ZINK_DESCRIPTORS=lazy`, `MESA_*`), gamescope's, the client's; `#` comments allowed |
 | `steamdeck-tu-debug` | Turnip's `TU_DEBUG` for the runtime's driver, verbatim (`sysmem`, `sysmem,deck_emu`). Without it, an imported A710/A720/A722 driver gets `sysmem` on its own |
 
-Session logs land in `/sdcard/Download/SteamDeck/`, one file per session, and are the first
-thing to look at when something does not start. Creating `~/.steamdeck-desktop-debug` inside the
+Session logs land in `/sdcard/Download/SteamDeck/`, **one folder per session**, and are the first
+thing to look at when something does not start:
+
+```
+Download/SteamDeck/session-20260921-161256/
+    device.txt     what this device is, and every setting the session ran with
+    session.log    the guest session: proot, gamescope, the client's own output
+    wayland.log    the app's compositor - what it presented, and how fast
+    steam.log      the Steam client's log, scrubbed        (Steam mode)
+    steam/         the rest of the client's logs, scrubbed (Steam mode)
+    desktop.log    labwc, the panel and the programs on it (desktop mode)
+```
+
+`device.txt` is written before the session starts, so a session that dies in its first second
+still says what it ran on: model, SoC, Android and kernel, cores and their ceilings, RAM, the GPU
+as KGSL names it, the panel, **which driver each half of the session chose**, the runtime version,
+and every switch that was in effect. **Nothing identifying is collected** - no serial number, no
+device or advertising id, no account name, no network names - and the Steam logs are scrubbed line
+by line on the way in: session tokens, machine-auth GUIDs, WebAPI keys, Guard codes and e-mail
+addresses are replaced, and a SteamID is masked to its last four digits so lines can still be
+correlated. `loginusers.vdf`, `config.vdf` and the `ssfn` files are never copied at all. A session
+folder is meant to be attachable to a bug report exactly as it is.
+
+### If Steam dies with nothing in the log
+
+That is usually not Steam. **Android 12 and later kill the extra processes an app starts for
+itself** once there are more than a few, and a session is made of dozens - proot, gamescope,
+Xwayland, the client and its helpers, Wine, FEX. Where that is left on, the OS ends the session and
+no log of ours says why, because nothing in the session did it. Some phones expose it in Developer
+options as a **"restrict child processes"** switch; turn it off. Otherwise, once per device:
+
+```sh
+adb shell settings put global settings_enable_monitor_phantom_procs false
+```
+
+`device.txt` records what this phone reports, and the Performance dialog says so when it is not
+disabled. Creating `~/.steamdeck-desktop-debug` inside the
 runtime additionally makes the desktop log labwc at debug level, each program's window-protocol
 traffic, and a name lookup plus an IPv4 and IPv6 fetch from inside the session — which is how to
 tell a broken network apart from a program that only believes it has one.

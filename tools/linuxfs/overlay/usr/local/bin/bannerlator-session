@@ -31,12 +31,18 @@ fi
 collect_steam_logs() {
   [ -n "${BL_DEBUG_DIR:-}" ] || return 0
   local steam_root=${XDG_DATA_HOME:-$HOME/.local/share}/Steam
-  mkdir -p "$BL_DEBUG_DIR" 2>/dev/null || return 0
-  [ -d "$steam_root/logs" ] && cp -r "$steam_root/logs" "$BL_DEBUG_DIR/steam-logs" 2>/dev/null
-  [ -f "$HOME/.steam/steam/logs/steamwebhelper.log" ] && cp "$HOME/.steam/steam/logs/steamwebhelper.log" "$BL_DEBUG_DIR/" 2>/dev/null
-  [ -f "$steam_root/steam.pid" ] && cp "$steam_root/steam.pid" "$BL_DEBUG_DIR/" 2>/dev/null
-  echo "== steam logs copied to $BL_DEBUG_DIR"
+  mkdir -p "$BL_DEBUG_DIR/steam" 2>/dev/null || return 0
+  # Into steam/ beside this session's own logs. The app scrubs these line by line after the
+  # session ends - they carry the account's session token and id - so nothing here is the last
+  # word on what the user ends up sharing; this is just the copy that survives the runtime.
+  [ -d "$steam_root/logs" ] && cp -r "$steam_root/logs/." "$BL_DEBUG_DIR/steam/" 2>/dev/null
+  [ -f "$HOME/.steam/steam/logs/steamwebhelper.log" ] && cp "$HOME/.steam/steam/logs/steamwebhelper.log" "$BL_DEBUG_DIR/steam/" 2>/dev/null
+  # NOT copied, ever: loginusers.vdf, config.vdf and the ssfn* files, which hold the credentials
+  # themselves rather than a mention of them.
+  echo "== steam logs copied to $BL_DEBUG_DIR/steam"
 }
+# A session that is killed never reaches the copy below, and those are the sessions worth reading.
+trap 'collect_steam_logs 2>/dev/null || true' TERM INT HUP
 # The driver everything in this session draws with: gamescope's compositing, the client's UI
 # (OpenGL through Zink), every game Proton launches, and in desktop mode every program on it.
 # BL_VK_DRIVER names an imported driver's ICD manifest on the Android side, which is bound into the

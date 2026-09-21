@@ -17,6 +17,13 @@ export MOZ_DISABLE_SOCKET_PROCESS_SANDBOX=1 MOZ_DISABLE_UTILITY_SANDBOX=1
 # wlroots allocates through gbm on a real DRM node, which the KGSL stand-in is not: pixman
 # (software, shm) is what boots here. BL_WLR_RENDERER=vulkan/gles2 tries acceleration.
 export WLR_RENDERER=${BL_WLR_RENDERER:-pixman}
+# The desktop's own log, beside the session's, so labwc and the programs on it can be read apart
+# from the session that started them. The session log keeps the milestones either way.
+if [ -n "${BL_DEBUG_DIR:-}" ]; then
+  mkdir -p "$BL_DEBUG_DIR" 2>/dev/null || true
+  exec >>"$BL_DEBUG_DIR/desktop.log" 2>&1
+  echo "== steamdeck-desktop $(date -u '+%Y-%m-%d %H:%M:%S UTC') renderer=$WLR_RENDERER"
+fi
 export WLR_BACKENDS=wayland
 mkdir -p "$HOME/.config/labwc" "$HOME/.config/lxqt"
 # Our defaults for labwc and the panel, refreshed every session. What a user changes in the

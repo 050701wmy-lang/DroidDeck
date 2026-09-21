@@ -85,6 +85,8 @@ class MainActivity : ComponentActivity() {
     private var tuSysmem by mutableStateOf(false)
     private var zinkLazy by mutableStateOf(false)
     private var noXalia by mutableStateOf(false)
+    private var prootNoSeccomp by mutableStateOf(false)
+    private var phantomWarning by mutableStateOf<String?>(null)
     private var directAudio by mutableStateOf(false)
     private var mic by mutableStateOf(false)
     private var linuxRows by mutableStateOf<List<DriverRow>>(emptyList())
@@ -176,10 +178,12 @@ class MainActivity : ComponentActivity() {
                     cores = CpuCores.all.map { c -> CoreRow(c, "cpu$c" + (CpuCores.maxGhz(c)?.let { String.format(java.util.Locale.US, " · %.1f GHz", it) } ?: "")) },
                     clientOverride = clientOverride, clientCores = clientCores, gameCores = gameCores,
                     tuSysmem = tuSysmem, zinkLazy = zinkLazy, noXalia = noXalia,
+                    prootNoSeccomp = prootNoSeccomp, phantomWarning = phantomWarning,
                     onClientOverride = { on -> SessionPrefs.setClientCpusOverride(this, on); clientOverride = on },
                     onTuSysmem = { on -> SessionPrefs.setTuSysmem(this, on); tuSysmem = on },
                     onZinkLazy = { on -> SessionPrefs.setZinkLazy(this, on); zinkLazy = on },
                     onNoXalia = { on -> SessionPrefs.setNoXalia(this, on); noXalia = on },
+                    onProotNoSeccomp = { on -> SessionPrefs.setProotNoSeccomp(this, on); prootNoSeccomp = on },
                     onClientCore = { core, on ->
                         clientCores = if (on) clientCores + core else clientCores - core
                         SessionPrefs.setClientCpus(this, CpuCores.format(clientCores))
@@ -330,6 +334,18 @@ class MainActivity : ComponentActivity() {
         tuSysmem = SessionPrefs.tuSysmem(this)
         zinkLazy = SessionPrefs.zinkLazy(this)
         noXalia = SessionPrefs.noXalia(this)
+        prootNoSeccomp = SessionPrefs.prootNoSeccomp(this)
+        // Android 12 kills the children an app forks itself once there are more than a handful.
+        // A session is nothing but those, so where this is on the OS ends the session and no log
+        // of ours says why. We cannot change a secure setting from here - only say so.
+        phantomWarning = runCatching {
+            android.provider.Settings.Global.getString(contentResolver, "settings_enable_monitor_phantom_procs")
+        }.getOrNull().let { v ->
+            when (v?.lowercase()) {
+                "false", "0" -> null
+                else -> "Android 12 and later kill the extra processes an app starts for itself once there are more than a few, and a session is made of dozens: proot, gamescope, the client and its helpers, Wine. Where that is left on, the client dies with nothing in its log, because nothing in the session did it. Some phones have a \"restrict child processes\" switch in Developer options — turn it off. Otherwise, over adb:\n\n    adb shell settings put global settings_enable_monitor_phantom_procs false\n\nThis phone " + (if (v == null) "has not been set either way, so the ROM's default applies." else "currently reports it as on.")
+            }
+        }
     }
 
     private fun refreshProtons() {

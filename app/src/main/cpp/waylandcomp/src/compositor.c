@@ -101,10 +101,17 @@ static void open_session_log(void) {
 
     localtime_r(&now, &tm);
     strftime(stamp, sizeof(stamp), "%Y-%m-%d_%H-%M-%S", &tm);
-    mkdir("/storage/emulated/0/Download", 0775);
-    if (mkdir(SESSION_LOG_DIR, 0775) != 0 && errno != EEXIST)
-        WLOGE("can't create %s: %s", SESSION_LOG_DIR, strerror(errno));
-    snprintf(path, sizeof(path), "%s/wayland-%s.log", SESSION_LOG_DIR, stamp);
+    /* The app names the file when it has a session folder to put it in, so one session's logs sit
+     * together; without that we keep our own dated file. The folder is made on the Java side. */
+    const char *given = getenv("BL_WAYLAND_LOG");
+    if (given && *given) {
+        snprintf(path, sizeof(path), "%s", given);
+    } else {
+        mkdir("/storage/emulated/0/Download", 0775);
+        if (mkdir(SESSION_LOG_DIR, 0775) != 0 && errno != EEXIST)
+            WLOGE("can't create %s: %s", SESSION_LOG_DIR, strerror(errno));
+        snprintf(path, sizeof(path), "%s/wayland-%s.log", SESSION_LOG_DIR, stamp);
+    }
     if (!(f = fopen(path, "w"))) {
         WLOGE("can't open session log %s: %s", path, strerror(errno));
         return;

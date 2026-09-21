@@ -22,13 +22,16 @@ import com.steamdeck.launcher.SessionActivity
 import com.steamdeck.launcher.audio.DirectAudioRelayComponent
 import com.steamdeck.launcher.audio.PulseAudioComponent
 import com.steamdeck.launcher.core.CpuCores
+import com.steamdeck.launcher.core.DeviceReport
 import com.steamdeck.launcher.core.EnvVars
+import com.steamdeck.launcher.core.LogRedactor
 import com.steamdeck.launcher.core.EnvironmentComponent
 import com.steamdeck.launcher.core.FileUtils
 import com.steamdeck.launcher.core.ProcessHelper
 import com.steamdeck.launcher.input.FakeInputWriter
 import com.steamdeck.launcher.runtime.LinuxNetworkLinkComponent
 import com.steamdeck.launcher.runtime.LinuxRuntime
+import com.steamdeck.launcher.wayland.WaylandCompositor
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -75,6 +78,44 @@ class SessionService : Service() {
         return START_NOT_STICKY
     }
 
+    /**
+     * Pull everything a report needs into the session's folder, after the session has stopped: the
+     * compositor's log (it writes for as long as the compositor lives, which outlasts one session)
+     * and the Steam client's own logs, scrubbed line by line. The guest script copies Steam's logs
+     * too, at a clean exit; this one runs whatever killed the session, which is when they matter.
+     */
+    private fun collectSessionArtifacts() {
+        val dir = SessionPaths.current() ?: return
+        try {
+            // The compositor's own file, wherever it opened it.
+            val wayland = File(dir, "wayland.log")
+            if (!wayland.exists()) {
+                WaylandCompositor.currentLogFile()?.takeIf { it.isFile }?.let { src ->
+                    src.copyTo(wayland, overwrite = true)
+                }
+            }
+            // Steam's logs: redacted into steam/, never copied verbatim.
+            val logs = File(LinuxRuntime.rootDir(this), "root/.local/share/Steam/logs")
+            if (logs.isDirectory) {
+                val out = File(dir, "steam").apply { mkdirs() }
+                logs.listFiles { f -> f.isFile && f.length() < 8L * 1024 * 1024 }?.forEach { src ->
+                    try {
+                        File(out, src.name).bufferedWriter().use { w ->
+                            src.forEachLine { line -> w.write(LogRedactor.redact(line)); w.newLine() }
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "could not scrub ${src.name}", e)
+                    }
+                }
+                Log.i(TAG, "collected ${out.listFiles()?.size ?: 0} Steam log(s), scrubbed, into $out")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "collecting session artifacts", e)
+        } finally {
+            SessionPaths.release()
+        }
+    }
+
     private fun extraEnv(): List<String> {
         val file = File(Environment.getExternalStorageDirectory(), ENV_SWITCH).takeIf { it.isFile } ?: return emptyList()
         val lines = FileUtils.readString(file)?.lines().orEmpty()
@@ -111,10 +152,13 @@ class SessionService : Service() {
         killStragglers()
         SessionFiles.stage(this, root)
 
-        val logDir = SessionFiles.logDirectory(this)
-        val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
-        val sessionLog = File(logDir, "session-$stamp.log")
+        // One folder per session, claimed by whoever started first - the activity starts the
+        // compositor before this service runs - so the compositor's log lands in the same place.
+        val sessionDir = SessionPaths.beginOrCurrent(this)
+        val sessionLog = File(sessionDir, "session.log")
         SessionState.logFile = sessionLog
+        // Written first, so a session that dies in its first second still says what it ran on.
+        DeviceReport.write(this, File(sessionDir, "device.txt"), SessionState.mode)
 
         val size = SessionState.outputSize
         val guest = ArrayList<String>()
@@ -211,7 +255,7 @@ class SessionService : Service() {
         guest.add("BL_FPS=0")
         guest.add("BL_REFRESH=" + Math.round(SessionState.refreshHz))
         guest.add("BL_LOG=" + sessionLog.path)
-        guest.add("BL_DEBUG_DIR=" + File(logDir, "session-$stamp").path)
+        guest.add("BL_DEBUG_DIR=" + sessionDir.path)
 
         val fakeInputDir = File(sessionRoot, "dev/input").apply { mkdirs() }
         val controllersOn = !File(Environment.getExternalStorageDirectory(), NO_PAD_SWITCH).exists()
@@ -264,6 +308,11 @@ class SessionService : Service() {
         // proot links against a libtalloc beside it, and Android's linker does not search an
         // executable's own directory: unnamed, the process dies before it starts and says so only
         // in `logcat -b crash`.
+        // proot reads this itself, so it belongs in proot's own environment rather than the guest's.
+        if (SessionPrefs.prootNoSeccomp(this)) {
+            hostEnv.put("PROOT_NO_SECCOMP", "1")
+            Log.i(TAG, "proot: seccomp acceleration off by request")
+        }
         val prootLibs = LinuxRuntime.prootLibraryPath(this)
         if (prootLibs.isNotEmpty()) hostEnv.put("LD_LIBRARY_PATH", prootLibs)
 
@@ -385,6 +434,7 @@ class SessionService : Service() {
             sessionPid = -1
             Thread({ teardown(prootPid) }, "session-teardown").start()
         }
+        collectSessionArtifacts()
         components.reversed().forEach {
             try {
                 it.stop()

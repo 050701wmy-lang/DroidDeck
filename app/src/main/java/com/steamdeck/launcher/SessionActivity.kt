@@ -36,6 +36,7 @@ import com.steamdeck.launcher.session.LoadingState
 import com.steamdeck.launcher.session.PerfHud
 import com.steamdeck.launcher.session.ProtonExtras
 import com.steamdeck.launcher.session.SessionPrefs
+import com.steamdeck.launcher.session.SessionPaths
 import com.steamdeck.launcher.session.SessionService
 import com.steamdeck.launcher.session.SessionState
 import com.steamdeck.launcher.ui.CursorOverlay
@@ -272,6 +273,18 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         // Letterbox, never stretch or crop: the output can be a different shape from the panel,
         // and a game's picture must keep its proportions with bars, not lose its edges.
         WaylandCompositor.nativeSetScaleMode(SCALE_FIT, ALIGN_CENTER)
+        // The session's folder, claimed here because the compositor starts before the service and
+        // opens its log once. The compositor reads the path from its environment; setting it after
+        // it has started changes nothing, which is why the service copies the file in at teardown.
+        if (!SessionState.running) {
+            val waylandLog = File(SessionPaths.beginOrCurrent(this), "wayland.log")
+            WaylandCompositor.setSessionLogFile(waylandLog)
+            try {
+                android.system.Os.setenv("BL_WAYLAND_LOG", waylandLog.path, true)
+            } catch (e: Exception) {
+                Log.w(TAG, "could not point the compositor's log at $waylandLog", e)
+            }
+        }
         CompositorHost.startOrAttach(
             holder.surface, runtimeDir.path,
             driverId?.let { turnip.driverPath(it) }, driverId?.let { turnip.libraryName(it) },

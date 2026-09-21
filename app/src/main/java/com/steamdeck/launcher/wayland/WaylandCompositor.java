@@ -227,6 +227,18 @@ public final class WaylandCompositor {
      *  the session log. A no-op on Android versions without {@code ASurfaceTransaction_setFrameRate}. */
     public static native void nativeSetLayerFrameRate(float hz);
 
+    /** Where the compositor was told to write its log, for the session collector; null if it was
+     *  left to choose. Set before the compositor starts - it opens the file once, at start. */
+    private static volatile java.io.File sessionLogFile;
+
+    public static void setSessionLogFile(java.io.File file) {
+        sessionLogFile = file;
+    }
+
+    public static java.io.File currentLogFile() {
+        return sessionLogFile;
+    }
+
     /** Write one line into the compositor's session log (Download/Wayland-logs) under the "display"
      *  area, from Java. Used for facts the platform knows and the native side does not — the panel's
      *  HDR capability, which lives behind android.view.Display. Safe before the compositor thread is

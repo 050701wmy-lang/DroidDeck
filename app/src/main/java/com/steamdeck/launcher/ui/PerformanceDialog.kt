@@ -37,10 +37,13 @@ fun PerformanceDialog(
     tuSysmem: Boolean,
     zinkLazy: Boolean,
     noXalia: Boolean,
+    prootNoSeccomp: Boolean,
+    phantomWarning: String?,
     onClientOverride: (Boolean) -> Unit,
     onTuSysmem: (Boolean) -> Unit,
     onZinkLazy: (Boolean) -> Unit,
     onNoXalia: (Boolean) -> Unit,
+    onProotNoSeccomp: (Boolean) -> Unit,
     onClientCore: (Int, Boolean) -> Unit,
     onGameCore: (Int, Boolean) -> Unit,
     onDismiss: () -> Unit,
@@ -122,6 +125,26 @@ fun PerformanceDialog(
                         )
                     }
                     Switch(checked = noXalia, onCheckedChange = onNoXalia)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Run proot without seccomp", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "proot normally lets most system calls run untraced, which is most of its speed. Some kernels handle that badly and refuse calls that plainly exist — "Function not implemented" in the log where it makes no sense. This traces everything instead: slower, but correct. Try it if a session will not start or dies with those errors.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = prootNoSeccomp, onCheckedChange = onProotNoSeccomp)
+                }
+                if (phantomWarning != null) {
+                    Spacer(Modifier.height(10.dp))
+                    Text("Android is set to kill this session", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.error)
+                    Text(
+                        phantomWarning,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         },
