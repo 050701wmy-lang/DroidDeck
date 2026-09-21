@@ -34,6 +34,8 @@ public class DirectAudioRelayComponent extends EnvironmentComponent {
     public static final String BINARY = "libdirectaudiorelay.so";
 
     private final File socketPath;
+    /** Shared with PulseAudioComponent: one audio.log per session, appended by both. */
+    private File logFile;
     /** Null when the microphone was not asked for; the helper then opens no input stream. */
     private final File micFifoPath;
     private int pid = -1;
@@ -41,6 +43,11 @@ public class DirectAudioRelayComponent extends EnvironmentComponent {
     public DirectAudioRelayComponent(File socketPath, File micFifoPath) {
         this.socketPath = socketPath;
         this.micFifoPath = micFifoPath;
+    }
+
+    /** Send the helper's output to this file as well as logcat. Set before {@link #start()}. */
+    public void setLogFile(File file) {
+        this.logFile = file;
     }
 
     @Override
@@ -91,7 +98,24 @@ public class DirectAudioRelayComponent extends EnvironmentComponent {
         }
         ArrayList<String> env = new ArrayList<>();
         env.add("HOME=" + context.getFilesDir());
-        pid = ProcessHelper.exec(command.toString(), env.toArray(new String[0]), context.getFilesDir());
+        java.io.PrintWriter out = null;
+        if (logFile != null) {
+            try {
+                out = new java.io.PrintWriter(new java.io.FileWriter(logFile, true));
+                out.println("== DirectAudio relay helper starting"
+                        + (micFifoPath != null ? " with the microphone" : " (no microphone)"));
+                out.flush();
+            } catch (Exception e) {
+                Log.w(TAG, "could not open " + logFile, e);
+            }
+        }
+        final java.io.PrintWriter log = out;
+        pid = ProcessHelper.exec(command.toString(), env.toArray(new String[0]),
+                context.getFilesDir(), null,
+                line -> {
+                    Log.i(TAG, line);
+                    if (log != null) synchronized (log) { log.println(line); log.flush(); }
+                });
         Log.i(TAG, "started pid=" + pid + " socket=" + socketPath
                 + (micFifoPath != null ? " mic=" + micFifoPath : " (no microphone)"));
     }

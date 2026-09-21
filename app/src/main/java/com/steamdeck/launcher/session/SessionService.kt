@@ -25,6 +25,8 @@ import com.steamdeck.launcher.core.CpuCores
 import com.steamdeck.launcher.core.DeviceReport
 import com.steamdeck.launcher.core.EnvVars
 import com.steamdeck.launcher.core.LogRedactor
+import com.steamdeck.launcher.core.SessionLogCapture
+import com.steamdeck.launcher.core.NetworkReport
 import com.steamdeck.launcher.core.EnvironmentComponent
 import com.steamdeck.launcher.core.FileUtils
 import com.steamdeck.launcher.core.ProcessHelper
@@ -109,9 +111,13 @@ class SessionService : Service() {
                 }
                 Log.i(TAG, "collected ${out.listFiles()?.size ?: 0} Steam log(s), scrubbed, into $out")
             }
+            // A session the system killed leaves its trace here and nowhere else.
+            SessionLogCapture.dumpCrashBuffer(File(dir, "crash.log"))
         } catch (e: Exception) {
             Log.w(TAG, "collecting session artifacts", e)
         } finally {
+            // Last, so everything above is in the file it is about.
+            SessionLogCapture.stop()
             SessionPaths.release()
         }
     }
@@ -159,6 +165,10 @@ class SessionService : Service() {
         SessionState.logFile = sessionLog
         // Written first, so a session that dies in its first second still says what it ran on.
         DeviceReport.write(this, File(sessionDir, "device.txt"), SessionState.mode)
+        NetworkReport.write(this, File(sessionDir, "network.txt"))
+        // Everything the app decides from here on - the driver it chose, the audio line, a rival
+        // client stopped, the exit status - reaches logcat and nowhere a user can get at. Mirror it.
+        SessionLogCapture.start(File(sessionDir, "app.log"))
 
         val size = SessionState.outputSize
         val guest = ArrayList<String>()
@@ -229,13 +239,16 @@ class SessionService : Service() {
         val relaySocket = File(audioDir, "relay.sock")
         val micFifo = if (wantsMic) File(audioDir, "mic.fifo") else null
 
+        val audioLog = File(sessionDir, "audio.log")
         val pulse = PulseAudioComponent(this, micFifo?.absolutePath)
+        pulse.setLogFile(audioLog)
         pulse.setContext(this)
         guest.add("PULSE_SERVER=unix:" + pulse.socket().absolutePath)
         components.add(pulse)
         if (wantsDirectAudio || wantsMic) {
             // After the daemon in the list, so it can wait for the pipe the daemon makes.
             val relay = DirectAudioRelayComponent(relaySocket, micFifo)
+            relay.setLogFile(audioLog)
             relay.setContext(this)
             components.add(relay)
         }

@@ -34,6 +34,8 @@ public class PulseAudioComponent extends EnvironmentComponent {
     private static final String BUNDLE_STAMP = "2026-09-21-pa13-pipe-modules";
 
     private final File workingDir;
+    /** Where the daemon's own output is kept for this session, or null for logcat only. */
+    private File logFile;
     /**
      * A named pipe carrying microphone audio, or null for no microphone. The bundle ships
      * module-aaudio-sink but no matching source, and the daemon runs where Android permits
@@ -51,6 +53,11 @@ public class PulseAudioComponent extends EnvironmentComponent {
     public PulseAudioComponent(Context context, String micFifoPath) {
         this.workingDir = new File(context.getFilesDir(), "pulseaudio");
         this.micFifoPath = micFifoPath;
+    }
+
+    /** Send the daemon's output to this file as well as logcat. Set before {@link #start()}. */
+    public void setLogFile(File file) {
+        this.logFile = file;
     }
 
     public File socket() {
@@ -125,8 +132,15 @@ public class PulseAudioComponent extends EnvironmentComponent {
         String command = workingDir.getAbsolutePath() + "/libpulseaudio.so"
                 + " --system=false --disable-shm=true --fail=false"
                 + " -n --file=default.pa --daemonize=false --use-pid-file=false --exit-idle-time=-1";
+        // A module that refuses to load, a pipe that could not be made, the daemon exiting at
+        // startup: all of it used to reach logcat and nothing else, so a user's folder said nothing
+        // at all about sound. Four separate faults hid behind "no input device" in one night.
+        final java.io.PrintWriter out = openLog();
         pid = ProcessHelper.exec(command, env.toArray(new String[0]), workingDir, null,
-                line -> Log.i(TAG, line));
+                line -> {
+                    Log.i(TAG, line);
+                    if (out != null) synchronized (out) { out.println(line); out.flush(); }
+                });
     }
 
     @Override
@@ -134,6 +148,20 @@ public class PulseAudioComponent extends EnvironmentComponent {
         if (pid != -1) {
             Process.killProcess(pid);
             pid = -1;
+        }
+    }
+
+    /** The session's audio log, appended to by both the daemon and the relay helper. */
+    private java.io.PrintWriter openLog() {
+        if (logFile == null) return null;
+        try {
+            java.io.PrintWriter w = new java.io.PrintWriter(new java.io.FileWriter(logFile, true));
+            w.println("== PulseAudio daemon starting" + (micFifoPath != null ? " with a microphone source" : ""));
+            w.flush();
+            return w;
+        } catch (Exception e) {
+            Log.w(TAG, "could not open " + logFile, e);
+            return null;
         }
     }
 

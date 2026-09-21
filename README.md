@@ -295,10 +295,23 @@ Download/SteamDeck/session-20260921-161256/
     device.txt     what this device is, and every setting the session ran with
     session.log    the guest session: proot, gamescope, the client's own output
     wayland.log    the app's compositor - what it presented, and how fast
+    app.log        what the app itself decided and reported
+    crash.log      Android's crash buffer, as it stood when the session ended
+    audio.log      the PulseAudio daemon and the DirectAudio relay helper
+    network.txt    the link, the DNS the runtime was given, and what it means
     steam.log      the Steam client's log, scrubbed        (Steam mode)
     steam/         the rest of the client's logs, scrubbed (Steam mode)
     desktop.log    labwc, the panel and the programs on it (desktop mode)
 ```
+
+`app.log` is this app's own logcat, filtered to its process: which driver it chose and why, the
+audio line, a rival Steam client being stopped, a helper that was missing, the session's exit
+status. `crash.log` is Android's crash buffer at teardown, which is where a session the *system*
+killed leaves its only trace - proot once died before `main` over a missing library and said so
+there and nowhere else. `audio.log` is the PulseAudio daemon's own output plus the relay helper's,
+so a module that refuses to load is visible instead of being a silent absence of sound.
+`network.txt` records the transport, whether the link validated, the address families and the DNS
+servers the runtime was actually given - **never the network's name**.
 
 `device.txt` is written before the session starts, so a session that dies in its first second
 still says what it ran on: model, SoC, Android and kernel, cores and their ceilings, RAM, the GPU
