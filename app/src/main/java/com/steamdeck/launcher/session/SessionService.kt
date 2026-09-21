@@ -1,6 +1,7 @@
 package com.steamdeck.launcher.session
 
 import com.steamdeck.launcher.gpu.LinuxVulkanDriver
+import com.steamdeck.launcher.gpu.LinuxVulkanDriverManager
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -71,6 +72,15 @@ class SessionService : Service() {
         return START_NOT_STICKY
     }
 
+    private fun tuDebug(linuxDriverId: String): String? {
+        val override = File(Environment.getExternalStorageDirectory(), TU_DEBUG_SWITCH)
+            .takeIf { it.isFile }?.let { FileUtils.readString(it)?.trim() }
+        if (!override.isNullOrEmpty()) return override
+        if (linuxDriverId.isEmpty()) return null
+        val name = LinuxVulkanDriverManager(this).getDriverName(linuxDriverId).lowercase()
+        return if (name.contains("710-720") || name.contains("710_720")) "sysmem" else null
+    }
+
     // ── The session ─────────────────────────────────────────────────────────────────────────
 
     private fun runSession() {
@@ -114,8 +124,14 @@ class SessionService : Service() {
         // An imported glibc Turnip for this mode, when the user chose one: the session script checks
         // the manifest and its library from inside and points the loader at it with VK_DRIVER_FILES,
         // so the runtime's own driver above stays untouched and is what a bad import falls back to.
-        LinuxVulkanDriver.resolveIcdPath(this, SessionPrefs.linuxDriver(this, SessionState.mode))
+        val linuxDriverId = SessionPrefs.linuxDriver(this, SessionState.mode)
+        LinuxVulkanDriver.resolveIcdPath(this, linuxDriverId)
             ?.let { guest.add(LinuxVulkanDriver.ENV + "=" + it) }
+        // Turnip's own debug switches, for the runtime's driver and everything on it. The file in
+        // Downloads holds the value verbatim ("sysmem", "sysmem,deck_emu"); with nothing there, an
+        // imported driver from the A710/A720/A722 legs gets "sysmem" on its own, which is what both
+        // its authors advise for those GPUs and what nothing else in the list needs.
+        tuDebug(linuxDriverId)?.let { guest.add("TU_DEBUG=$it") }
 
         val pulse = PulseAudioComponent(this)
         pulse.setContext(this)
@@ -417,6 +433,8 @@ class SessionService : Service() {
 
     companion object {
         private const val TAG = "SessionService"
+        /** Downloads file whose contents become TU_DEBUG inside the session, e.g. "sysmem". */
+        private const val TU_DEBUG_SWITCH = "Download/steamdeck-tu-debug"
         private const val CHANNEL_ID = "session"
         private const val NOTIFICATION_ID = 1001
         const val ACTION_STOP = "com.steamdeck.launcher.STOP_SESSION"
