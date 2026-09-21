@@ -34,7 +34,11 @@ fun PerformanceDialog(
     clientOverride: Boolean,
     clientCores: Set<Int>,
     gameCores: Set<Int>,
+    tuSysmem: Boolean,
+    zinkLazy: Boolean,
     onClientOverride: (Boolean) -> Unit,
+    onTuSysmem: (Boolean) -> Unit,
+    onZinkLazy: (Boolean) -> Unit,
     onClientCore: (Int, Boolean) -> Unit,
     onGameCore: (Int, Boolean) -> Unit,
     onDismiss: () -> Unit,
@@ -73,6 +77,39 @@ fun PerformanceDialog(
                 )
                 Spacer(Modifier.height(4.dp))
                 CoreGrid(cores, gameCores, enabled = true, onToggle = onGameCore)
+
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(Modifier.height(10.dp))
+
+                Text("Driver tunables", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    "Two switches for a runtime that renders slowly, tried one at a time. Both apply at the next session start.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Turnip: sysmem rendering", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "Renders without the GPU's tile memory (TU_DEBUG=sysmem). Banners-Turnip's own advice for an Adreno 8xx that looks glitchy or slow, and required on a 710/720/722 (set on its own there).",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = tuSysmem, onCheckedChange = onTuSysmem)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Zink: lazy descriptors", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "The Steam client's menus are drawn through Zink (GL on Vulkan). Lazy descriptor updates (ZINK_DESCRIPTORS=lazy) is the mode Zink recommends on drivers without descriptor buffers, and the first thing to try when the menus are slow while games are fast.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = zinkLazy, onCheckedChange = onZinkLazy)
+                }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },

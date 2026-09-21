@@ -214,6 +214,13 @@ separate because they are wanted at the same time and suit different things:
 
 Both apply at the next session start.
 
+Under the same dialog, two **driver tunables** for a runtime that renders slowly, tried one at a
+time: **Turnip: sysmem rendering** (`TU_DEBUG=sysmem`, Banners-Turnip's advice for an Adreno 8xx that
+looks glitchy or slow; a 710/720/722 gets it on its own) and **Zink: lazy descriptors**
+(`ZINK_DESCRIPTORS=lazy`, for Steam's menus, which Chromium draws through Zink — the first thing to
+try when they are slow while games are fast). The `steamdeck-tu-debug` and `steamdeck-env` files in
+Downloads still win over both.
+
 ## Compatibility tools
 
 **Compatibility tools** (main screen and drawer) installs GE-Proton or proton-cachyos — native

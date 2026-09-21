@@ -82,6 +82,8 @@ class MainActivity : ComponentActivity() {
     private var clientOverride by mutableStateOf(false)
     private var clientCores by mutableStateOf<Set<Int>>(emptySet())
     private var gameCores by mutableStateOf<Set<Int>>(emptySet())
+    private var tuSysmem by mutableStateOf(false)
+    private var zinkLazy by mutableStateOf(false)
     private var directAudio by mutableStateOf(false)
     private var mic by mutableStateOf(false)
     private var linuxRows by mutableStateOf<List<DriverRow>>(emptyList())
@@ -172,7 +174,10 @@ class MainActivity : ComponentActivity() {
                 if (showPerformance) PerformanceDialog(
                     cores = CpuCores.all.map { c -> CoreRow(c, "cpu$c" + (CpuCores.maxGhz(c)?.let { String.format(java.util.Locale.US, " · %.1f GHz", it) } ?: "")) },
                     clientOverride = clientOverride, clientCores = clientCores, gameCores = gameCores,
+                    tuSysmem = tuSysmem, zinkLazy = zinkLazy,
                     onClientOverride = { on -> SessionPrefs.setClientCpusOverride(this, on); clientOverride = on },
+                    onTuSysmem = { on -> SessionPrefs.setTuSysmem(this, on); tuSysmem = on },
+                    onZinkLazy = { on -> SessionPrefs.setZinkLazy(this, on); zinkLazy = on },
                     onClientCore = { core, on ->
                         clientCores = if (on) clientCores + core else clientCores - core
                         SessionPrefs.setClientCpus(this, CpuCores.format(clientCores))
@@ -320,6 +325,8 @@ class MainActivity : ComponentActivity() {
         clientOverride = SessionPrefs.clientCpusOverride(this)
         clientCores = CpuCores.parse(SessionPrefs.clientCpus(this)).ifEmpty { CpuCores.all.toSet() }
         gameCores = CpuCores.parse(SessionPrefs.gameCpus(this)).ifEmpty { CpuCores.all.toSet() }
+        tuSysmem = SessionPrefs.tuSysmem(this)
+        zinkLazy = SessionPrefs.zinkLazy(this)
     }
 
     private fun refreshProtons() {

@@ -88,6 +88,7 @@ class SessionService : Service() {
         val override = File(Environment.getExternalStorageDirectory(), TU_DEBUG_SWITCH)
             .takeIf { it.isFile }?.let { FileUtils.readString(it)?.trim() }
         if (!override.isNullOrEmpty()) return override
+        if (SessionPrefs.tuSysmem(this)) return "sysmem"
         if (linuxDriverId.isEmpty()) return null
         val name = LinuxVulkanDriverManager(this).getDriverName(linuxDriverId).lowercase()
         return if (name.contains("710-720") || name.contains("710_720")) "sysmem" else null
@@ -144,6 +145,10 @@ class SessionService : Service() {
         // imported driver from the A710/A720/A722 legs gets "sysmem" on its own, which is what both
         // its authors advise for those GPUs and what nothing else in the list needs.
         tuDebug(linuxDriverId)?.let { guest.add("TU_DEBUG=$it") }
+        // Zink renders the client's UI (Chromium -> ANGLE -> Zink -> Turnip). Lazy descriptors is
+        // the mode Zink recommends where the driver has no descriptor buffer, and what Ludashi ships
+        // by default for its Zink path; a switch here because on one Fold the menus run at 14 fps.
+        if (SessionPrefs.zinkLazy(this)) guest.add("ZINK_DESCRIPTORS=lazy")
         // Anything else, for a device that cannot be reached with a debugger: Downloads/steamdeck-env
         // holds KEY=VALUE lines that go into the session's environment as written, after ours, so a
         // line here wins. Zink and Turnip tunables (ZINK_DESCRIPTORS=lazy, MESA_*), gamescope's,

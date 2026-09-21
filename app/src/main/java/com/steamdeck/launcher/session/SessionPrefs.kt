@@ -105,6 +105,20 @@ object SessionPrefs {
         prefs(context).edit().putString("gameCpus", list).apply()
     }
 
+    /** Turnip's sysmem rendering (TU_DEBUG=sysmem) for the runtime's driver: bypasses GMEM tiling. */
+    fun tuSysmem(context: Context): Boolean = prefs(context).getBoolean("tuSysmem", false)
+
+    fun setTuSysmem(context: Context, on: Boolean) {
+        prefs(context).edit().putBoolean("tuSysmem", on).apply()
+    }
+
+    /** Zink's lazy descriptor mode (ZINK_DESCRIPTORS=lazy) for the client's GL-on-Vulkan UI. */
+    fun zinkLazy(context: Context): Boolean = prefs(context).getBoolean("zinkLazy", false)
+
+    fun setZinkLazy(context: Context, on: Boolean) {
+        prefs(context).edit().putBoolean("zinkLazy", on).apply()
+    }
+
     /** The Android driver the compositor loads: "" = pick by GPU, else a bundled or imported id. */
     @JvmStatic
     fun androidDriver(context: Context): String = prefs(context).getString("androidDriver", "") ?: ""
