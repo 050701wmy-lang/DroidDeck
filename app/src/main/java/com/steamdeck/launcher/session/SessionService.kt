@@ -59,6 +59,9 @@ class SessionService : Service() {
         startForeground(NOTIFICATION_ID, buildNotification())
         if (SessionState.running) return START_NOT_STICKY
         SessionState.mode = intent?.getStringExtra(EXTRA_MODE) ?: MODE_STEAM
+        // Another Steam client on the device signs ours out seconds after every login; the one that
+        // does it here runs from boot without being opened. Only the Steam session signs in.
+        if (SessionState.mode == MODE_STEAM) RivalClients.stopBeforeSession(this)
         SessionState.running = true
         SessionState.firstFrameSeen = false
         acquireLocks()

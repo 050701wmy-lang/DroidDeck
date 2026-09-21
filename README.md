@@ -11,8 +11,11 @@ One screen, one button: install the runtime, press Play, Big Picture comes up. O
 
 ## Requirements
 
-- An **arm64 Android device with an Adreno GPU**. The compositor loads a Turnip driver; Mali,
-  Xclipse and PowerVR are not supported here.
+- An **arm64 Android device with an Adreno GPU that Turnip supports** — in practice Adreno **730 or
+  newer** (Snapdragon 8 Gen 1 onward) and the **8xx** series. Mali, Xclipse and PowerVR are not
+  supported here, and neither is the low-end Adreno 710 (Snapdragon 6 Gen 1): Mesa has no entry
+  for it at all, so the session log ends at `device (chip_id = 7010000, gpu_id = 710) is
+  unsupported` before anything is drawn.
 - **Android 9 or newer**, and roughly **3 GB free** for the runtime before any games. The desktop
   and its emulator packages are another ~1.1 GB if you install them.
 - **No root required.** Root only helps if you want to copy an existing Bannerlator runtime across
