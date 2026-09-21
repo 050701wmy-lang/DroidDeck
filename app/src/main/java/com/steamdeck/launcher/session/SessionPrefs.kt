@@ -80,6 +80,31 @@ object SessionPrefs {
         prefs(context).edit().putBoolean("mic", on).apply()
     }
 
+    /**
+     * Whether the client's own core pick is overridden. When on, BL_CLIENT_CPUS is sent even when
+     * it names every core - unlike a game mask, the point here is to undo a pin Steam applies to
+     * itself, and the scheduler's default is exactly what Steam's choice takes away.
+     */
+    fun clientCpusOverride(context: Context): Boolean = prefs(context).getBoolean("clientCpusOverride", false)
+
+    fun setClientCpusOverride(context: Context, on: Boolean) {
+        prefs(context).edit().putBoolean("clientCpusOverride", on).apply()
+    }
+
+    /** Comma-separated core list for the client (taskset -c syntax); "" = every core. */
+    fun clientCpus(context: Context): String = prefs(context).getString("clientCpus", "") ?: ""
+
+    fun setClientCpus(context: Context, list: String) {
+        prefs(context).edit().putString("clientCpus", list).apply()
+    }
+
+    /** Comma-separated core list for games (taskset -c syntax); "" = every core = nothing sent. */
+    fun gameCpus(context: Context): String = prefs(context).getString("gameCpus", "") ?: ""
+
+    fun setGameCpus(context: Context, list: String) {
+        prefs(context).edit().putString("gameCpus", list).apply()
+    }
+
     /** The Android driver the compositor loads: "" = pick by GPU, else a bundled or imported id. */
     @JvmStatic
     fun androidDriver(context: Context): String = prefs(context).getString("androidDriver", "") ?: ""

@@ -196,6 +196,24 @@ staged into the runtime at every launch like the session scripts, so a fix reach
 runtime without re-hosting it. Proven in Bannerlator's Linux session with voice in Steam's own
 tester; ⚠️ not yet exercised in this app.
 
+## Cores
+
+**Performance** on the main screen carries the two core masks Bannerlator's Linux session has, kept
+separate because they are wanted at the same time and suit different things:
+
+- **Steam client cores** — Steam pins its own interface renderer to a subset of cores it chooses (on
+  one device 5 of 8, leaving out both little cores and the fastest), which is reasonable while a
+  game runs and makes Big Picture sluggish when the client is all there is. Turning the override
+  on pins the client, its UI helper and gamescope to the cores you tick, re-applied every few
+  seconds because the UI keeps spawning helpers that inherit Steam's choice. Every core ticked is
+  the usual fix — and, unlike the game mask, it *is* sent when it names every core, since undoing
+  Steam's pin is the whole point.
+- **Game cores** — applied by the Proton wrapper, which execs the game through `taskset` so every
+  thread inherits the mask from its first instruction. Leaving every core ticked sends nothing;
+  untick the small cores to keep a heavy game off them.
+
+Both apply at the next session start.
+
 ## Compatibility tools
 
 **Compatibility tools** (main screen and drawer) installs GE-Proton or proton-cachyos — native

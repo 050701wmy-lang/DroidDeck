@@ -33,7 +33,10 @@ import com.steamdeck.launcher.session.ProtonExtras
 import com.steamdeck.launcher.session.SessionPrefs
 import com.steamdeck.launcher.ui.ProtonDialog
 import com.steamdeck.launcher.ui.ProtonRow
+import com.steamdeck.launcher.core.CpuCores
 import com.steamdeck.launcher.ui.AudioDialog
+import com.steamdeck.launcher.ui.CoreRow
+import com.steamdeck.launcher.ui.PerformanceDialog
 import com.steamdeck.launcher.ui.DriverDialog
 import com.steamdeck.launcher.ui.DriverRow
 import com.steamdeck.launcher.ui.ConfirmDialog
@@ -75,6 +78,10 @@ class MainActivity : ComponentActivity() {
     private var protonRows by mutableStateOf<List<ProtonRow>>(emptyList())
     private var showDrivers by mutableStateOf(false)
     private var showAudio by mutableStateOf(false)
+    private var showPerformance by mutableStateOf(false)
+    private var clientOverride by mutableStateOf(false)
+    private var clientCores by mutableStateOf<Set<Int>>(emptySet())
+    private var gameCores by mutableStateOf<Set<Int>>(emptySet())
     private var directAudio by mutableStateOf(false)
     private var mic by mutableStateOf(false)
     private var linuxRows by mutableStateOf<List<DriverRow>>(emptyList())
@@ -121,6 +128,7 @@ class MainActivity : ComponentActivity() {
                     onProtons = { refreshProtons(); showProtons = true },
                     onDrivers = { refreshDrivers(); showDrivers = true },
                     onAudio = { directAudio = SessionPrefs.directAudio(this); mic = SessionPrefs.micEnabled(this); showAudio = true },
+                    onPerformance = { refreshCores(); showPerformance = true },
                     onCredits = { showCredits = true },
                 )
                 if (showApps) DesktopAppsDialog(
@@ -160,6 +168,20 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     onDismiss = { showAudio = false },
+                )
+                if (showPerformance) PerformanceDialog(
+                    cores = CpuCores.all.map { c -> CoreRow(c, "cpu$c" + (CpuCores.maxGhz(c)?.let { String.format(java.util.Locale.US, " · %.1f GHz", it) } ?: "")) },
+                    clientOverride = clientOverride, clientCores = clientCores, gameCores = gameCores,
+                    onClientOverride = { on -> SessionPrefs.setClientCpusOverride(this, on); clientOverride = on },
+                    onClientCore = { core, on ->
+                        clientCores = if (on) clientCores + core else clientCores - core
+                        SessionPrefs.setClientCpus(this, CpuCores.format(clientCores))
+                    },
+                    onGameCore = { core, on ->
+                        gameCores = if (on) gameCores + core else gameCores - core
+                        SessionPrefs.setGameCpus(this, CpuCores.format(gameCores))
+                    },
+                    onDismiss = { showPerformance = false },
                 )
                 if (showRemove) ConfirmDialog(
                     title = "Remove Linux runtime",
@@ -291,6 +313,13 @@ class MainActivity : ComponentActivity() {
             ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
     } catch (e: Exception) {
         null
+    }
+
+    /** The two masks as the dialog shows them; an empty stored list shows as every core ticked. */
+    private fun refreshCores() {
+        clientOverride = SessionPrefs.clientCpusOverride(this)
+        clientCores = CpuCores.parse(SessionPrefs.clientCpus(this)).ifEmpty { CpuCores.all.toSet() }
+        gameCores = CpuCores.parse(SessionPrefs.gameCpus(this)).ifEmpty { CpuCores.all.toSet() }
     }
 
     private fun refreshProtons() {

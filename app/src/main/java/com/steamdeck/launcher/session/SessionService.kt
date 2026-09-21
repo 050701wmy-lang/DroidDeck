@@ -21,6 +21,7 @@ import com.steamdeck.launcher.R
 import com.steamdeck.launcher.SessionActivity
 import com.steamdeck.launcher.audio.DirectAudioRelayComponent
 import com.steamdeck.launcher.audio.PulseAudioComponent
+import com.steamdeck.launcher.core.CpuCores
 import com.steamdeck.launcher.core.EnvVars
 import com.steamdeck.launcher.core.EnvironmentComponent
 import com.steamdeck.launcher.core.FileUtils
@@ -134,6 +135,17 @@ class SessionService : Service() {
         // imported driver from the A710/A720/A722 legs gets "sysmem" on its own, which is what both
         // its authors advise for those GPUs and what nothing else in the list needs.
         tuDebug(linuxDriverId)?.let { guest.add("TU_DEBUG=$it") }
+        // Core masks, Bannerlator's two (cfca3912). The client's is sent whenever the override is
+        // on, even naming every core: it exists to undo the pin Steam applies to its own interface
+        // renderer, and the scheduler's default is exactly what that pin takes away. A game's is
+        // sent only when it is a real restriction - a game has no pin of its own to undo.
+        if (SessionState.mode == MODE_STEAM) {
+            if (SessionPrefs.clientCpusOverride(this)) {
+                guest.add("BL_CLIENT_CPUS=" + CpuCores.listOrAll(SessionPrefs.clientCpus(this)))
+            }
+            CpuCores.restrictionOrEmpty(SessionPrefs.gameCpus(this))
+                .takeIf { it.isNotEmpty() }?.let { guest.add("BL_GAME_CPUS=$it") }
+        }
 
         // PulseAudio always: the client is a native Linux program and has no other way to make a
         // sound - its menus, its music and its voice chat all go through here. DirectAudio is not
