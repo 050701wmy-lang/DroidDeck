@@ -172,7 +172,9 @@ jobs:
           for so in *.so; do
             for need in $(readelf -d "$so" | sed -n 's/.*NEEDED.*\[\(.*\)\]/\1/p'); do
               [ -f "$need" ] && continue
-              case " $SYSTEM " in *" $need "*) continue ;; esac
+              # $SYSTEM spans lines; unquoted echo folds its newlines to spaces, or the last
+              # name on each line could never match (libaaudio.so did not, for the relay helper).
+              case " $(echo $SYSTEM) " in *" $need "*) continue ;; esac
               echo "::error::$so needs $need, which is neither in the apk nor a platform library"
               fail=1
             done
