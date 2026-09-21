@@ -177,6 +177,24 @@ installs a requested build when the next session starts (several hundred MB), pa
 pressure-vessel like Valve's, and it then appears in Steam under Properties → Compatibility for
 any game. The dialog queues or cancels a request and removes an installed build.
 
+## Graphics drivers
+
+Two drivers, two lists, because a zip for one cannot serve the other — the same split Bannerlator's
+Contents screen makes:
+
+- **Linux runtime driver** — the glibc Turnip everything *inside* the runtime renders on: the Steam
+  client's UI, every game it launches, and in desktop mode every program on the desktop. Import a
+  "-Linux" Turnip zip from Banners-Turnip; a plain Android or "-Wayland" Turnip is refused with the
+  reason, since a Linux process cannot load a bionic library. The choice is per mode, so Steam and
+  the desktop can run different builds, and it takes effect at the next session start. Nothing in
+  the runtime is modified: the session is handed the imported driver's ICD manifest and points the
+  Vulkan loader at it, and the runtime's own Turnip is what a removed or unreadable import falls
+  back to. This is how a driver fix reaches an installed runtime without a ~790 MB re-download.
+- **Display driver (Android)** — the bionic Turnip the app's compositor puts the frame on the panel
+  with, the last step of every session. *Auto* picks one of the two bundled builds by GPU; an
+  imported AdrenoTools zip can be chosen instead. The compositor loads its driver once per app
+  process, so this one applies after the app is fully closed and started again.
+
 ## Frame generation
 
 Extra frames are generated between the real ones on the way to the screen — inside the app's

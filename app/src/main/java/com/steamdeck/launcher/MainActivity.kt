@@ -3,18 +3,24 @@ package com.steamdeck.launcher
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.OpenableColumns
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.steamdeck.launcher.core.FileUtils
 import com.steamdeck.launcher.gpu.FrameGen
+import com.steamdeck.launcher.gpu.LinuxVulkanDriver
+import com.steamdeck.launcher.gpu.LinuxVulkanDriverManager
+import com.steamdeck.launcher.gpu.TurnipDriver
 import com.steamdeck.launcher.gpu.LsfgNative
 import com.steamdeck.launcher.runtime.LinuxRuntime
 import com.steamdeck.launcher.runtime.DesktopCatalog
@@ -24,8 +30,11 @@ import com.steamdeck.launcher.ui.DesktopAppsDialog
 import com.steamdeck.launcher.ui.PackageRow
 import com.steamdeck.launcher.session.OfflineMode
 import com.steamdeck.launcher.session.ProtonExtras
+import com.steamdeck.launcher.session.SessionPrefs
 import com.steamdeck.launcher.ui.ProtonDialog
 import com.steamdeck.launcher.ui.ProtonRow
+import com.steamdeck.launcher.ui.DriverDialog
+import com.steamdeck.launcher.ui.DriverRow
 import com.steamdeck.launcher.ui.ConfirmDialog
 import com.steamdeck.launcher.ui.CreditsDialog
 import com.steamdeck.launcher.ui.FrameGenDialog
@@ -63,6 +72,21 @@ class MainActivity : ComponentActivity() {
     private var offlineAccount by mutableStateOf<String?>(null)
     private var offline by mutableStateOf(false)
     private var protonRows by mutableStateOf<List<ProtonRow>>(emptyList())
+    private var showDrivers by mutableStateOf(false)
+    private var linuxRows by mutableStateOf<List<DriverRow>>(emptyList())
+    private var linuxSteam by mutableStateOf("")
+    private var linuxDesktop by mutableStateOf("")
+    private var androidRows by mutableStateOf<List<DriverRow>>(emptyList())
+    private var androidSelected by mutableStateOf("")
+
+    // The system file picker, once per driver list: the two lists validate differently, and the
+    // reason a zip is refused names the list it belongs in.
+    private val pickLinuxDriver = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) importDriver(uri, linux = true)
+    }
+    private val pickAndroidDriver = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) importDriver(uri, linux = false)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -91,6 +115,7 @@ class MainActivity : ComponentActivity() {
                     onRuntime = { onRuntimeButton() },
                     onFrameGen = { showFrameGen = true },
                     onProtons = { refreshProtons(); showProtons = true },
+                    onDrivers = { refreshDrivers(); showDrivers = true },
                     onCredits = { showCredits = true },
                 )
                 if (showApps) DesktopAppsDialog(
@@ -105,6 +130,17 @@ class MainActivity : ComponentActivity() {
                     onCancel = { id -> ProtonExtras.tools.first { it.id == id }.let { ProtonExtras.unqueue(this, it) }; refreshProtons() },
                     onRemove = { id -> ProtonExtras.tools.first { it.id == id }.let { ProtonExtras.remove(this, it) }; refreshProtons() },
                     onDismiss = { showProtons = false },
+                )
+                if (showDrivers) DriverDialog(
+                    linuxRows = linuxRows, linuxSteam = linuxSteam, linuxDesktop = linuxDesktop,
+                    androidRows = androidRows, androidSelected = androidSelected,
+                    onSelectLinux = { mode, id -> SessionPrefs.setLinuxDriver(this, mode, id); refreshDrivers() },
+                    onImportLinux = { pickLinuxDriver.launch(ZIP_TYPES) },
+                    onRemoveLinux = { id -> LinuxVulkanDriverManager(this).removeDriver(id); refreshDrivers() },
+                    onSelectAndroid = { id -> SessionPrefs.setAndroidDriver(this, id); refreshDrivers() },
+                    onImportAndroid = { pickAndroidDriver.launch(ZIP_TYPES) },
+                    onRemoveAndroid = { id -> TurnipDriver(this).remove(id); refreshDrivers() },
+                    onDismiss = { showDrivers = false },
                 )
                 if (showRemove) ConfirmDialog(
                     title = "Remove Linux runtime",
@@ -174,6 +210,70 @@ class MainActivity : ComponentActivity() {
         }, "install-pkg").start()
     }
 
+    /** Both driver lists as the dialog shows them, re-read from disk so an import or removal shows at once. */
+    private fun refreshDrivers() {
+        val lm = LinuxVulkanDriverManager(this)
+        linuxRows = LinuxVulkanDriver.optionValues(this).map { id ->
+            if (id.isEmpty()) DriverRow("", "Runtime default", "the Turnip built into the runtime", false)
+            else DriverRow(
+                id, lm.getDriverName(id),
+                listOfNotNull(
+                    lm.getDriverVersion(id).takeIf { it.isNotEmpty() },
+                    lm.getMinGlibc(id).takeIf { it.isNotEmpty() }?.let { "glibc $it+" },
+                ).joinToString(" · ").ifEmpty { "imported" },
+                true,
+            )
+        }
+        linuxSteam = SessionPrefs.linuxDriver(this, SessionService.MODE_STEAM)
+        linuxDesktop = SessionPrefs.linuxDriver(this, SessionService.MODE_DESKTOP)
+        val td = TurnipDriver(this)
+        val auto = td.autoId()
+        androidRows = buildList {
+            add(DriverRow(
+                TurnipDriver.AUTO, "Auto — picked by GPU",
+                if (auto == "system") "system Vulkan: no bundled build for this GPU" else "${td.displayName(auto)} (bundled)",
+                false,
+            ))
+            for (id in TurnipDriver.BUNDLED) add(DriverRow(id, td.displayName(id), "bundled" + td.driverVersion(id).let { if (it.isEmpty()) "" else " · $it" }, false))
+            for (id in td.enumerateImported()) add(DriverRow(id, td.displayName(id), "imported" + td.driverVersion(id).let { if (it.isEmpty()) "" else " · $it" }, true))
+        }
+        androidSelected = SessionPrefs.androidDriver(this)
+    }
+
+    /**
+     * Import off the main thread — a driver zip is a few MB and the glibc check reads the whole
+     * library — then say what happened. A refusal's message is the user-facing reason.
+     */
+    private fun importDriver(uri: Uri, linux: Boolean) {
+        val name = displayNameOf(uri)
+        Thread({
+            val problem = try {
+                if (linux) LinuxVulkanDriverManager(this).installDriver(uri, name)
+                else TurnipDriver(this).installFromZip(uri, name)
+                null
+            } catch (e: IllegalArgumentException) {
+                e.message
+            } catch (e: Exception) {
+                Log.w(TAG, "driver import", e)
+                "Import failed: ${e.message}"
+            }
+            ui.post {
+                android.widget.Toast.makeText(
+                    this, problem ?: "Imported ${name ?: "driver"}",
+                    if (problem != null) android.widget.Toast.LENGTH_LONG else android.widget.Toast.LENGTH_SHORT,
+                ).show()
+                refreshDrivers()
+            }
+        }, "import-driver").start()
+    }
+
+    private fun displayNameOf(uri: Uri): String? = try {
+        contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+    } catch (e: Exception) {
+        null
+    }
+
     private fun refreshProtons() {
         protonRows = ProtonExtras.tools.map { ProtonRow(it.id, it.name, ProtonExtras.installed(this, it), ProtonExtras.queued(this, it)) }
     }
@@ -227,5 +327,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
+        /** What the picker offers for a driver zip; some file apps label a zip as a plain stream. */
+        private val ZIP_TYPES = arrayOf("application/zip", "application/octet-stream")
     }
 }

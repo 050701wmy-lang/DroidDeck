@@ -1,5 +1,7 @@
 package com.steamdeck.launcher.session
 
+import com.steamdeck.launcher.gpu.LinuxVulkanDriver
+
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -106,6 +108,11 @@ class SessionService : Service() {
         guest.add("GALLIUM_DRIVER=zink")
         guest.add("LIBGL_KOPPER_DRI2=true")
         LinuxRuntime.vulkanIcd(this)?.let { guest.add("VK_ICD_FILENAMES=" + it.path) }
+        // An imported glibc Turnip for this mode, when the user chose one: the session script checks
+        // the manifest and its library from inside and points the loader at it with VK_DRIVER_FILES,
+        // so the runtime's own driver above stays untouched and is what a bad import falls back to.
+        LinuxVulkanDriver.resolveIcdPath(this, SessionPrefs.linuxDriver(this, SessionState.mode))
+            ?.let { guest.add(LinuxVulkanDriver.ENV + "=" + it) }
 
         val pulse = PulseAudioComponent(this)
         pulse.setContext(this)

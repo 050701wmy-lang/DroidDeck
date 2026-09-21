@@ -50,4 +50,25 @@ object SessionPrefs {
     fun setOscMode(context: Context, mode: String) {
         prefs(context).edit().putString("osc", mode).apply()
     }
+
+    /**
+     * The imported glibc Turnip a mode draws with inside the runtime, keyed by
+     * SessionService.MODE_STEAM / MODE_DESKTOP so Steam and the desktop can differ; "" = the
+     * driver built into the runtime. Resolved by LinuxVulkanDriver at session start.
+     */
+    fun linuxDriver(context: Context, mode: String): String =
+        prefs(context).getString("linuxDriver.$mode", "") ?: ""
+
+    fun setLinuxDriver(context: Context, mode: String, id: String) {
+        prefs(context).edit().putString("linuxDriver.$mode", id).apply()
+    }
+
+    /** The Android driver the compositor loads: "" = pick by GPU, else a bundled or imported id. */
+    @JvmStatic
+    fun androidDriver(context: Context): String = prefs(context).getString("androidDriver", "") ?: ""
+
+    @JvmStatic
+    fun setAndroidDriver(context: Context, id: String) {
+        prefs(context).edit().putString("androidDriver", id).apply()
+    }
 }

@@ -66,6 +66,7 @@ fun MainScreen(
     onRuntime: () -> Unit,
     onFrameGen: () -> Unit,
     onProtons: () -> Unit,
+    onDrivers: () -> Unit,
     onOffline: () -> Unit,
     onCredits: () -> Unit,
 ) {
@@ -177,6 +178,10 @@ fun MainScreen(
                 onClick = onProtons,
                 modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight + 5.dp * k),
             ) { Text("Compatibility tools", fontSize = 13.sp * k) }
+            OutlinedButton(
+                onClick = onDrivers,
+                modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight + 5.dp * k),
+            ) { Text("Graphics drivers", fontSize = 13.sp * k) }
             Spacer(Modifier.height(10.dp * k))
             Text(
                 "by The412Banner and maxjivi05 · credits",
