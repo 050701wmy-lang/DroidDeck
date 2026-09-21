@@ -75,6 +75,15 @@ class SessionService : Service() {
         return START_NOT_STICKY
     }
 
+    private fun extraEnv(): List<String> {
+        val file = File(Environment.getExternalStorageDirectory(), ENV_SWITCH).takeIf { it.isFile } ?: return emptyList()
+        val lines = FileUtils.readString(file)?.lines().orEmpty()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !it.startsWith("#") && it.contains('=') && !it.startsWith("=") }
+        if (lines.isNotEmpty()) Log.i(TAG, "extra environment from $ENV_SWITCH: $lines")
+        return lines
+    }
+
     private fun tuDebug(linuxDriverId: String): String? {
         val override = File(Environment.getExternalStorageDirectory(), TU_DEBUG_SWITCH)
             .takeIf { it.isFile }?.let { FileUtils.readString(it)?.trim() }
@@ -135,6 +144,11 @@ class SessionService : Service() {
         // imported driver from the A710/A720/A722 legs gets "sysmem" on its own, which is what both
         // its authors advise for those GPUs and what nothing else in the list needs.
         tuDebug(linuxDriverId)?.let { guest.add("TU_DEBUG=$it") }
+        // Anything else, for a device that cannot be reached with a debugger: Downloads/steamdeck-env
+        // holds KEY=VALUE lines that go into the session's environment as written, after ours, so a
+        // line here wins. Zink and Turnip tunables (ZINK_DESCRIPTORS=lazy, MESA_*), gamescope's,
+        // the client's - whatever the experiment needs, without a build per attempt.
+        extraEnv().forEach { guest.add(it) }
         // Core masks, Bannerlator's two (cfca3912). The client's is sent whenever the override is
         // on, even naming every core: it exists to undo the pin Steam applies to its own interface
         // renderer, and the scheduler's default is exactly what that pin takes away. A game's is
@@ -480,6 +494,8 @@ class SessionService : Service() {
         private const val TAG = "SessionService"
         /** Downloads file whose contents become TU_DEBUG inside the session, e.g. "sysmem". */
         private const val TU_DEBUG_SWITCH = "Download/steamdeck-tu-debug"
+        /** Downloads file of KEY=VALUE lines added to the session environment verbatim. */
+        private const val ENV_SWITCH = "Download/steamdeck-env"
         private const val CHANNEL_ID = "session"
         private const val NOTIFICATION_ID = 1001
         const val ACTION_STOP = "com.steamdeck.launcher.STOP_SESSION"

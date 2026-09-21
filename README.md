@@ -272,6 +272,7 @@ Files in `/sdcard/Download`, for a device that cannot be reached with a debugger
 | `steamdeck-driver` | `a7xx`, `a8xx` or `system` — overrides the Turnip build the compositor loads |
 | `steamdeck-no-hud` | Hides the top-right performance line (fps, and `base → generated` while frame generation runs) |
 | `steamdeck-osc` | `always` or `never` — pins the on-screen controls instead of following what is attached |
+| `steamdeck-env` | `KEY=VALUE` lines added to the session's environment as written, after the app's own — Zink and Turnip tunables (`ZINK_DESCRIPTORS=lazy`, `MESA_*`), gamescope's, the client's; `#` comments allowed |
 | `steamdeck-tu-debug` | Turnip's `TU_DEBUG` for the runtime's driver, verbatim (`sysmem`, `sysmem,deck_emu`). Without it, an imported A710/A720/A722 driver gets `sysmem` on its own |
 
 Session logs land in `/sdcard/Download/SteamDeck/`, one file per session, and are the first
