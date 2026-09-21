@@ -30,6 +30,8 @@ public class PulseAudioComponent extends EnvironmentComponent {
     private static final String TAG = "PulseAudio";
     /** Where the guest reaches the daemon; the session exports PULSE_SERVER=unix:<this>. */
     public static final String SOCKET_NAME = "PS0";
+    /** Identifies the bundled pulseaudio.tzst; a change here re-unpacks it over what a device has. */
+    private static final String BUNDLE_STAMP = "2026-09-21-pa13-pipe-modules";
 
     private final File workingDir;
     /**
@@ -63,11 +65,25 @@ public class PulseAudioComponent extends EnvironmentComponent {
             workingDir.mkdirs();
             FileUtils.chmod(workingDir, 0771);
         }
-        // The loadable modules (module-aaudio-sink and the native protocol) ride in the apk; the
-        // daemon and its libraries come from the native library directory, the one place an app
-        // may execute a file from.
-        if (!new File(workingDir, "modules/arm64/module-aaudio-sink.so").isFile()) {
-            TarZst.extractAsset(context, "pulseaudio.tzst", workingDir);
+        // The loadable modules (module-aaudio-sink, the native protocol, the pipe modules) ride in
+        // the apk; the daemon and its libraries come from the native library directory, the one
+        // place an app may execute a file from. The bundle is unpacked once per BUNDLE_STAMP, not
+        // once ever: an installed app kept the modules it unpacked on its first run, so a bundle
+        // fixed in a later build never reached the device - which is how a 17.0 glibc build of
+        // module-pipe-source sat beside the 13.0 daemon, failed to dlopen, and the microphone
+        // never appeared. Bump the stamp whenever pulseaudio.tzst changes.
+        File modulesDir = new File(workingDir, "modules");
+        File stamp = new File(modulesDir, ".bundle");
+        String have = FileUtils.readString(stamp);
+        if (!new File(modulesDir, "arm64/module-aaudio-sink.so").isFile()
+                || have == null || !BUNDLE_STAMP.equals(have.trim())) {
+            Log.i(TAG, "unpacking pulseaudio.tzst (" + BUNDLE_STAMP + "; had " + have + ")");
+            FileUtils.delete(modulesDir);
+            if (TarZst.extractAsset(context, "pulseaudio.tzst", workingDir)) {
+                FileUtils.writeString(stamp, BUNDLE_STAMP);
+            } else {
+                Log.e(TAG, "pulseaudio.tzst did not unpack");
+            }
         }
         copyFromLibraryDir();
 
