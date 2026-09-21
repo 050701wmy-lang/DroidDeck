@@ -17,6 +17,10 @@
          itself with the phone via boot receivers and signs this client out seconds after every
          login; a normal permission, and it cannot touch anything in the foreground. -->
     <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
+    <!-- The microphone for the Linux session, only when the user turns it on: the DirectAudio
+         relay helper opens the input stream under this uid, and PulseAudio exposes it to the
+         Steam client as DirectAudioMic. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <uses-feature android:name="android.hardware.vulkan.version" android:version="0x401000" android:required="true" />
     <uses-feature android:name="android.hardware.gamepad" android:required="false" />

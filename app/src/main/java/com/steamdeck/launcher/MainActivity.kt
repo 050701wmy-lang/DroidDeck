@@ -33,6 +33,7 @@ import com.steamdeck.launcher.session.ProtonExtras
 import com.steamdeck.launcher.session.SessionPrefs
 import com.steamdeck.launcher.ui.ProtonDialog
 import com.steamdeck.launcher.ui.ProtonRow
+import com.steamdeck.launcher.ui.AudioDialog
 import com.steamdeck.launcher.ui.DriverDialog
 import com.steamdeck.launcher.ui.DriverRow
 import com.steamdeck.launcher.ui.ConfirmDialog
@@ -73,6 +74,9 @@ class MainActivity : ComponentActivity() {
     private var offline by mutableStateOf(false)
     private var protonRows by mutableStateOf<List<ProtonRow>>(emptyList())
     private var showDrivers by mutableStateOf(false)
+    private var showAudio by mutableStateOf(false)
+    private var directAudio by mutableStateOf(false)
+    private var mic by mutableStateOf(false)
     private var linuxRows by mutableStateOf<List<DriverRow>>(emptyList())
     private var linuxSteam by mutableStateOf("")
     private var linuxDesktop by mutableStateOf("")
@@ -116,6 +120,7 @@ class MainActivity : ComponentActivity() {
                     onFrameGen = { showFrameGen = true },
                     onProtons = { refreshProtons(); showProtons = true },
                     onDrivers = { refreshDrivers(); showDrivers = true },
+                    onAudio = { directAudio = SessionPrefs.directAudio(this); mic = SessionPrefs.micEnabled(this); showAudio = true },
                     onCredits = { showCredits = true },
                 )
                 if (showApps) DesktopAppsDialog(
@@ -141,6 +146,20 @@ class MainActivity : ComponentActivity() {
                     onImportAndroid = { pickAndroidDriver.launch(ZIP_TYPES) },
                     onRemoveAndroid = { id -> TurnipDriver(this).remove(id); refreshDrivers() },
                     onDismiss = { showDrivers = false },
+                )
+                if (showAudio) AudioDialog(
+                    directAudio = directAudio, mic = mic,
+                    onDirectAudio = { on -> SessionPrefs.setDirectAudio(this, on); directAudio = on },
+                    onMic = { on ->
+                        SessionPrefs.setMicEnabled(this, on)
+                        mic = on
+                        // The session checks the grant itself at start; asking here means the
+                        // answer is in before the first session that wants it.
+                        if (on && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 2)
+                        }
+                    },
+                    onDismiss = { showAudio = false },
                 )
                 if (showRemove) ConfirmDialog(
                     title = "Remove Linux runtime",

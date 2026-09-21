@@ -32,10 +32,23 @@ public class PulseAudioComponent extends EnvironmentComponent {
     public static final String SOCKET_NAME = "PS0";
 
     private final File workingDir;
+    /**
+     * A named pipe carrying microphone audio, or null for no microphone. The bundle ships
+     * module-aaudio-sink but no matching source, and the daemon runs where Android permits
+     * recording - so pointing module-pipe-source at a pipe the DirectAudio relay helper writes
+     * turns that one stream into a source the client can see, named DirectAudioMic.
+     */
+    private final String micFifoPath;
     private int pid = -1;
 
     public PulseAudioComponent(Context context) {
+        this(context, null);
+    }
+
+    /** As above, with a microphone fed from {@code micFifoPath}; null for output only. */
+    public PulseAudioComponent(Context context, String micFifoPath) {
         this.workingDir = new File(context.getFilesDir(), "pulseaudio");
+        this.micFifoPath = micFifoPath;
     }
 
     public File socket() {
@@ -60,13 +73,32 @@ public class PulseAudioComponent extends EnvironmentComponent {
 
         //noinspection ResultOfMethodCallIgnored
         socket().delete();
-        FileUtils.writeString(new File(workingDir, "default.pa"), String.join("\n",
-                "load-module module-native-protocol-unix auth-anonymous=1 auth-cookie-enabled=0 socket=\""
-                        + socket().getAbsolutePath() + "\"",
-                // volume=1.0 is not optional: with no volume argument module-aaudio-sink defaults
-                // the sink to 0% and the session plays silence.
-                "load-module module-aaudio-sink performance_mode=1 adaptive=1 volume=1.0",
-                "set-default-sink AAudioSink"));
+        // module-pipe-source creates the pipe with mkfifo and fails outright if one is already
+        // there - EEXIST, reported as "Unknown error 17" - and the module then does not load at
+        // all, so the source never appears and the client reports no microphone. Ours lives in the
+        // app's files directory and survives a session, so after the very first run the path would
+        // always be occupied. Removed here, before the daemon reads this config: the daemon makes
+        // it, and the relay helper starts afterwards and is content to find one already made.
+        if (micFifoPath != null && !micFifoPath.isEmpty()) {
+            //noinspection ResultOfMethodCallIgnored
+            new File(micFifoPath).delete();
+        }
+        ArrayList<String> config = new ArrayList<>();
+        config.add("load-module module-native-protocol-unix auth-anonymous=1 auth-cookie-enabled=0 socket=\""
+                + socket().getAbsolutePath() + "\"");
+        // volume=1.0 is not optional: with no volume argument module-aaudio-sink defaults
+        // the sink to 0% and the session plays silence.
+        config.add("load-module module-aaudio-sink performance_mode=1 adaptive=1 volume=1.0");
+        config.add("set-default-sink AAudioSink");
+        if (micFifoPath != null && !micFifoPath.isEmpty()) {
+            // The format is the helper's, fixed at s16le/48000/mono: it resamples when the device
+            // grants another input rate, so the daemon is never told a rate the bytes are not.
+            // A pipe has no clock, so nothing here corrects drift - acceptable for voice.
+            config.add("load-module module-pipe-source source_name=DirectAudioMic file=\""
+                    + micFifoPath + "\" format=s16le rate=48000 channels=1");
+            config.add("set-default-source DirectAudioMic");
+        }
+        FileUtils.writeString(new File(workingDir, "default.pa"), String.join("\n", config));
 
         File modules = new File(workingDir, "modules/arm64");
         ArrayList<String> env = new ArrayList<>();

@@ -63,6 +63,23 @@ object SessionPrefs {
         prefs(context).edit().putString("linuxDriver.$mode", id).apply()
     }
 
+    /**
+     * DirectAudio for the games the client launches: Wine's audio driver inside them replaced by
+     * ours, which talks to a helper on this side. The client itself keeps PulseAudio either way.
+     */
+    fun directAudio(context: Context): Boolean = prefs(context).getBoolean("directAudio", false)
+
+    fun setDirectAudio(context: Context, on: Boolean) {
+        prefs(context).edit().putBoolean("directAudio", on).apply()
+    }
+
+    /** The microphone, its own opt-in: the helper opens an input stream only when asked. */
+    fun micEnabled(context: Context): Boolean = prefs(context).getBoolean("mic", false)
+
+    fun setMicEnabled(context: Context, on: Boolean) {
+        prefs(context).edit().putBoolean("mic", on).apply()
+    }
+
     /** The Android driver the compositor loads: "" = pick by GPU, else a bundled or imported id. */
     @JvmStatic
     fun androidDriver(context: Context): String = prefs(context).getString("androidDriver", "") ?: ""

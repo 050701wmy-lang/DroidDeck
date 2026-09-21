@@ -10,6 +10,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Environment
@@ -18,6 +19,7 @@ import android.os.PowerManager
 import android.util.Log
 import com.steamdeck.launcher.R
 import com.steamdeck.launcher.SessionActivity
+import com.steamdeck.launcher.audio.DirectAudioRelayComponent
 import com.steamdeck.launcher.audio.PulseAudioComponent
 import com.steamdeck.launcher.core.EnvVars
 import com.steamdeck.launcher.core.EnvironmentComponent
@@ -133,10 +135,41 @@ class SessionService : Service() {
         // its authors advise for those GPUs and what nothing else in the list needs.
         tuDebug(linuxDriverId)?.let { guest.add("TU_DEBUG=$it") }
 
-        val pulse = PulseAudioComponent(this)
+        // PulseAudio always: the client is a native Linux program and has no other way to make a
+        // sound - its menus, its music and its voice chat all go through here. DirectAudio is not
+        // an alternative to it on this path: it replaces the audio driver INSIDE Wine, so it
+        // changes what games do and leaves the client alone. The microphone is its own opt-in on
+        // top, and the helper only opens an input stream when asked - so a user who wants game
+        // sound but no recording gets exactly that, and Android's recording indicator stays off.
+        val wantsDirectAudio = SessionState.mode == MODE_STEAM && SessionPrefs.directAudio(this)
+        val wantsMic = SessionPrefs.micEnabled(this) &&
+            checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        // Both paths sit under the app's files directory, which the session binds at its own path,
+        // so the same string is valid on both sides and nothing has to be translated.
+        val audioDir = File(filesDir, "directaudio").apply { mkdirs() }
+        val relaySocket = File(audioDir, "relay.sock")
+        val micFifo = if (wantsMic) File(audioDir, "mic.fifo") else null
+
+        val pulse = PulseAudioComponent(this, micFifo?.absolutePath)
         pulse.setContext(this)
         guest.add("PULSE_SERVER=unix:" + pulse.socket().absolutePath)
         components.add(pulse)
+        if (wantsDirectAudio || wantsMic) {
+            // After the daemon in the list, so it can wait for the pipe the daemon makes.
+            val relay = DirectAudioRelayComponent(relaySocket, micFifo)
+            relay.setContext(this)
+            components.add(relay)
+        }
+        if (wantsDirectAudio) {
+            // Read by the Proton wrappers, which point Wine at the driver and name it in the
+            // prefix. Absent, they take an early return and the game uses Proton's own audio - so
+            // this variable is the whole of the selection.
+            guest.add("BL_DIRECTAUDIO=/" + SessionFiles.DIRECTAUDIO_DIR)
+            guest.add("BANNER_AUDIO_DIRECT_RELAY=" + relaySocket.absolutePath)
+        }
+        Log.i(TAG, "audio: PulseAudio" + (if (wantsDirectAudio) " + DirectAudio for games" else "")
+            + (if (wantsMic) " + microphone" else "") +
+            (if (SessionPrefs.micEnabled(this) && !wantsMic) " (microphone wanted but RECORD_AUDIO not granted)" else ""))
 
         guest.add("BL_WIDTH=" + size.first)
         guest.add("BL_HEIGHT=" + size.second)

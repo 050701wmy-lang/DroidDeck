@@ -11,6 +11,8 @@ import java.io.File
 object SessionFiles {
     private const val TAG = "SessionFiles"
     private const val NO_PAD_SWITCH = "Download/steamdeck-no-pad"
+    /** Where the DirectAudio driver lives inside the runtime; the wrappers get it as BL_DIRECTAUDIO. */
+    const val DIRECTAUDIO_DIR = "usr/local/lib/directaudio"
 
     /**
      * The libraries and scripts the session runs, refreshed from the apk at every launch.
@@ -58,6 +60,31 @@ object SessionFiles {
                 if (!installed) staged.delete()
             }
             if (!installed) Log.e(TAG, "$relative NOT staged")
+        }
+        // The DirectAudio driver for games under Proton: the glibc build of winedirectaudio, which
+        // the Proton wrappers add to WINEDLLPATH when the session asks for it (BL_DIRECTAUDIO).
+        // Staged like the scripts, so a driver fix reaches an installed runtime without re-hosting.
+        val directAudio = arrayOf(
+            "aarch64-unix/winedirectaudio.so",
+            "aarch64-windows/winedirectaudio.drv",
+            "i386-windows/winedirectaudio.drv",
+        )
+        for (relative in directAudio) {
+            val target = File(root, "$DIRECTAUDIO_DIR/lib/wine/$relative")
+            val staged = File(target.parentFile, target.name + ".staged")
+            var installed = false
+            try {
+                target.parentFile?.mkdirs()
+                context.assets.open("directaudio/linux-wine11/$relative").use { input ->
+                    staged.outputStream().use { output -> FileUtils.copy(input, output) }
+                }
+                installed = staged.setReadable(true, false) && staged.renameTo(target)
+            } catch (e: Exception) {
+                Log.w(TAG, "could not stage DirectAudio $relative", e)
+            } finally {
+                if (!installed) staged.delete()
+            }
+            if (!installed) Log.e(TAG, "DirectAudio $relative NOT staged")
         }
         // What every process in the session preloads. LD_PRELOAD in the environment would not
         // survive: the Steam client rebuilds it for each process it starts and appends its own

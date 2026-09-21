@@ -172,6 +172,30 @@ nothing. The client rewrites those keys when it exits, so the app writes them ag
 session start. Games with always-online DRM will not start offline, and nothing can be installed
 or updated.
 
+## Audio
+
+The Steam client always plays through **PulseAudio** — it is a native Linux program with no other
+way to make a sound, and its menus, music and voice chat all go through it. **Audio** on the main
+screen adds two things on top, each applying at the next session start:
+
+- **DirectAudio for games** — replaces Wine's audio driver *inside the games the client launches*
+  with Bannerlator's DirectAudio, which talks straight to Android over a socket instead of through
+  PulseAudio: lower latency, and no resampling in between. The client is untouched. It only pairs
+  with a Wine 11 Proton (Valve's ARM64 builds, GE-Proton, proton-cachyos); on anything else the
+  wrapper leaves it off and says so in the log, because a mismatch would be silence rather than an
+  error. A game's first launch after turning it on still uses Proton's own audio — the driver is
+  named in the game's prefix, which does not exist until that first launch — and the second uses
+  DirectAudio.
+- **Microphone** — the relay helper opens Android's input stream under the app's own uid (which is
+  what the recording permission is checked against) and PulseAudio exposes it to the client as a
+  source named **DirectAudioMic**, so Steam voice chat works. Asks for the recording permission when
+  turned on; off, nothing in the session can record and Android's indicator stays off.
+
+The helper is a small Android program the app runs beside the session; the driver is a glibc build
+staged into the runtime at every launch like the session scripts, so a fix reaches an installed
+runtime without re-hosting it. Proven in Bannerlator's Linux session with voice in Steam's own
+tester; ⚠️ not yet exercised in this app.
+
 ## Compatibility tools
 
 **Compatibility tools** (main screen and drawer) installs GE-Proton or proton-cachyos — native
