@@ -704,6 +704,18 @@ static void take_dmabuf(struct surface *s, struct dmabuf_buffer *b, struct wl_re
         }
     }
     if (s->shm_img) { vkp_image_destroy(s->shm_img); s->shm_img = NULL; }
+    /* The size of the frames a window commits, when it changes after the first announcement: the
+     * program rebuilt its swapchain. It earns a line of its own, because a game whose swapchain
+     * came back smaller than it was is exactly what a picture suddenly filling one corner of the
+     * screen looks like from here - and the two sizes are the whole of the evidence. Rare by
+     * nature, so there is nothing to rate-limit. */
+    if (s->announced_vulkan && s->buf_w && s->buf_h &&
+        (s->buf_w != b->width || s->buf_h != b->height)) {
+        char name[160];
+        describe(s, name, sizeof(name));
+        banner_log("vulkan", "%s changed its frame size: %dx%d -> %dx%d", name,
+                   s->buf_w, s->buf_h, b->width, b->height);
+    }
     s->buf_w = b->width;
     s->buf_h = b->height;
     s->has_content = b->img != NULL;
@@ -1210,8 +1222,21 @@ static void xdg_toplevel_noop_parent(struct wl_client *c, struct wl_resource *r,
 static void xdg_toplevel_set_title(struct wl_client *c, struct wl_resource *r, const char *title) {
     struct surface *s = wl_resource_get_user_data(r);
     if (!s) return;
+    /* A window already on screen being renamed is something else taking it over: gamescope keeps
+     * one toplevel and retitles it as the game takes the screen. Unlogged, that left the log
+     * showing a window "closed" under a name it had never been logged as opening - which reads
+     * like a missing event and is really a rename. A title set before the window is mapped needs
+     * no line: the "opened" line carries it. */
+    int announce = s->mapped && title && *title && (!s->title || strcmp(s->title, title) != 0);
+    char before[160];
+    if (announce) describe(s, before, sizeof(before));
     free(s->title);
     s->title = title ? strdup(title) : NULL;
+    if (announce) {
+        char after[160];
+        describe(s, after, sizeof(after));
+        banner_log("window", "renamed %s -> %s", before, after);
+    }
 }
 static void xdg_toplevel_set_app_id(struct wl_client *c, struct wl_resource *r, const char *id) {}
 static void xdg_toplevel_show_menu(struct wl_client *c, struct wl_resource *r, struct wl_resource *seat,
