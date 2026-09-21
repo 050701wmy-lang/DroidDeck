@@ -130,7 +130,7 @@ fun PerformanceDialog(
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Run proot without seccomp", style = MaterialTheme.typography.bodyMedium)
                         Text(
-                            "proot normally lets most system calls run untraced, which is most of its speed. Some kernels handle that badly and refuse calls that plainly exist — "Function not implemented" in the log where it makes no sense. This traces everything instead: slower, but correct. Try it if a session will not start or dies with those errors.",
+                            "proot normally lets most system calls run untraced, which is most of its speed. Some kernels handle that badly and refuse calls that plainly exist — the log fills with \"Function not implemented\" where it makes no sense. This traces everything instead: slower, but correct. Try it if a session will not start or dies with those errors.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
