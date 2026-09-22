@@ -251,6 +251,23 @@ looks glitchy or slow; a 710/720/722 gets it on its own) and **Zink: lazy descri
 try when they are slow while games are fast). The `steamdeck-tu-debug` and `steamdeck-env` files in
 Downloads still win over both.
 
+## Networking and the client's own network page
+
+The session uses the phone's connection directly - proot makes no network namespace, so IPv4 and
+IPv6 both pass through - and the app writes the runtime's `/etc/resolv.conf` from the active
+network's own DNS servers whenever the link changes.
+
+The client's **Settings → Internet** page and its connection indicator are a different matter:
+they are built on NetworkManager, which the client looks for on the system bus as it starts. Without
+one, that page stopped with *"StartScanningForNetworks is not a function"* under a header showing no
+connection even while downloads ran. The session now starts a small system bus and a **stand-in that
+answers for NetworkManager**, reporting what is true and nothing more - one connection that is up
+while Android has a route out - and refusing what it cannot do, since nothing in this runtime can
+scan for or join a network. The session log says `network: system bus up, NetworkManager stand-in
+running` when it is working.
+
+That stand-in is **maxjivi05's**, from WinNative, by way of Bannerlator.
+
 ## Compatibility tools
 
 **Compatibility tools** (main screen and drawer) installs GE-Proton or proton-cachyos — native
