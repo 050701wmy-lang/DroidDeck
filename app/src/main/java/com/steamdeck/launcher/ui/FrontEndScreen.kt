@@ -357,7 +357,9 @@ private class Tile(val title: String, val sub: String, val art: java.io.File?, v
 private fun Art(art: java.io.File?, iconRes: Int?, label: String, modifier: Modifier, wide: Boolean = false) {
     val colors = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(8.dp)
-    Box(modifier = modifier.aspectRatio(if (wide) 16f / 9f else 2f / 3f).clip(shape).background(Brush.linearGradient(listOf(colors.surfaceVariant, colors.surface)))) {
+    // Game art is a poster (2:3) or a screenshot (16:9); an emulator's icon is a square.
+    val ratio = if (art == null && iconRes != null) 1f else if (wide) 16f / 9f else 2f / 3f
+    Box(modifier = modifier.aspectRatio(ratio).clip(shape).background(Brush.linearGradient(listOf(colors.surfaceVariant, colors.surface)))) {
         when {
             art != null -> AsyncImage(model = art, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
             iconRes != null -> Image(painterResource(iconRes), null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(if (wide) 10.dp else 8.dp))
@@ -381,10 +383,11 @@ private fun Modifier.focusOutline(shape: RoundedCornerShape): Modifier {
 @Composable
 private fun ColumnScope.ArtGrid(tiles: List<Tile>, wide: Boolean = false) {
     val colors = MaterialTheme.colorScheme
+    val square = tiles.isNotEmpty() && tiles.all { it.art == null && it.iconRes != null }
     // The grid takes the rest of the column; each tile is the art with its name and one line under it.
     LazyVerticalGrid(
-        // 40% of the first cut: the art is a thumbnail to recognise a game by, not a poster.
-        columns = GridCells.Adaptive(minSize = if (wide) 90.dp else 68.dp),
+        // Thumbnails to recognise a game by, not posters; icon tiles are squares.
+        columns = GridCells.Adaptive(minSize = if (square) 64.dp else if (wide) 90.dp else 68.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp),
         contentPadding = PaddingValues(bottom = 12.dp),
         modifier = Modifier.fillMaxWidth().weight(1f),
