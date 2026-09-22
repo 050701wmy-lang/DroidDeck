@@ -739,6 +739,12 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         super.onDestroy()
     }
 
+    /** Leaving the session sinks its surface back down onto the front end. */
+    override fun finish() {
+        super.finish()
+        overridePendingTransition(R.anim.session_hold, R.anim.session_sink)
+    }
+
     companion object {
         private const val TAG = "SessionActivity"
         /** Compositor scale modes (Container.FULLSCREEN_* values): 1 = fit with bars, centred. */

@@ -138,6 +138,12 @@ class MainActivity : ComponentActivity() {
     private var logsEnabled by mutableStateOf(true)
     private var showRoms by mutableStateOf(false)
 
+    /** The session surface rises over the front end instead of cutting to it. */
+    override fun startActivity(intent: Intent?) {
+        super.startActivity(intent)
+        if (intent?.component?.className == SessionActivity::class.java.name) overridePendingTransition(R.anim.session_rise, R.anim.session_hold)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
