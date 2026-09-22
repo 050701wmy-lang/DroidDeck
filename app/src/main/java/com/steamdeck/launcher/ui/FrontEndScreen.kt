@@ -794,8 +794,9 @@ private fun GameTile(t: Tile, wide: Boolean, square: Boolean, src: MutableIntera
     ) {
         Box(modifier = Modifier.fillMaxWidth().shine(hot)) {
             Art(t.art, t.iconRes, t.title, Modifier.fillMaxWidth(), wide)
-            AnimatedVisibility(
-                hot, modifier = Modifier.align(Alignment.Center),
+            // Qualified: the enclosing Column would otherwise pick its scoped overload.
+            androidx.compose.animation.AnimatedVisibility(
+                visible = hot, modifier = Modifier.align(Alignment.Center),
                 enter = scaleIn(Motion.sp(0.5f), initialScale = 0.5f) + fadeIn(Motion.tw(200)),
                 exit = scaleOut(Motion.tw(150), targetScale = 0.6f) + fadeOut(Motion.tw(150)),
             ) {
