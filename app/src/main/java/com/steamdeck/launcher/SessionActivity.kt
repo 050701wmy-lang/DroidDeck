@@ -397,9 +397,9 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         // compositor letterboxes onto a squarer panel.
         val aspect = if (SessionPrefs.shapeMode(this) == SessionPrefs.SHAPE_WIDE) 16f / 9f
                      else maxOf(panelW / panelH, 16f / 9f)
-        // Capped by default - 720 tall for the client, 1080 for the desktop: the client's CEF is the
-        // heaviest thing in the session, and pixels above that cost frames for nothing anyone can
-        // see on a handheld panel. The mode's settings (the cog beside Play / Desktop) can change
+        // 720 tall at most by default, client and desktop alike: the client's CEF is the heaviest
+        // thing in the session, and pixels above that cost frames for nothing anyone can see on a
+        // handheld panel. The mode's settings (the cog beside Play / Desktop) can change
         // the cap or lift it to the panel.
         val mode = SessionPrefs.prefMode(intent.getStringExtra(SessionService.EXTRA_MODE) ?: SessionService.MODE_STEAM)
         val cap = SessionPrefs.resolutionCap(this, mode)

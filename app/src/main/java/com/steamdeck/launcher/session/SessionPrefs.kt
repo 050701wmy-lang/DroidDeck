@@ -186,16 +186,17 @@ object SessionPrefs {
 
     /**
      * The tallest the session's display may be, in pixels, for MODE_STEAM / MODE_DESKTOP:
-     * 0 = the panel's own height, otherwise a cap. The Steam client defaults to 720p: its CEF is
-     * the heaviest thing in a session, Big Picture is drawn for a TV at arm's length, and on a
-     * handheld panel 720p is where its menus stay responsive on a regular flagship. The desktop
-     * keeps 1080 (text and file windows want the pixels). Read once, when the session's display
-     * is sized; a cap the user chose wins over either default.
+     * 0 = the panel's own height, otherwise a cap. Both modes default to 720p: the client's CEF
+     * is the heaviest thing in a session, Big Picture is drawn for a TV at arm's length, and on
+     * a handheld panel 720p is where its menus stay responsive on a regular flagship; the desktop
+     * and the emulators under it get the same GPU headroom. Read once, when the session's display
+     * is sized; a cap the user chose wins over the default.
      */
     fun resolutionCap(context: Context, mode: String): Int = prefs(context).getInt("resolutionCap.$mode", defaultResolutionCap(mode))
 
-    /** What a mode gets when nothing was chosen: 720 for the client, 1080 for the desktop. */
-    fun defaultResolutionCap(mode: String): Int = if (prefMode(mode) == SessionService.MODE_STEAM) 720 else 1080
+    /** What a mode gets when nothing was chosen. */
+    @Suppress("UNUSED_PARAMETER")
+    fun defaultResolutionCap(mode: String): Int = 720
 
     fun setResolutionCap(context: Context, mode: String, cap: Int) {
         prefs(context).edit().putInt("resolutionCap.$mode", cap).apply()
