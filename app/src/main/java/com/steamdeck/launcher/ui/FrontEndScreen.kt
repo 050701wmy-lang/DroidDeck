@@ -366,62 +366,62 @@ private fun Rail(
                     if (s.emulators.none { it.installed }) NavItem("install emulators under Desktop & apps", "x", false, small = true, muted = true, register = register, unregister = unregister) { a.onApps() }
                     NavItem("Settings", "settings:lxqt", selected == "settings:lxqt", small = true, tiny = true, muted = true, i = s.emulators.count { it.installed }, register = register, unregister = unregister) { a.onDesktopSettings() }
                 }
+            Spacer(Modifier.height(6.dp))
+            // Setup: the same fold as Steam and Desktop. A row that holds a value opens a small menu
+            // in place; a row that opens a page lights up while the page is shown.
+            val menus = remember { MenuHost() }
+            val item: @Composable (String, String?, Int, String?, () -> Unit) -> Unit = { label, value, i, key, act ->
+                NavItem(label, key ?: "x", key != null && selected == key, small = true, tiny = true, muted = true, value = value, i = i, register = register, unregister = unregister) { act() }
+            }
+            NavItem("Setup", "x", false, caret = openSetup, count = 9, onClick = onToggleSetup)
+            Sub(openSetup) {
+                item("Files", null, 0, null, a.onFiles)
+                item("Desktop & apps", null, 1, null, a.onApps)
+                item("Compatibility tools", null, 2, null, a.onProtons)
+                Box {
+                    item("Frame generation", s.frameGenLabel, 3, null) { menus.open = "fg" }
+                    AnchoredMenu(
+                        menus.open == "fg", onDismiss = { if (menus.open == "fg") menus.open = null }, title = "Frame generation",
+                        note = "Extra frames between the real ones on the way to the screen, so 30 fps looks like 60. Takes effect at once, mid-game included.",
+                    ) {
+                        val need = if (s.lsfgReady) null else "install Lossless Scaling in Steam"
+                        MenuItem("Off", checked = s.frameGenEngine == FrameGen.ENGINE_OFF) { a.onFrameGenPick(FrameGen.ENGINE_OFF, 2); menus.open = null }
+                        for (m in 2..4) MenuItem("Win-FG ${m}×", checked = s.frameGenEngine == FrameGen.ENGINE_WINFG && s.frameGenMultiplier == m) { a.onFrameGenPick(FrameGen.ENGINE_WINFG, m); menus.open = null }
+                        for (m in 2..4) MenuItem("LSFG ${m}×", checked = s.frameGenEngine == FrameGen.ENGINE_LSFG && s.frameGenMultiplier == m, enabled = s.lsfgReady, detail = need) { a.onFrameGenPick(FrameGen.ENGINE_LSFG, m); menus.open = null }
+                    }
+                }
+                item("Performance", null, 4, "performance", a.onPerformance)
+                item("ROMs folder", s.romsDir?.substringAfterLast('/')?.ifEmpty { s.romsDir } ?: "choose", 5, null, a.onRoms)
+                Box {
+                    item("Session logs", if (s.logsEnabled) "on" else "off", 6, null) { menus.open = "logs" }
+                    AnchoredMenu(
+                        menus.open == "logs", onDismiss = { if (menus.open == "logs") menus.open = null }, title = "Session logs",
+                        note = "Each session leaves a folder in Downloads: the guest log, the device and network reports, the app's own log.",
+                    ) {
+                        MenuItem("On", checked = s.logsEnabled) { if (!s.logsEnabled) a.onLogs(); menus.open = null }
+                        MenuItem("Off", checked = !s.logsEnabled) { if (s.logsEnabled) a.onLogs(); menus.open = null }
+                    }
+                }
+                Box {
+                    item("Start offline", when { s.offlineAccount == null -> "sign in first"; s.offline -> "on"; else -> "off" }, 7, null) { if (s.offlineAccount != null) menus.open = "offline" }
+                    AnchoredMenu(
+                        menus.open == "offline", onDismiss = { if (menus.open == "offline") menus.open = null }, title = "Start offline",
+                        note = "The client starts as ${s.offlineAccount ?: "the saved account"} without the network: the library and installed games, no store.",
+                    ) {
+                        MenuItem("On", checked = s.offline) { if (!s.offline) a.onOffline(); menus.open = null }
+                        MenuItem("Off", checked = !s.offline) { if (s.offline) a.onOffline(); menus.open = null }
+                    }
+                }
+                item("Linux runtime", when {
+                    s.busy -> "working…"
+                    !s.ready -> "install"
+                    s.available != null && s.available != s.installed -> "update"
+                    else -> "remove"
+                }, 8, null, a.onRuntime)
+            }
             }
         }
 
-        Spacer(Modifier.height(6.dp))
-        // Setup: the same fold as Steam and Desktop. A row that holds a value opens a small menu
-        // in place; a row that opens a page lights up while the page is shown.
-        val menus = remember { MenuHost() }
-        val item: @Composable (String, String?, Int, String?, () -> Unit) -> Unit = { label, value, i, key, act ->
-            NavItem(label, key ?: "x", key != null && selected == key, small = true, tiny = true, muted = true, value = value, i = i, register = register, unregister = unregister) { act() }
-        }
-        NavItem("Setup", "x", false, caret = openSetup, count = 9, onClick = onToggleSetup)
-        Sub(openSetup) {
-            item("Files", null, 0, null, a.onFiles)
-            item("Desktop & apps", null, 1, null, a.onApps)
-            item("Compatibility tools", null, 2, null, a.onProtons)
-            Box {
-                item("Frame generation", s.frameGenLabel, 3, null) { menus.open = "fg" }
-                AnchoredMenu(
-                    menus.open == "fg", onDismiss = { if (menus.open == "fg") menus.open = null }, title = "Frame generation",
-                    note = "Extra frames between the real ones on the way to the screen, so 30 fps looks like 60. Takes effect at once, mid-game included.",
-                ) {
-                    val need = if (s.lsfgReady) null else "install Lossless Scaling in Steam"
-                    MenuItem("Off", checked = s.frameGenEngine == FrameGen.ENGINE_OFF) { a.onFrameGenPick(FrameGen.ENGINE_OFF, 2); menus.open = null }
-                    for (m in 2..4) MenuItem("Win-FG ${m}×", checked = s.frameGenEngine == FrameGen.ENGINE_WINFG && s.frameGenMultiplier == m) { a.onFrameGenPick(FrameGen.ENGINE_WINFG, m); menus.open = null }
-                    for (m in 2..4) MenuItem("LSFG ${m}×", checked = s.frameGenEngine == FrameGen.ENGINE_LSFG && s.frameGenMultiplier == m, enabled = s.lsfgReady, detail = need) { a.onFrameGenPick(FrameGen.ENGINE_LSFG, m); menus.open = null }
-                }
-            }
-            item("Performance", null, 4, "performance", a.onPerformance)
-            item("ROMs folder", s.romsDir?.substringAfterLast('/')?.ifEmpty { s.romsDir } ?: "choose", 5, null, a.onRoms)
-            Box {
-                item("Session logs", if (s.logsEnabled) "on" else "off", 6, null) { menus.open = "logs" }
-                AnchoredMenu(
-                    menus.open == "logs", onDismiss = { if (menus.open == "logs") menus.open = null }, title = "Session logs",
-                    note = "Each session leaves a folder in Downloads: the guest log, the device and network reports, the app's own log.",
-                ) {
-                    MenuItem("On", checked = s.logsEnabled) { if (!s.logsEnabled) a.onLogs(); menus.open = null }
-                    MenuItem("Off", checked = !s.logsEnabled) { if (s.logsEnabled) a.onLogs(); menus.open = null }
-                }
-            }
-            Box {
-                item("Start offline", when { s.offlineAccount == null -> "sign in first"; s.offline -> "on"; else -> "off" }, 7, null) { if (s.offlineAccount != null) menus.open = "offline" }
-                AnchoredMenu(
-                    menus.open == "offline", onDismiss = { if (menus.open == "offline") menus.open = null }, title = "Start offline",
-                    note = "The client starts as ${s.offlineAccount ?: "the saved account"} without the network: the library and installed games, no store.",
-                ) {
-                    MenuItem("On", checked = s.offline) { if (!s.offline) a.onOffline(); menus.open = null }
-                    MenuItem("Off", checked = !s.offline) { if (s.offline) a.onOffline(); menus.open = null }
-                }
-            }
-            item("Linux runtime", when {
-                s.busy -> "working…"
-                !s.ready -> "install"
-                s.available != null && s.available != s.installed -> "update"
-                else -> "remove"
-            }, 8, null, a.onRuntime)
-        }
         Text(
             "credits", fontSize = 11.sp, color = colors.onSurfaceVariant,
             modifier = Modifier.clip(Shape10).clickable(onClick = a.onCredits).padding(horizontal = 10.dp, vertical = 8.dp),
