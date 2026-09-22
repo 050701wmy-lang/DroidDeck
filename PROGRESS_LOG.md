@@ -6,6 +6,13 @@ the timeline, then lessons and backlog. Companion to the README (what the app *d
 
 ---
 
+## 2026-09-22 (late) — motion front end + run-as-a-game, branch `feat/frontend-motion` (unmerged)
+
+- Front end rebuilt around a motion system (`ui/FrontEndScreen.kt`, same state/actions API): the rail's selection is one pill that springs between rows; sub-lists unfold and stagger their children; a page change sinks out and cascades in over a blurred wash of the selection's art; tiles lift/ring/shine on focus and pop a play badge; the launch button sweeps a sheen and squashes on press; the session activity rises over the front end (`res/anim/session_*`). Durations follow the system animator scale.
+- The session now runs as a game: manifest `appCategory=game` + `game_mode_config` (Performance mode welcome; the OS FPS cap and downscaling refused), sustained performance mode, the panel's fastest mode at its size, GameManager game state, and an ADPF hint session over the compositor thread fed with each presented frame's interval (`session/PerfMode.kt`, `session/PerfHints.kt`, `nativeCompositorTid`). One `perf:` line in the session log says what took on the device.
+- App libraries link 16 KB-aligned. Still 4 KB-only (prebuilt, need a rebuild): libpulse, libpulseaudio, libpulsecommon-13.0, libpulsecore-13.0, libsndfile, libltdl.
+- Builds: r1 `7ddfb57` (motion only), r2 `546c063` (motion + perf) — both CI-green, neither device-tested. Staged as `SteamDeck-motion-r1.apk` / `-r2.apk`.
+
 ## 🔖 Checkpoint 2026-09-22 22:xx — known-good point for the front end
 
 - **`main` @ `36cde7d`**, APK `SteamDeck-r51.apk` staged (sha `adb5acf5…`, run 35761437514) =
