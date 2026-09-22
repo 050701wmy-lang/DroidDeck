@@ -33,7 +33,9 @@ import com.steamdeck.launcher.input.PointerGestures
 import com.steamdeck.launcher.input.TouchpadGestures
 import com.steamdeck.launcher.runtime.LinuxRuntime
 import com.steamdeck.launcher.session.LoadingState
+import com.steamdeck.launcher.session.PerfHints
 import com.steamdeck.launcher.session.PerfHud
+import com.steamdeck.launcher.session.PerfMode
 import com.steamdeck.launcher.session.ProtonExtras
 import com.steamdeck.launcher.session.SessionPrefs
 import com.steamdeck.launcher.session.SessionPaths
@@ -104,6 +106,9 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // Game-tier power policy for the whole session: a sustained clock floor, the panel's
+        // fastest mode, and the OS told it is in gameplay. Logged so a slow device says why.
+        Log.i(TAG, "perf: " + PerfMode.apply(this))
         goFullscreen()
         // The device's volume keys change the stream the session plays on (the relay and
         // PulseAudio are media playback); they are never forwarded to the guest.
@@ -329,6 +334,9 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
             driverId?.let { turnip.driverPath(it) }, driverId?.let { turnip.libraryName(it) },
             applicationInfo.nativeLibraryDir, size.first, size.second, refreshHz(),
         )
+        // ADPF: the compositor thread's frame intervals go to the power HAL against the panel's
+        // period, so a long frame raises CPU clocks now rather than after the load averages up.
+        PerfHints.arm(this, refreshHz())
         // The service owns everything below the compositor. It is started whenever no session is
         // running — NOT only when the compositor was just started: the compositor lives for the
         // whole process, so the second Play after a session ended used to re-attach the Surface,
