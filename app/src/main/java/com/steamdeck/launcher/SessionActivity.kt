@@ -361,7 +361,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     override fun surfaceDestroyed(holder: SurfaceHolder) {
         surfaceW = 0
         surfaceH = 0
-        CompositorHost.detach()
+        CompositorHost.detach(holder.surface)
     }
 
     /**

@@ -34,6 +34,7 @@ object CompositorHost {
         refreshHz: Float,
     ): Boolean {
         if (started) {
+            attached = surface
             WaylandCompositor.nativeSetSurface(surface)
             resumeVsync()
             return false
@@ -43,6 +44,7 @@ object CompositorHost {
         WaylandCompositor.nativeStartWithSurface(
             surface, xdgRuntimeDir, driverPath, libraryName, nativeLibDir,
         )
+        attached = surface
         started = true
         resumeVsync()
         return true
@@ -66,6 +68,7 @@ object CompositorHost {
         WaylandCompositor.nativeSetFrameGenArmed(false, 0)
         WaylandCompositor.nativeLog("screen", "surface resized: rebinding the window, frame generation re-armed after")
         WaylandCompositor.nativeSetSurface(null)
+        attached = surface
         WaylandCompositor.nativeSetSurface(surface)
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(rearm, 600)
     }
@@ -87,9 +90,20 @@ object CompositorHost {
      * The activity is going away. The compositor keeps running with nothing to present into —
      * the guest carries on, and its next frames land on the Surface the next activity brings.
      */
+    /** The Surface the compositor presents on; only its own owner may take it away. */
+    private var attached: Surface? = null
+
+    /**
+     * Only for the Surface that is attached. When one session hands over to the next (the
+     * desktop's Steam launchers), the new activity attaches its Surface before the old one is
+     * destroyed - and the old one's surfaceDestroyed then arrived here and took the new Surface
+     * away: gamescope's frames came in by the thousand and nothing reached the screen.
+     */
     @Synchronized
-    fun detach() {
+    fun detach(surface: Surface?) {
         if (!started) return
+        if (surface != null && attached != null && attached !== surface) return
+        attached = null
         pauseVsync()
         WaylandCompositor.nativeSetSurface(null)
     }

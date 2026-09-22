@@ -292,6 +292,8 @@ class SessionService : Service() {
         }
         // Where the guest leaves a request for another session (the desktop's Steam launchers).
         guest.add("BL_LAUNCH_DIR=" + sessionRoot.path)
+        // The second library's name, for bannerlator-steam-library; the bind itself is made below.
+        GameStorage.effective(this)?.let { guest.add("BL_LIBRARY_LABEL=" + it.label.replace('"', ' ')) }
         if (SessionState.mode == MODE_STEAM && SessionState.steamUi == "desktop") guest.add("BL_STEAM_UI=desktop")
         guest.add(LinuxRuntime.SESSION_SCRIPT)
         guest.add(SessionState.mode)
@@ -339,7 +341,6 @@ class SessionService : Service() {
             if (problem == null) {
                 File(LinuxRuntime.rootDir(this), "mnt/bannerlator-sd").mkdirs()
                 binds.add("${library.path}:/mnt/bannerlator-sd")
-                guest.add("BL_LIBRARY_LABEL=" + library.label.replace('"', ' '))
                 Log.i(TAG, "game storage: ${library.path} -> /mnt/bannerlator-sd (\"${library.label}\")")
             } else {
                 Log.w(TAG, "game storage: $problem; internal only this session")
