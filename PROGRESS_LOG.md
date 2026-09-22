@@ -1,0 +1,108 @@
+# SteamDeck — Progress Log
+
+Running engineering log for the SteamDeck app (`com.steamdeck.launcher`). Newest state first, then
+the timeline, then lessons and backlog. Companion to the README (what the app *does*) and to
+`docs/releases/` (what each version said) — this is *how it got here and where it stands*.
+
+---
+
+## Current state (2026-09-22)
+
+- **Latest release: 0.1.4** — private: https://github.com/The412Banner/SteamDeck/releases/tag/0.1.4
+  · public: https://github.com/The412Banner/winlator-contents/releases/tag/SteamDeck-0.1.4
+  `main` @ `8e58e8e`, CI run 35682844106, versionCode 5, APK sha256 `4b53ce6a…` (20,957,823 B).
+- **Runtime:** `linuxfs-r9` on winlator-contents (790 MB), the only runtime release left; desktop
+  packages from `steamdeck-desktop-r1`. The app rewrites its own scripts (`bannerlator-*`), the
+  driver, `bannerlator-netmanager` and the DirectAudio pieces into the installed runtime at every
+  launch, so a fix in those reaches an installed runtime without a re-download.
+- **Shipped feature set:** the native ARM64 Steam client under gamescope on the in-app Wayland
+  compositor; a LXQt-on-labwc desktop with Firefox and a shelf of emulators; Proton tools
+  (GE / CachyOS) as downloads; graphics drivers importable per mode; DirectAudio + microphone;
+  client/game core masks + four session switches; NetworkManager stand-in (Max's); overlay
+  restored; ROMs folder + Storage bound into the session's home; Bannerlator's File Manager;
+  a cog per launch mode (resolution, shape, HDR10, drivers, touch, OSC/audio, renderer); per-session
+  log folders that survive a crash; leftover-process sweep; frame generation (Win-FG, LSFG).
+- **Verification level:** every release is CI-green and staged to the maintainer's device. Proven
+  on hardware (Pocket FIT / Fold): sign-in, store, install + launch (FlatOut 144 Hz), frame
+  generation, controllers + OSC, sound, desktop + Firefox, folding mid-session, driver import, the
+  log folder, the ANR fix, the network page. **Not yet proven:** everything 0.1.4 added (ROMs
+  folder inside an emulator, File Manager, resolution cap, HDR10, crash sweep, orphan sweep, the
+  drawer's Steam menu), DirectAudio *voice*, the core masks' effect, offline start, the soft
+  keyboard, any emulator with a game, Adreno 710.
+- **Open field reports (Thor Pro, 8 Gen 2):** trackpad-mode tap does not click (code sends the
+  click; cause not found by reading); crash after 1–2 min in Ballionaire / Geometry Wars (no log
+  survived — 0.1.4's sweep will leave `crash.log`); a Fold's 10–20 fps client menus (Chromium →
+  ANGLE → Zink on an experimental A8xx Turnip); Fold crash loop (xalia ENOSYS storm — switches
+  shipped, untested); FlatOut shrinking after Resume (gamescope forcing the swapchain extent).
+
+## Release pipeline (how every version is cut)
+1. Work on `main`, pushed → `Build APK` runs `assembleRelease` (AOSP test key, v1+v2+v3 re-signed
+   by CI with zipalign + apksigner) → artifact `steamdeck-apk`. Dev builds keep the last release's
+   versionCode/versionName; a release bumps both in `app/build.gradle` in its own commit.
+2. Verify: `gh run view <id> --json conclusion` (never trust a run listing's first row — a
+   `workflow_dispatch` run gets cancelled by concurrency in favour of the push-triggered one),
+   download the artifact, sha256 it.
+3. Stage: `cp` to `/sdcard/Download/SteamDeck-rN.apk` (dev) or `SteamDeck-X.Y.Z.apk` (release).
+   Never `pm install` — the maintainer installs.
+4. Private release `X.Y.Z` targeting the **full 40-char sha** (a short sha is refused), notes from
+   the draft in the session scratchpad, `--latest`. Public release `SteamDeck-X.Y.Z` on
+   winlator-contents with the README-style notes; one public release per version.
+5. README ledger, this log, memory.
+
+## Timeline
+- **2026-09-19 — 0.1 groundwork.** Lifted out of Bannerlator's gamescope runtime on the user's
+  ask: one screen, one button. r2 reached Big Picture sign-in on the Pocket FIT. Package renamed to
+  `com.steamdeck.launcher` (r4), foreground service, test key, on-screen controls.
+- **2026-09-20 — 0.1.** The Linux Steam client and a desktop; runtime r6→r9 in a day (Proton
+  self-selection, proot shipped, refresh rate, video, first run reaches a game). Public explainer
+  page for non-Linux users.
+- **2026-09-21 — 0.1.1.** Catch-up with Bannerlator: driver selection (two lists, per mode),
+  overlay restored + GameHub force-stop, DirectAudio + microphone, core masks, four session
+  switches as toggles, per-session log folders with credentials scrubbed, Adreno 710 path via
+  Banners-Turnip r3.
+- **2026-09-22 — 0.1.2.** The teardown ANR (log collection on the main thread) fixed; two
+  compositor log lines (frame-size change, window rename); README ledger.
+- **2026-09-22 — 0.1.3.** Max's NetworkManager stand-in ported (the client's network page); shim
+  audit vs WinNative = zero functional drift.
+- **2026-09-22 — 0.1.4.** ROMs folder + Storage in the session's home; Bannerlator's File Manager
+  ported whole; a cog per mode (railed settings window) with resolution cap, shape, HDR10 gated on
+  the panel, drivers, touch, OSC/audio/renderer; two-column main menu; crash-safe log folders +
+  Session logs toggle; OrphanReaper; drawer Steam menu. Public releases reorganised: one per
+  version, old `Steamdeck` release and runtimes r1–r8 deleted.
+
+## Architecture (where things live)
+- `MainActivity` / `ui/MainScreen.kt` — the main screen; `ui/ModeSettingsDialog.kt` the cogs;
+  `ui/*Dialog.kt` the rest.
+- `SessionActivity` — the Surface, input (touch, touchpad, pads, keyboard), the drawer, the HDR
+  decision, the compositor start (`wayland/CompositorHost`, `wayland/WaylandCompositor`).
+- `session/SessionService` — proot + gamescope/labwc + PulseAudio + DirectAudio relay + network
+  link; binds (`/root/Storage`, `/root/ROMs`); env for the guest; teardown; `OrphanReaper`;
+  `SessionArtifacts` + `CrashHandler` + `SessionPaths` for the log folders; `SessionPrefs`.
+- `files/` — Bannerlator's File Manager (`FileManagerScreen.kt` and its helpers), the picker
+  activity and `InAppFilePicker` intent API.
+- `gpu/` — Turnip (bionic, for the compositor) and Linux Turnip (glibc, for the runtime) managers.
+- `tools/linuxfs/overlay/usr/local/bin/bannerlator-*` — the guest scripts, staged into the
+  runtime by `SessionFiles` at every launch (CI packages only `bannerlator-*` names).
+- `app/src/main/cpp/waylandcomp/` — the compositor (shared lineage with Bannerlator).
+
+## Lessons learned (don't repeat these)
+- Nothing in teardown may do bulk filesystem work on the main thread (0.1.1's ANR).
+- A CI closure check on a multi-line variable must flatten it first (`libaaudio.so` refusal).
+- A runtime script must be named `bannerlator-*` or CI never packages it.
+- `gh release create --target` needs the full sha.
+- A proot bind is invisible to a program's "Computer" list; put what users need under home.
+- The compositor decides its driver and its HDR gate once per app process — anything that changes
+  them applies after the app is fully closed, and the UI must say so.
+- Bannerlator's File Manager ports mechanically (`port_fm.py` anchors) once the container hooks
+  are cut; do not hand-edit 2,500 lines.
+- Deleting a release asset on GitHub can drop a sibling asset — re-list and restore.
+
+## Backlog / next
+- Device-prove 0.1.4 on the FIT (list above).
+- Thor Pro: trackpad tap; the 1–2 min in-game crash once a `crash.log` arrives.
+- Xfce as a second desktop shell (Max's branch runs XFCE 4.20 on labwc) — a catalog package + a
+  shell choice in the Desktop cog; comfort, not performance.
+- Quick Access Menu for non-Deck pads — no confirmed chord; needs research, not a guess.
+- FlatOut shrink: try `vk_wsi_force_swapchain_to_current_extent=false` via `steamdeck-env`.
+- Max's stricter `winnative-directaudio` guards; `winnative-epic-launch` (a feature).
+- Rename before anything truly public: "SteamDeck" is Valve's mark.
