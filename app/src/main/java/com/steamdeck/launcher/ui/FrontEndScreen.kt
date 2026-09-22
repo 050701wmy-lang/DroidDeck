@@ -2,6 +2,7 @@ package com.steamdeck.launcher.ui
 
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
@@ -106,6 +107,7 @@ import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import com.steamdeck.launcher.R
 import com.steamdeck.launcher.frontend.Library
+import com.steamdeck.launcher.gpu.FrameGen
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -127,6 +129,11 @@ class FrontEndState(
     val emulators: List<Library.Emulator>,
     /** A session alive in the background: what it is, or null. */
     val running: String?,
+    val frameGenEngine: String = FrameGen.ENGINE_OFF,
+    val frameGenMultiplier: Int = 2,
+    val lsfgReady: Boolean = false,
+    /** A page shown in the pane instead of the selection ("settings:steam", "settings:lxqt", "performance"), or null. */
+    val pageKey: String? = null,
 )
 
 class FrontEndActions(
@@ -141,7 +148,7 @@ class FrontEndActions(
     val onDesktopSettings: () -> Unit,
     val onApps: () -> Unit,
     val onRuntime: () -> Unit,
-    val onFrameGen: () -> Unit,
+    val onFrameGenPick: (engine: String, multiplier: Int) -> Unit,
     val onProtons: () -> Unit,
     val onPerformance: () -> Unit,
     val onRoms: () -> Unit,
@@ -150,6 +157,8 @@ class FrontEndActions(
     val onOffline: () -> Unit,
     val onEmulatorHelp: () -> Unit,
     val onCredits: () -> Unit,
+    /** Leaves the page in the pane (back key, the rail, or the page's own Back). */
+    val onPageBack: () -> Unit = {},
 )
 
 // ───────────────────────────── Motion ─────────────────────────────
@@ -159,7 +168,7 @@ class FrontEndActions(
  * animator scale, so a device set to "no animations" in developer options collapses them to
  * an instant snap instead of ignoring the user's choice.
  */
-private object Motion {
+internal object Motion {
     var scale = 1f
     val Ease = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)
     fun ms(base: Int) = (base * scale).roundToInt()
@@ -183,7 +192,7 @@ private fun artBrush(h: Float) = Brush.linearGradient(listOf(tint(h), tint((h + 
  * a page change reads as one cascade rather than a cut.
  */
 @Composable
-private fun Rise(i: Int, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+internal fun Rise(i: Int, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val state = remember { MutableTransitionState(false) }.apply { targetState = true }
     AnimatedVisibility(
         visibleState = state, modifier = modifier,
@@ -231,7 +240,7 @@ private fun Modifier.shine(trigger: Boolean, strength: Float = 0.22f): Modifier 
  * to it. Landscape puts the rail beside the content; a narrow screen puts it above.
  */
 @Composable
-fun FrontEndScreen(s: FrontEndState, a: FrontEndActions) {
+fun FrontEndScreen(s: FrontEndState, a: FrontEndActions, page: (@Composable () -> Unit)? = null) {
     var selected by rememberSaveable { mutableStateOf("steam") }
     var openDesktop by rememberSaveable { mutableStateOf(true) }
     var openSteam by rememberSaveable { mutableStateOf(true) }
@@ -241,15 +250,17 @@ fun FrontEndScreen(s: FrontEndState, a: FrontEndActions) {
     var openSetup by rememberSaveable { mutableStateOf(!s.ready) }
     val colors = MaterialTheme.colorScheme
     val ctx = LocalContext.current
+    BackHandler(enabled = s.pageKey != null && page != null) { a.onPageBack() }
     remember { Motion.scale = Settings.Global.getFloat(ctx.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f); true }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize().background(colors.background).systemBarsPadding()) {
         val wide = maxWidth >= 640.dp
         val rail: @Composable () -> Unit = {
             Rail(
-                s, selected, openSteam, openDesktop, openEmu, openSetup,
+                s, s.pageKey ?: selected, openSteam, openDesktop, openEmu, openSetup,
                 onToggleSetup = { openSetup = !openSetup },
                 onSelect = { key ->
+                    if (s.pageKey != null) a.onPageBack()
                     if (key == "steam") openSteam = if (selected == "steam") !openSteam else true
                     if (key == "desktop") openDesktop = if (selected == "desktop") !openDesktop else true
                     if (key.startsWith("emu:")) openEmu = if (selected == key && openEmu == key) "" else key
@@ -259,7 +270,7 @@ fun FrontEndScreen(s: FrontEndState, a: FrontEndActions) {
                 modifier = if (wide) Modifier.width(236.dp).fillMaxHeight() else Modifier.fillMaxWidth().height(maxHeight * 0.42f),
             )
         }
-        val content: @Composable (Modifier) -> Unit = { m -> Pane(s, selected, a, m) }
+        val content: @Composable (Modifier) -> Unit = { m -> Pane(s, selected, a, page, m) }
         if (wide) Row(modifier = Modifier.fillMaxSize()) { rail(); content(Modifier.weight(1f).fillMaxHeight()) }
         else Column(modifier = Modifier.fillMaxSize()) { rail(); content(Modifier.weight(1f).fillMaxWidth()) }
     }
@@ -337,6 +348,7 @@ private fun Rail(
                 Sub(openSteam) {
                     for ((i, g) in s.steamGames.withIndex()) NavItem(g.name, "app:${g.appId}", selected == "app:${g.appId}", small = true, i = i, register = register, unregister = unregister) { onSelect("app:${g.appId}") }
                     if (s.steamGames.isEmpty()) NavItem("no games installed", "x", false, small = true, muted = true, register = register, unregister = unregister) {}
+                    NavItem("Settings", "settings:steam", selected == "settings:steam", small = true, tiny = true, muted = true, i = s.steamGames.size, register = register, unregister = unregister) { a.onSteamSettings() }
                 }
                 NavItem("Desktop", "desktop", selected == "desktop", caret = openDesktop, count = s.emulators.count { it.installed }, register = register, unregister = unregister) { onSelect("desktop") }
                 Sub(openDesktop) {
@@ -352,31 +364,63 @@ private fun Rail(
                         }
                     }
                     if (s.emulators.none { it.installed }) NavItem("install emulators under Desktop & apps", "x", false, small = true, muted = true, register = register, unregister = unregister) { a.onApps() }
+                    NavItem("Settings", "settings:lxqt", selected == "settings:lxqt", small = true, tiny = true, muted = true, i = s.emulators.count { it.installed }, register = register, unregister = unregister) { a.onDesktopSettings() }
                 }
             }
         }
 
         Spacer(Modifier.height(6.dp))
-        // Setup: the same fold as Steam and Desktop, a header that opens its list.
-        val setup = listOf(
-            Triple("Files", null, a.onFiles), Triple("Desktop & apps", null, a.onApps), Triple("Compatibility tools", null, a.onProtons),
-            Triple("Frame generation", s.frameGenLabel, a.onFrameGen), Triple("Performance", null, a.onPerformance),
-            Triple("ROMs folder", s.romsDir?.substringAfterLast('/')?.ifEmpty { s.romsDir } ?: "choose", a.onRoms),
-            Triple("Session logs", if (s.logsEnabled) "on" else "off", a.onLogs),
-            Triple("Start offline", when { s.offlineAccount == null -> "sign in first"; s.offline -> "on"; else -> "off" }, a.onOffline),
-            Triple("Linux runtime", when {
+        // Setup: the same fold as Steam and Desktop. A row that holds a value opens a small menu
+        // in place; a row that opens a page lights up while the page is shown.
+        val menus = remember { MenuHost() }
+        val item: @Composable (String, String?, Int, String?, () -> Unit) -> Unit = { label, value, i, key, act ->
+            NavItem(label, key ?: "x", key != null && selected == key, small = true, tiny = true, muted = true, value = value, i = i, register = register, unregister = unregister) { act() }
+        }
+        NavItem("Setup", "x", false, caret = openSetup, count = 9, onClick = onToggleSetup)
+        Sub(openSetup) {
+            item("Files", null, 0, null, a.onFiles)
+            item("Desktop & apps", null, 1, null, a.onApps)
+            item("Compatibility tools", null, 2, null, a.onProtons)
+            Box {
+                item("Frame generation", s.frameGenLabel, 3, null) { menus.open = "fg" }
+                AnchoredMenu(
+                    menus.open == "fg", onDismiss = { if (menus.open == "fg") menus.open = null }, title = "Frame generation",
+                    note = "Extra frames between the real ones on the way to the screen, so 30 fps looks like 60. Takes effect at once, mid-game included.",
+                ) {
+                    val need = if (s.lsfgReady) null else "install Lossless Scaling in Steam"
+                    MenuItem("Off", checked = s.frameGenEngine == FrameGen.ENGINE_OFF) { a.onFrameGenPick(FrameGen.ENGINE_OFF, 2); menus.open = null }
+                    for (m in 2..4) MenuItem("Win-FG ${m}×", checked = s.frameGenEngine == FrameGen.ENGINE_WINFG && s.frameGenMultiplier == m) { a.onFrameGenPick(FrameGen.ENGINE_WINFG, m); menus.open = null }
+                    for (m in 2..4) MenuItem("LSFG ${m}×", checked = s.frameGenEngine == FrameGen.ENGINE_LSFG && s.frameGenMultiplier == m, enabled = s.lsfgReady, detail = need) { a.onFrameGenPick(FrameGen.ENGINE_LSFG, m); menus.open = null }
+                }
+            }
+            item("Performance", null, 4, "performance", a.onPerformance)
+            item("ROMs folder", s.romsDir?.substringAfterLast('/')?.ifEmpty { s.romsDir } ?: "choose", 5, null, a.onRoms)
+            Box {
+                item("Session logs", if (s.logsEnabled) "on" else "off", 6, null) { menus.open = "logs" }
+                AnchoredMenu(
+                    menus.open == "logs", onDismiss = { if (menus.open == "logs") menus.open = null }, title = "Session logs",
+                    note = "Each session leaves a folder in Downloads: the guest log, the device and network reports, the app's own log.",
+                ) {
+                    MenuItem("On", checked = s.logsEnabled) { if (!s.logsEnabled) a.onLogs(); menus.open = null }
+                    MenuItem("Off", checked = !s.logsEnabled) { if (s.logsEnabled) a.onLogs(); menus.open = null }
+                }
+            }
+            Box {
+                item("Start offline", when { s.offlineAccount == null -> "sign in first"; s.offline -> "on"; else -> "off" }, 7, null) { if (s.offlineAccount != null) menus.open = "offline" }
+                AnchoredMenu(
+                    menus.open == "offline", onDismiss = { if (menus.open == "offline") menus.open = null }, title = "Start offline",
+                    note = "The client starts as ${s.offlineAccount ?: "the saved account"} without the network: the library and installed games, no store.",
+                ) {
+                    MenuItem("On", checked = s.offline) { if (!s.offline) a.onOffline(); menus.open = null }
+                    MenuItem("Off", checked = !s.offline) { if (s.offline) a.onOffline(); menus.open = null }
+                }
+            }
+            item("Linux runtime", when {
                 s.busy -> "working…"
                 !s.ready -> "install"
                 s.available != null && s.available != s.installed -> "update"
                 else -> "remove"
-            }, a.onRuntime),
-        )
-        NavItem("Setup", "x", false, caret = openSetup, count = setup.size, onClick = onToggleSetup)
-        Sub(openSetup) {
-            for ((i, t) in setup.withIndex()) {
-                val (label, value, act) = t
-                NavItem(label, "x", false, small = true, tiny = true, muted = true, value = value, i = i, register = { _, _ -> }, unregister = {}) { act() }
-            }
+            }, 8, null, a.onRuntime)
         }
         Text(
             "credits", fontSize = 11.sp, color = colors.onSurfaceVariant,
@@ -481,9 +525,10 @@ private fun NavItem(
 
 /** The chosen thing, behind a blurred wash of its own colour; a change sinks the old page out and cascades the new one in. */
 @Composable
-private fun Pane(s: FrontEndState, selected: String, a: FrontEndActions, modifier: Modifier) {
+private fun Pane(s: FrontEndState, selected: String, a: FrontEndActions, page: (@Composable () -> Unit)?, modifier: Modifier) {
     Box(modifier = modifier) {
         val wash: Pair<File?, Float> = when {
+            s.pageKey != null && page != null -> null to 250f
             selected == "steam" -> null to 268f
             selected == "desktop" -> null to 200f
             selected.startsWith("app:") -> s.steamGames.firstOrNull { "app:${it.appId}" == selected }.let { it?.art to hueOf(it?.name ?: "") }
@@ -493,14 +538,14 @@ private fun Pane(s: FrontEndState, selected: String, a: FrontEndActions, modifie
         }
         Backdrop(wash)
         AnimatedContent(
-            targetState = selected,
+            targetState = if (page != null && s.pageKey != null) s.pageKey else selected,
             transitionSpec = {
                 (fadeIn(Motion.tw(300, 80)) + slideInVertically(Motion.tw(420, 80)) { it / 24 })
                     .togetherWith(fadeOut(Motion.tw(170)) + slideOutVertically(Motion.tw(170)) { -it / 40 })
                     .apply { targetContentZIndex = 1f }
             },
             label = "pane",
-        ) { key -> Content(s, key, a, Modifier.fillMaxSize()) }
+        ) { key -> if (page != null && key == s.pageKey) page() else Content(s, key, a, Modifier.fillMaxSize()) }
     }
 }
 
@@ -657,7 +702,7 @@ private class Tile(val title: String, val sub: String, val art: File?, val key: 
 // ───────────────────────────── Type + small parts ─────────────────────────────
 
 @Composable
-private fun Eyebrow(t: String) {
+internal fun Eyebrow(t: String) {
     val colors = MaterialTheme.colorScheme
     val rule = remember { Animatable(0f) }
     LaunchedEffect(Unit) { rule.animateTo(1f, Motion.tw(600, 120)) }
@@ -666,8 +711,8 @@ private fun Eyebrow(t: String) {
         Text(t.uppercase(), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 2.sp, color = colors.primary)
     }
 }
-@Composable private fun Title(t: String) = Text(t, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
-@Composable private fun Lede(t: String) = Text(t, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 12.dp))
+@Composable internal fun Title(t: String) = Text(t, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
+@Composable internal fun Lede(t: String) = Text(t, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 12.dp))
 @Composable
 private fun SectionTitle(t: String, detail: String?) {
     val colors = MaterialTheme.colorScheme
@@ -719,7 +764,7 @@ private fun PrimaryButton(text: String, enabled: Boolean = true, onClick: () -> 
 }
 
 @Composable
-private fun SecondaryButton(text: String, enabled: Boolean = true, onClick: () -> Unit) {
+internal fun SecondaryButton(text: String, enabled: Boolean = true, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val src = remember { MutableInteractionSource() }
     val hot = rememberHot(src) && enabled
