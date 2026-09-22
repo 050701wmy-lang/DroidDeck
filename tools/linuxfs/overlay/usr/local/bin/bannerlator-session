@@ -101,6 +101,9 @@ if [ -z "${BL_INSIDE:-}" ]; then
     args+=(-r "$BL_REFRESH")
   fi
   [ "$mode" = steam ] && args+=(-e)
+  # HDR10: the app opened its compositor's colour-management gate for this session (BL_HDR=1);
+  # gamescope then offers HDR to its clients through the same wp_color_manager_v1 it binds on ours.
+  [ "${BL_HDR:-0}" = 1 ] && args+=(--hdr-enabled)
   export BL_INSIDE=1
   exec gamescope "${args[@]}" -- "$0" "$mode" "$@"
 fi

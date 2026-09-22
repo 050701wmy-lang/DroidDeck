@@ -15,7 +15,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -77,11 +81,12 @@ fun MainScreen(
     onRuntime: () -> Unit,
     onFrameGen: () -> Unit,
     onProtons: () -> Unit,
-    onDrivers: () -> Unit,
-    onAudio: () -> Unit,
+    onSteamSettings: () -> Unit,
+    onDesktopSettings: () -> Unit,
     onPerformance: () -> Unit,
     onOffline: () -> Unit,
     onRoms: () -> Unit,
+    onFiles: () -> Unit,
     onLogs: () -> Unit,
     onCredits: () -> Unit,
 ) {
@@ -148,14 +153,36 @@ fun MainScreen(
             Spacer(Modifier.height(14.dp * k))
 
             val buttonHeight = 40.dp * k
-            Button(
-                onClick = onPlay, enabled = state.ready && !state.busy,
-                modifier = Modifier.fillMaxWidth().height(buttonHeight),
-            ) { Text("Play", fontSize = 14.sp * k) }
+            // Each launch button has its own cog: what only matters for that mode lives there.
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp * k), modifier = Modifier.fillMaxWidth()) {
+                Button(
+                    onClick = onPlay, enabled = state.ready && !state.busy,
+                    modifier = Modifier.weight(1f).height(buttonHeight),
+                ) { Text("Play", fontSize = 14.sp * k) }
+                CogButton(k, onSteamSettings)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp * k), modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k)) {
+                OutlinedButton(
+                    onClick = onDesktop, enabled = state.ready && !state.busy && state.desktopInstalled,
+                    modifier = Modifier.weight(1f).height(buttonHeight),
+                ) { Text(if (state.desktopInstalled) "Desktop" else "Desktop — install it under Desktop & apps", fontSize = 13.sp * k, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                CogButton(k, onDesktopSettings)
+            }
+            // Offline is read while the client starts, so it is decided here rather than in the
+            // session's drawer, and it needs credentials from an earlier sign-in to be possible.
             OutlinedButton(
-                onClick = onDesktop, enabled = state.ready && !state.busy && state.desktopInstalled,
+                onClick = onOffline, enabled = state.offlineAccount != null,
                 modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight),
-            ) { Text(if (state.desktopInstalled) "Desktop" else "Desktop — install it under Desktop & apps", fontSize = 13.sp * k) }
+            ) {
+                Text(
+                    when {
+                        state.offlineAccount == null -> "Start offline — sign in once first"
+                        state.offline -> "Start offline: on · ${state.offlineAccount}"
+                        else -> "Start offline: off"
+                    },
+                    fontSize = 13.sp * k,
+                )
+            }
             Spacer(Modifier.height(8.dp * k))
 
             val runtimeLabel = when {
@@ -176,11 +203,6 @@ fun MainScreen(
             }
             Spacer(Modifier.height(6.dp * k))
             Row(horizontalArrangement = tileGap, modifier = Modifier.fillMaxWidth()) {
-                MenuTile("Graphics drivers", null, k, Modifier.weight(1f), onClick = onDrivers)
-                MenuTile("Audio", null, k, Modifier.weight(1f), onClick = onAudio)
-            }
-            Spacer(Modifier.height(6.dp * k))
-            Row(horizontalArrangement = tileGap, modifier = Modifier.fillMaxWidth()) {
                 MenuTile("Performance", null, k, Modifier.weight(1f), onClick = onPerformance)
                 // The folder's own name is the value; the whole path is in the dialog.
                 MenuTile(
@@ -190,17 +212,7 @@ fun MainScreen(
             }
             Spacer(Modifier.height(6.dp * k))
             Row(horizontalArrangement = tileGap, modifier = Modifier.fillMaxWidth()) {
-                // Offline is read while the client starts, so it is decided here rather than in the
-                // session's drawer, and it needs credentials from an earlier sign-in to be possible.
-                MenuTile(
-                    "Start offline",
-                    when {
-                        state.offlineAccount == null -> "sign in once first"
-                        state.offline -> "on · ${state.offlineAccount}"
-                        else -> "off"
-                    },
-                    k, Modifier.weight(1f), enabled = state.offlineAccount != null, onClick = onOffline,
-                )
+                MenuTile("Files", null, k, Modifier.weight(1f), onClick = onFiles)
                 MenuTile(
                     "Session logs", if (state.logsEnabled) "on · Download/SteamDeck" else "off",
                     k, Modifier.weight(1f), onClick = onLogs,
@@ -214,6 +226,16 @@ fun MainScreen(
             )
         }
     }
+}
+
+/** The cog beside a launch button. */
+@Composable
+private fun CogButton(k: Float, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.width(44.dp * k).height(40.dp * k),
+        contentPadding = PaddingValues(0.dp),
+    ) { Icon(Icons.Filled.Settings, contentDescription = "Settings", modifier = Modifier.size(18.dp * k)) }
 }
 
 /** One tile of the two-column menu: what it is, and under it what it is set to. */

@@ -34,10 +34,11 @@ import com.steamdeck.launcher.session.SessionPrefs
 import com.steamdeck.launcher.ui.ProtonDialog
 import com.steamdeck.launcher.ui.ProtonRow
 import com.steamdeck.launcher.core.CpuCores
-import com.steamdeck.launcher.ui.AudioDialog
 import com.steamdeck.launcher.ui.CoreRow
 import com.steamdeck.launcher.ui.PerformanceDialog
-import com.steamdeck.launcher.ui.DriverDialog
+import com.steamdeck.launcher.ui.ModeSettingsDialog
+import com.steamdeck.launcher.ui.ModeSettings
+import com.steamdeck.launcher.ui.ModeSettingsActions
 import com.steamdeck.launcher.ui.DriverRow
 import com.steamdeck.launcher.ui.ConfirmDialog
 import com.steamdeck.launcher.ui.CreditsDialog
@@ -80,8 +81,6 @@ class MainActivity : ComponentActivity() {
     private var offlineAccount by mutableStateOf<String?>(null)
     private var offline by mutableStateOf(false)
     private var protonRows by mutableStateOf<List<ProtonRow>>(emptyList())
-    private var showDrivers by mutableStateOf(false)
-    private var showAudio by mutableStateOf(false)
     private var showPerformance by mutableStateOf(false)
     private var clientOverride by mutableStateOf(false)
     private var clientCores by mutableStateOf<Set<Int>>(emptySet())
@@ -113,6 +112,15 @@ class MainActivity : ComponentActivity() {
             romsDir = path
         }
     }
+    // The mode whose settings dialog is open, with what it shows; refreshed by openModeSettings().
+    private var settingsMode by mutableStateOf<String?>(null)
+    private var resolutionCap by mutableStateOf(1080)
+    private var shapeMode by mutableStateOf(SessionPrefs.SHAPE_AUTO)
+    private var hdrOn by mutableStateOf(false)
+    private var hdrReason by mutableStateOf<String?>(null)
+    private var touchMode by mutableStateOf(SessionPrefs.TOUCH_AUTO)
+    private var oscMode by mutableStateOf(SessionPrefs.OSC_AUTO)
+    private var renderer by mutableStateOf("pixman")
     private var romsDir by mutableStateOf<String?>(null)
     private var logsEnabled by mutableStateOf(true)
     private var showRoms by mutableStateOf(false)
@@ -145,10 +153,11 @@ class MainActivity : ComponentActivity() {
                     onRuntime = { onRuntimeButton() },
                     onFrameGen = { showFrameGen = true },
                     onProtons = { refreshProtons(); showProtons = true },
-                    onDrivers = { refreshDrivers(); showDrivers = true },
-                    onAudio = { directAudio = SessionPrefs.directAudio(this); mic = SessionPrefs.micEnabled(this); showAudio = true },
+                    onSteamSettings = { openModeSettings(SessionService.MODE_STEAM) },
+                    onDesktopSettings = { openModeSettings(SessionService.MODE_DESKTOP) },
                     onPerformance = { refreshCores(); showPerformance = true },
                     onRoms = { showRoms = true },
+                    onFiles = { startActivity(Intent(this, com.steamdeck.launcher.files.FileManagerActivity::class.java)) },
                     onLogs = {
                         SessionPrefs.setLogsEnabled(this, !SessionPrefs.logsEnabled(this))
                         logsEnabled = SessionPrefs.logsEnabled(this)
@@ -177,31 +186,47 @@ class MainActivity : ComponentActivity() {
                     onRemove = { id -> ProtonExtras.tools.first { it.id == id }.let { ProtonExtras.remove(this, it) }; refreshProtons() },
                     onDismiss = { showProtons = false },
                 )
-                if (showDrivers) DriverDialog(
-                    linuxRows = linuxRows, linuxSteam = linuxSteam, linuxDesktop = linuxDesktop,
-                    androidRows = androidRows, androidSelected = androidSelected,
-                    onSelectLinux = { mode, id -> SessionPrefs.setLinuxDriver(this, mode, id); refreshDrivers() },
-                    onImportLinux = { pickLinuxDriver.launch(InAppFilePicker.buildIntent(this, ZIP_EXT, "Choose a Linux runtime driver (-Linux zip)")) },
-                    onRemoveLinux = { id -> LinuxVulkanDriverManager(this).removeDriver(id); refreshDrivers() },
-                    onSelectAndroid = { id -> SessionPrefs.setAndroidDriver(this, id); refreshDrivers() },
-                    onImportAndroid = { pickAndroidDriver.launch(InAppFilePicker.buildIntent(this, ZIP_EXT, "Choose a display driver (AdrenoTools zip)")) },
-                    onRemoveAndroid = { id -> TurnipDriver(this).remove(id); refreshDrivers() },
-                    onDismiss = { showDrivers = false },
-                )
-                if (showAudio) AudioDialog(
-                    directAudio = directAudio, mic = mic,
-                    onDirectAudio = { on -> SessionPrefs.setDirectAudio(this, on); directAudio = on },
-                    onMic = { on ->
-                        SessionPrefs.setMicEnabled(this, on)
-                        mic = on
-                        // The session checks the grant itself at start; asking here means the
-                        // answer is in before the first session that wants it.
-                        if (on && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 2)
-                        }
-                    },
-                    onDismiss = { showAudio = false },
-                )
+                settingsMode?.let { mode ->
+                    ModeSettingsDialog(
+                        ModeSettings(
+                            mode = mode, resolutionCap = resolutionCap, shapeMode = shapeMode,
+                            hdr = hdrOn, hdrReason = hdrReason,
+                            linuxRows = linuxRows,
+                            linuxSelected = if (mode == SessionService.MODE_STEAM) linuxSteam else linuxDesktop,
+                            androidRows = androidRows, androidSelected = androidSelected,
+                            touchMode = touchMode,
+                            oscMode = if (mode == SessionService.MODE_STEAM) oscMode else null,
+                            directAudio = if (mode == SessionService.MODE_STEAM) directAudio else null,
+                            mic = if (mode == SessionService.MODE_STEAM) mic else null,
+                            renderer = if (mode == SessionService.MODE_DESKTOP) renderer else null,
+                        ),
+                        ModeSettingsActions(
+                            onResolution = { cap -> SessionPrefs.setResolutionCap(this, mode, cap); resolutionCap = cap },
+                            onShape = { shape -> SessionPrefs.setShapeMode(this, shape); shapeMode = shape },
+                            onHdr = { on -> SessionPrefs.setHdr(this, mode, on); hdrOn = on },
+                            onSelectLinux = { id -> SessionPrefs.setLinuxDriver(this, mode, id); refreshDrivers() },
+                            onImportLinux = { pickLinuxDriver.launch(InAppFilePicker.buildIntent(this, ZIP_EXT, "Choose a Linux runtime driver (-Linux zip)")) },
+                            onRemoveLinux = { id -> LinuxVulkanDriverManager(this).removeDriver(id); refreshDrivers() },
+                            onSelectAndroid = { id -> SessionPrefs.setAndroidDriver(this, id); refreshDrivers() },
+                            onImportAndroid = { pickAndroidDriver.launch(InAppFilePicker.buildIntent(this, ZIP_EXT, "Choose a display driver (AdrenoTools zip)")) },
+                            onRemoveAndroid = { id -> TurnipDriver(this).remove(id); refreshDrivers() },
+                            onTouch = { t -> SessionPrefs.setTouchMode(this, t); touchMode = t },
+                            onOsc = { o -> SessionPrefs.setOscMode(this, o); oscMode = o },
+                            onDirectAudio = { on -> SessionPrefs.setDirectAudio(this, on); directAudio = on },
+                            onMic = { on ->
+                                SessionPrefs.setMicEnabled(this, on)
+                                mic = on
+                                // The session checks the grant itself at start; asking here means the
+                                // answer is in before the first session that wants it.
+                                if (on && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                                    requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 2)
+                                }
+                            },
+                            onRenderer = { r -> SessionPrefs.setDesktopRenderer(this, r); renderer = r },
+                            onDismiss = { settingsMode = null },
+                        ),
+                    )
+                }
                 if (showPerformance) PerformanceDialog(
                     cores = CpuCores.all.map { c -> CoreRow(c, "cpu$c" + (CpuCores.maxGhz(c)?.let { String.format(java.util.Locale.US, " · %.1f GHz", it) } ?: "")) },
                     clientOverride = clientOverride, clientCores = clientCores, gameCores = gameCores,
@@ -293,6 +318,21 @@ class MainActivity : ComponentActivity() {
     }
 
     /** Both driver lists as the dialog shows them, re-read from disk so an import or removal shows at once. */
+    /** Everything the mode's cog shows, read fresh, then the dialog. */
+    private fun openModeSettings(mode: String) {
+        refreshDrivers()
+        resolutionCap = SessionPrefs.resolutionCap(this, mode)
+        shapeMode = SessionPrefs.shapeMode(this)
+        hdrOn = SessionPrefs.hdr(this, mode)
+        hdrReason = com.steamdeck.launcher.wayland.HdrSupport.probe(this).reason
+        touchMode = SessionPrefs.touchMode(this)
+        oscMode = SessionPrefs.oscMode(this)
+        directAudio = SessionPrefs.directAudio(this)
+        mic = SessionPrefs.micEnabled(this)
+        renderer = SessionPrefs.desktopRenderer(this)
+        settingsMode = mode
+    }
+
     private fun refreshDrivers() {
         val lm = LinuxVulkanDriverManager(this)
         linuxRows = LinuxVulkanDriver.optionValues(this).map { id ->

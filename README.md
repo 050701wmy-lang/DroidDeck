@@ -59,7 +59,10 @@ ledger rather than a feature list — where something has not been run on hardwa
 | The session log folder | ✅ proven — all of it written, including this app's own log |
 | Session folder finished after a crash or a kill | ⚠️ built: crash handler + next-start sweep; not yet forced on a device |
 | ROMs folder and Storage in the session's home | ⚠️ built; not yet opened from an emulator on a device |
-| The in-app file picker | ⚠️ built; not yet used on a device |
+| The File Manager (Bannerlator's) and its pick mode | ⚠️ built; not yet used on a device |
+| The cog beside Play / Desktop: resolution, shape, HDR, drivers, touch, audio, renderer | ⚠️ built; the resolution cap and HDR not yet seen on a device |
+| Leftover session processes swept at the next start | ⚠️ built; not yet forced on a device |
+| The drawer's "Steam menu" (Guide) | ⚠️ built; not yet tried |
 | Stopping a competing Steam client | ⚠️ it is asked to stop and says so, but one that restarts itself from boot wins the race — uninstall it |
 | DirectAudio for games, and the microphone | ⚠️ wired and the modules load; voice not yet confirmed in Steam's tester |
 | Client and game core masks | ⚠️ applied and logged; no measured difference yet |
@@ -179,9 +182,17 @@ folder now carries two entries every session:
   `/root/ROMs` once and it is the same folder in every session after.
 
 Both are the live folders, not copies: a save an emulator writes next to its ROM lands on the
-phone. Choosing is done in the app's own file picker, the one Bannerlator's File Manager offers
-in pick mode - every mounted card in a drive menu, folders first, an up-arrow that stops at the
-card's root - and the same picker is what imports a graphics driver.
+phone.
+
+### Files
+
+**Files** on the main screen is Bannerlator's File Manager, carried over whole: grid and list,
+sort, search, multi-select, copy / cut / paste with conflict handling and a cancellable progress
+bar, rename, delete, new folder, properties (read-only and hidden), favourites, and a locations
+rail with every mounted card, Downloads, the ROMs folder and the session logs. Its pick mode is
+what chooses the ROMs folder and imports a driver. What is not here is what has no meaning without
+a Wine container: running a file, adding it to shortcuts, the C: / Z: drives and the archive
+unpacker.
 
 ## Pointer
 
@@ -296,10 +307,27 @@ installs a requested build when the next session starts (several hundred MB), pa
 pressure-vessel like Valve's, and it then appears in Steam under Properties → Compatibility for
 any game. The dialog queues or cancels a request and removes an installed build.
 
+## The cog beside Play and Desktop
+
+Each launch button has a cog, and everything that only matters for that one mode lives behind it,
+so the main screen keeps only what applies to both: **resolution** (up to 1080p by default, 900p or
+720p for a lighter session, or the panel's own), the display **shape**, **HDR10 output**, the
+**Linux runtime driver** for that mode and the shared **display driver**, **touch**, and for Steam
+the on-screen controls and audio, for the desktop its renderer.
+
+**HDR10** is a switch that is greyed out, with the reason, on a panel that does not list HDR10 —
+the compositor's HDR gate is decided from the display's own word (`android.view.Display`), once,
+when the compositor starts. On, the compositor offers `wp_color_manager_v1` with BT.2020 + PQ and
+10-bit buffers, gamescope is started with `--hdr-enabled` and speaks the same protocol to it, and
+games get `DXVK_HDR=1`; a game that renders HDR then reaches the panel as HDR on its own display
+layer, tagged BT2020_PQ. The compositor lives for the whole app process, so a change applies after
+the app is fully closed and opened again. ⚠️ Wired end to end; not yet seen on a device from this
+app (Bannerlator proved the same compositor path on a Fold).
+
 ## Graphics drivers
 
 Two drivers, two lists, because a zip for one cannot serve the other — the same split Bannerlator's
-Contents screen makes:
+Contents screen makes. Both are chosen in the cog beside Play / Desktop:
 
 - **Linux runtime driver** — the glibc Turnip everything *inside* the runtime renders on: the Steam
   client's UI, every game it launches, and in desktop mode every program on the desktop. Import a
@@ -395,6 +423,11 @@ stands then, which still holds the entry unless the device rebooted. A finished 
 **Session logs** on the main screen turns the folder off. The session still writes its logs - the
 scripts and the compositor need somewhere to - but into the app's cache, and they are deleted
 when the session ends, so nothing accumulates in Downloads.
+
+A session's process tree is also swept at the next start: proot, gamescope and Steam outlive an
+app that was killed or crashed, holding the rootfs, the GPU and Steam's lock, and the next session
+then never came up until the app was force-stopped (a Thor Pro report). Anything under the app's
+uid other than the app itself is a leftover at that point, and `app.log` lists what was killed.
 
 `device.txt` is written before the session starts, so a session that dies in its first second
 still says what it ran on: model, SoC, Android and kernel, cores and their ceilings, RAM, the GPU

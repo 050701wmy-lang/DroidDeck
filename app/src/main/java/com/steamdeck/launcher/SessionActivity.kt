@@ -37,6 +37,7 @@ import com.steamdeck.launcher.session.PerfHud
 import com.steamdeck.launcher.session.ProtonExtras
 import com.steamdeck.launcher.session.SessionPrefs
 import com.steamdeck.launcher.session.SessionPaths
+import com.steamdeck.launcher.wayland.HdrSupport
 import com.steamdeck.launcher.session.SessionService
 import com.steamdeck.launcher.session.SessionState
 import com.steamdeck.launcher.ui.CursorOverlay
@@ -158,6 +159,16 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                         onHud = { on -> SessionPrefs.setHudEnabled(this@SessionActivity, on); hudOn = on; hud.refresh() },
                         onFrameGen = { showFrameGen = true },
                         onKeyboard = { drawerOpen = false; keyboard?.toggle() },
+                        onSteamMenu = if (SessionState.mode == SessionService.MODE_STEAM) ({
+                            // The Guide button, the way the on-screen ◉ sends it: a device with no
+                            // Xbox button, or a pad the client hides the controls for, has no other
+                            // way to open the client's menu in a game.
+                            drawerOpen = false
+                            padBridge?.applyTouch { st -> st.setPressed(com.steamdeck.launcher.input.GamepadState.IDX_BUTTON_MODE, true) }
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                padBridge?.applyTouch { st -> st.setPressed(com.steamdeck.launcher.input.GamepadState.IDX_BUTTON_MODE, false) }
+                            }, 90)
+                        }) else null,
                         onProtons = { refreshProtons(); showProtons = true },
                         onOsc = {
                             val next = when (SessionPrefs.oscMode(this@SessionActivity)) {
@@ -285,6 +296,31 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                 Log.w(TAG, "could not point the compositor's log at $waylandLog", e)
             }
         }
+        // HDR10: the gate is decided once, when the compositor starts (it lives for the whole app
+        // process), from the panel's own word and the mode's setting. Zero-copy presentation is
+        // what puts an HDR frame on a display layer tagged BT2020_PQ, so it is turned on with it.
+        if (!CompositorHost.isStarted) {
+            val mode = intent.getStringExtra(SessionService.EXTRA_MODE) ?: SessionService.MODE_STEAM
+            val probe = HdrSupport.probe(this)
+            WaylandCompositor.nativeSetHdrDisplay(
+                probe.displayId, probe.name, probe.formats, probe.hdr10,
+                probe.maxLuminance, probe.maxAverageLuminance, probe.minLuminance,
+                probe.ratioAvailable, probe.ratio, Build.VERSION.SDK_INT,
+            )
+            val wanted = SessionPrefs.hdr(this, mode)
+            val on = wanted && probe.reason == null
+            SessionState.hdr = on
+            if (on) {
+                try { android.system.Os.setenv("BANNER_WAYLAND_HDR", "1", true) } catch (e: Exception) { Log.w(TAG, "BANNER_WAYLAND_HDR", e) }
+                WaylandCompositor.nativeSetZeroCopy(true)
+            }
+            WaylandCompositor.nativeSetHdrRequest(
+                if (on) WaylandCompositor.HDR_MODE_ON else WaylandCompositor.HDR_MODE_OFF,
+                "$mode session settings" + (if (wanted && !on) " (refused: ${probe.reason})" else ""),
+                on, on,
+            )
+            Log.i(TAG, "hdr: " + (if (on) "on" else if (wanted) "wanted but ${probe.reason}" else "off") + " · display ${probe.formats.ifEmpty { "SDR" }}")
+        }
         CompositorHost.startOrAttach(
             holder.surface, runtimeDir.path,
             driverId?.let { turnip.driverPath(it) }, driverId?.let { turnip.libraryName(it) },
@@ -344,9 +380,12 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         // compositor letterboxes onto a squarer panel.
         val aspect = if (SessionPrefs.shapeMode(this) == SessionPrefs.SHAPE_WIDE) 16f / 9f
                      else maxOf(panelW / panelH, 16f / 9f)
-        // 1080 tall at most: the client's CEF is the heaviest thing in the session, and above
-        // 1080p it costs frames for nothing anyone can see on a handheld panel.
-        val height = minOf(panelH, 1080f).toInt()
+        // 1080 tall at most by default: the client's CEF is the heaviest thing in the session, and
+        // above 1080p it costs frames for nothing anyone can see on a handheld panel. The mode's
+        // settings (the cog beside Play / Desktop) can lower the cap or lift it to the panel.
+        val mode = intent.getStringExtra(SessionService.EXTRA_MODE) ?: SessionService.MODE_STEAM
+        val cap = SessionPrefs.resolutionCap(this, mode)
+        val height = (if (cap <= 0) panelH else minOf(panelH, cap.toFloat())).toInt()
         val width = (height * aspect).toInt()
         // Odd sizes upset the scaler; both dimensions even is what every mode here would be.
         return Pair(width and 1.inv(), height and 1.inv())

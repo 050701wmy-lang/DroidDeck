@@ -8,6 +8,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
@@ -15,7 +16,7 @@ import com.steamdeck.launcher.ui.SteamDeckTheme
 import java.io.File
 
 /**
- * Themed host for [FilePickerScreen]. Launched through [InAppFilePicker] and answers with the
+ * Themed host for [FileManagerScreen] in pick mode. Launched through [InAppFilePicker] and answers with the
  * picked path in [EXTRA_SELECTED_FILE] on RESULT_OK.
  *
  * Extras:
@@ -36,25 +37,24 @@ class FilePickerActivity : ComponentActivity() {
         val extensions = intent.getStringArrayExtra(EXTRA_EXTENSIONS)?.toList() ?: emptyList()
         val pickDir = intent.getBooleanExtra(EXTRA_PICK_DIRECTORY, false)
         val title = intent.getStringExtra(EXTRA_PICKER_TITLE)
-        val prefs = getSharedPreferences("picker", MODE_PRIVATE)
-        val initialDir = (intent.getStringExtra(EXTRA_INITIAL_DIRECTORY) ?: prefs.getString("lastDir", null))
+        // The screen remembers the folder it last picked from; an explicit start wins over it.
+        val prefs = getSharedPreferences("file_manager", MODE_PRIVATE)
+        val initialDir = (intent.getStringExtra(EXTRA_INITIAL_DIRECTORY) ?: prefs.getString("lastFilePickerDir", null))
             ?.let { File(it) }?.takeIf { it.isDirectory }
 
         setContent {
             SteamDeckTheme {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    FilePickerScreen(
+                Surface(modifier = Modifier.fillMaxSize().systemBarsPadding(), color = MaterialTheme.colorScheme.background) {
+                    FileManagerScreen(
+                        pickMode = true,
                         pickDirMode = pickDir,
                         pickExtensions = extensions,
                         initialDir = initialDir,
-                        title = title ?: if (pickDir) "Choose a folder" else "Choose a file",
+                        pickerTitle = title ?: if (pickDir) "Choose a folder" else "Choose a file",
                         onPick = { file ->
-                            val remembered = if (file.isDirectory) file else file.parentFile
-                            remembered?.let { prefs.edit().putString("lastDir", it.absolutePath).apply() }
                             setResult(Activity.RESULT_OK, Intent().putExtra(EXTRA_SELECTED_FILE, file.absolutePath))
                             finish()
                         },
-                        onCancel = { setResult(Activity.RESULT_CANCELED); finish() },
                     )
                 }
             }

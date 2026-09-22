@@ -56,6 +56,11 @@
             size change, so nothing it does can help.
         -->
         <activity
+            android:name=".files.FileManagerActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme" />
+
+        <activity
             android:name=".files.FilePickerActivity"
             android:exported="false"
             android:theme="@style/AppTheme" />

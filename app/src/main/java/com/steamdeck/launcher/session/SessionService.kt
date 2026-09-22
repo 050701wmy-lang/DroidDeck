@@ -72,7 +72,13 @@ class SessionService : Service() {
         SessionState.running = true
         SessionState.firstFrameSeen = false
         acquireLocks()
-        Thread({ runSession() }, "session-start").start()
+        Thread({
+            // A tree the last session left behind (the app was killed or crashed, so its teardown
+            // never ran) would hold the rootfs, the GPU and Steam's lock: nothing of ours should
+            // be alive between sessions outside this process.
+            OrphanReaper.reap("session starting")
+            runSession()
+        }, "session-start").start()
         // The activity or the notification stops us; the system must not resurrect a session whose
         // guest processes are long gone.
         return START_NOT_STICKY
@@ -238,6 +244,13 @@ class SessionService : Service() {
 
         guest.add("BL_WIDTH=" + size.first)
         guest.add("BL_HEIGHT=" + size.second)
+        if (SessionState.hdr) {
+            // The activity opened the compositor's HDR gate: gamescope offers HDR to its clients
+            // and DXVK takes the HDR10 swapchain when a game asks for one.
+            guest.add("BL_HDR=1")
+            guest.add("DXVK_HDR=1")
+            Log.i(TAG, "hdr: gamescope --hdr-enabled, DXVK_HDR=1")
+        }
         guest.add("BL_FPS=0")
         guest.add("BL_REFRESH=" + Math.round(SessionState.refreshHz))
         guest.add("BL_LOG=" + sessionLog.path)
@@ -272,7 +285,7 @@ class SessionService : Service() {
         if (SessionState.mode == MODE_DESKTOP) {
             val override = File(Environment.getExternalStorageDirectory(), "Download/steamdeck-wlr-renderer")
                 .takeIf { it.isFile }?.let { FileUtils.readString(it)?.trim() }
-            guest.add("BL_WLR_RENDERER=" + (override?.takeIf { it.isNotEmpty() } ?: "pixman"))
+            guest.add("BL_WLR_RENDERER=" + (override?.takeIf { it.isNotEmpty() } ?: SessionPrefs.desktopRenderer(this)))
         }
         guest.add(LinuxRuntime.SESSION_SCRIPT)
         guest.add(SessionState.mode)

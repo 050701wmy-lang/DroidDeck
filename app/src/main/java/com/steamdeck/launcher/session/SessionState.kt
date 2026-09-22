@@ -10,6 +10,9 @@ import java.io.File
 object SessionState {
     @Volatile
     var running = false
+    /** HDR10 was asked for and the panel can show it: the compositor was told, and the session
+     *  gets DXVK_HDR=1 and gamescope --hdr-enabled. Decided by the activity before the compositor starts. */
+    @JvmStatic var hdr = false
 
     /** Which session this is: SessionService.MODE_STEAM or MODE_DESKTOP. */
     @Volatile

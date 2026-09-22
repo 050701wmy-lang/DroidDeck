@@ -94,6 +94,8 @@ class DrawerActions(
     val onHud: (Boolean) -> Unit,
     val onFrameGen: () -> Unit,
     val onKeyboard: () -> Unit,
+    /** Sends the Guide button (the client's menu); null on the desktop, where there is none. */
+    val onSteamMenu: (() -> Unit)?,
     val onProtons: () -> Unit,
     val onOsc: () -> Unit,
     val onTouch: () -> Unit,
@@ -135,6 +137,9 @@ fun SessionDrawer(a: DrawerActions) {
             }
             OutlinedButton(onClick = a.onKeyboard, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                 Text("Keyboard", fontSize = 13.sp)
+            }
+            if (a.onSteamMenu != null) OutlinedButton(onClick = a.onSteamMenu, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                Text("Steam menu  ◉", fontSize = 13.sp)
             }
             OutlinedButton(onClick = a.onFrameGen, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
                 Text("Frame generation: ${a.frameGenLabel}", fontSize = 13.sp)

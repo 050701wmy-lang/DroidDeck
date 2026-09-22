@@ -181,4 +181,40 @@ object SessionPrefs {
     fun setLogsEnabled(context: Context, on: Boolean) {
         prefs(context).edit().putBoolean("logs", on).apply()
     }
+
+    // ── Per-mode display ────────────────────────────────────────────────────────────────────
+
+    /**
+     * The tallest the session's display may be, in pixels, for MODE_STEAM / MODE_DESKTOP:
+     * 0 = the panel's own height, otherwise a cap. 1080 is the default the app always had - the
+     * client's CEF is the heaviest thing in a session and above 1080p it costs frames for nothing
+     * a handheld panel can show. Read once, when the session's display is sized.
+     */
+    fun resolutionCap(context: Context, mode: String): Int = prefs(context).getInt("resolutionCap.$mode", 1080)
+
+    fun setResolutionCap(context: Context, mode: String, cap: Int) {
+        prefs(context).edit().putInt("resolutionCap.$mode", cap).apply()
+    }
+
+    /**
+     * What the desktop shell composites with: pixman (software, the default - the Adreno stand-in
+     * is not a DRM render node, so labwc's gbm allocator cannot use it), or gles2 / vulkan for a
+     * device that has a real node. `Download/steamdeck-wlr-renderer` still overrides it.
+     */
+    fun desktopRenderer(context: Context): String = prefs(context).getString("desktopRenderer", "pixman") ?: "pixman"
+
+    fun setDesktopRenderer(context: Context, renderer: String) {
+        prefs(context).edit().putString("desktopRenderer", renderer).apply()
+    }
+
+    /**
+     * HDR10 output for MODE_STEAM / MODE_DESKTOP. Off by default. Honoured only when the panel
+     * lists HDR10 (HdrSupport), and decided when the compositor starts, which is once per app
+     * process: a change applies after the app is fully closed and opened again.
+     */
+    fun hdr(context: Context, mode: String): Boolean = prefs(context).getBoolean("hdr.$mode", false)
+
+    fun setHdr(context: Context, mode: String, on: Boolean) {
+        prefs(context).edit().putBoolean("hdr.$mode", on).apply()
+    }
 }
