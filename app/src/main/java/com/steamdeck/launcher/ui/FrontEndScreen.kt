@@ -2,6 +2,7 @@ package com.steamdeck.launcher.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,11 +38,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -164,7 +167,7 @@ private fun Rail(
         if (s.running != null) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(colors.primary.copy(alpha = 0.18f))
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).focusOutline(RoundedCornerShape(8.dp)).background(colors.primary.copy(alpha = 0.18f))
                     .clickable(onClick = a.onResume).padding(horizontal = 10.dp, vertical = 9.dp),
             ) {
                 Box(modifier = Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(Color(0xFF7FD8A0)))
@@ -236,7 +239,7 @@ private fun NavItem(
     val colors = MaterialTheme.colorScheme
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).focusOutline(RoundedCornerShape(8.dp))
             .background(if (current) colors.primary else Color.Transparent)
             .clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = if (small) 7.dp else 9.dp),
     ) {
@@ -272,7 +275,7 @@ private fun Content(s: FrontEndState, selected: String, a: FrontEndActions, modi
                 }
                 SectionTitle("Installed")
                 if (s.steamGames.isEmpty()) Note("Nothing installed yet. Press Play, sign in, and install from the store; games appear here and on the left.")
-                else ArtGrid(s.steamGames.map { g -> Tile(g.name, g.library, g.art, "steam:${g.appId}") { a.onSteamGame(g) } })
+                else ArtGrid(s.steamGames.map { g -> Tile(g.name, g.library, g.art, "steam:${g.appId}", null) { a.onSteamGame(g) } })
             }
             selected.startsWith("app:") -> {
                 val g = s.steamGames.firstOrNull { "app:${it.appId}" == selected }
@@ -284,7 +287,7 @@ private fun Content(s: FrontEndState, selected: String, a: FrontEndActions, modi
                         Button(onClick = { a.onSteamGame(g) }, enabled = s.ready && !s.busy) { Text("▶ Launch") }
                         Cog(a.onSteamSettings)
                     }
-                    Art(g.art, g.name, Modifier.width(96.dp))
+                    Art(g.art, null, g.name, Modifier.width(120.dp))
                 }
             }
             selected == "desktop" -> {
@@ -297,7 +300,7 @@ private fun Content(s: FrontEndState, selected: String, a: FrontEndActions, modi
                     Cog(a.onDesktopSettings)
                 }
                 SectionTitle("Emulators")
-                ArtGrid(s.emulators.map { e -> Tile(e.name, if (e.installed) "${e.games.size} game${if (e.games.size == 1) "" else "s"}" else "not installed", null, "emu:${e.id}") { if (e.installed) a.onEmulator(e) else a.onApps() } })
+                ArtGrid(s.emulators.map { e -> Tile(e.name, if (e.installed) "${e.games.size} game${if (e.games.size == 1) "" else "s"}" else "not installed", null, "emu:${e.id}", e.iconRes) { if (e.installed) a.onEmulator(e) else a.onApps() } })
                 Spacer(Modifier.height(10.dp))
                 Text("?  why emulators do not run on the desktop", fontSize = 12.sp, color = colors.onSurfaceVariant, modifier = Modifier.clickable(onClick = a.onEmulatorHelp).padding(4.dp))
             }
@@ -308,6 +311,7 @@ private fun Content(s: FrontEndState, selected: String, a: FrontEndActions, modi
                     Title(e.name)
                     Lede("Opens fullscreen under gamescope. Games are the ${e.system} files in the ROMs folder; each launches straight in.")
                     Actions {
+                        Image(painterResource(e.iconRes), null, modifier = Modifier.size(40.dp))
                         Button(onClick = { a.onEmulator(e) }, enabled = s.ready && !s.busy) { Text("▶ Open ${e.name}") }
                         OutlinedButton(onClick = a.onRoms) { Text("ROMs folder") }
                     }
@@ -317,7 +321,7 @@ private fun Content(s: FrontEndState, selected: String, a: FrontEndActions, modi
                         else if (e.id == "retroarch") "RetroArch loads its games itself: open it and browse to root › ROMs."
                         else "Put ${e.system} games in ROMs/${e.system.substringBefore(' ')} (or the ROMs folder itself); the list rebuilds when this screen opens.",
                     )
-                    else ArtGrid(e.games.map { g -> Tile(g.name, g.hostPath.extension.uppercase(), null, "rom:${g.hostPath}") { a.onRom(g) } }, wide = true)
+                    else ArtGrid(e.games.map { g -> Tile(g.name, g.hostPath.extension.uppercase(), null, "rom:${g.hostPath}", e.iconRes) { a.onRom(g) } }, wide = true)
                 }
             }
             selected.startsWith("rom:") -> {
@@ -329,6 +333,7 @@ private fun Content(s: FrontEndState, selected: String, a: FrontEndActions, modi
                     Title(g.name)
                     Lede(g.guestPath)
                     Actions {
+                        Image(painterResource(e.iconRes), null, modifier = Modifier.size(40.dp))
                         Button(onClick = { a.onRom(g) }, enabled = s.ready && !s.busy) { Text("▶ Launch in ${e.name}") }
                     }
                 }
@@ -338,7 +343,7 @@ private fun Content(s: FrontEndState, selected: String, a: FrontEndActions, modi
     }
 }
 
-private class Tile(val title: String, val sub: String, val art: java.io.File?, val key: String, val onClick: () -> Unit)
+private class Tile(val title: String, val sub: String, val art: java.io.File?, val key: String, val iconRes: Int? = null, val onClick: () -> Unit)
 
 @Composable private fun Eyebrow(t: String) = Text(t, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
 @Composable private fun Title(t: String) = Text(t, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(top = 2.dp, bottom = 4.dp))
@@ -349,13 +354,28 @@ private class Tile(val title: String, val sub: String, val art: java.io.File?, v
 @Composable private fun Cog(onClick: () -> Unit) = OutlinedButton(onClick = onClick, contentPadding = PaddingValues(0.dp), modifier = Modifier.size(40.dp)) { Icon(Icons.Filled.Settings, "Settings", modifier = Modifier.size(18.dp)) }
 
 @Composable
-private fun Art(art: java.io.File?, label: String, modifier: Modifier, wide: Boolean = false) {
+private fun Art(art: java.io.File?, iconRes: Int?, label: String, modifier: Modifier, wide: Boolean = false) {
     val colors = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(8.dp)
     Box(modifier = modifier.aspectRatio(if (wide) 16f / 9f else 2f / 3f).clip(shape).background(Brush.linearGradient(listOf(colors.surfaceVariant, colors.surface)))) {
-        if (art != null) AsyncImage(model = art, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-        else Text(label, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = colors.onBackground, modifier = Modifier.align(Alignment.BottomStart).padding(5.dp), maxLines = 3, overflow = TextOverflow.Ellipsis)
+        when {
+            art != null -> AsyncImage(model = art, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            iconRes != null -> Image(painterResource(iconRes), null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(if (wide) 10.dp else 8.dp))
+            else -> Text(label, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = colors.onBackground, modifier = Modifier.align(Alignment.BottomStart).padding(5.dp), maxLines = 3, overflow = TextOverflow.Ellipsis)
+        }
     }
+}
+
+/**
+ * A thin outline while a control has keyboard/controller focus: a pad's d-pad walks the rail
+ * and the grid, and the highlight has to say where it is.
+ */
+@Composable
+private fun Modifier.focusOutline(shape: RoundedCornerShape): Modifier {
+    var focused by remember { mutableStateOf(false) }
+    val colors = MaterialTheme.colorScheme
+    return this.onFocusChanged { focused = it.isFocused }
+        .border(if (focused) 1.5.dp else 0.dp, if (focused) colors.primary else Color.Transparent, shape)
 }
 
 @Composable
@@ -364,17 +384,17 @@ private fun ColumnScope.ArtGrid(tiles: List<Tile>, wide: Boolean = false) {
     // The grid takes the rest of the column; each tile is the art with its name and one line under it.
     LazyVerticalGrid(
         // 40% of the first cut: the art is a thumbnail to recognise a game by, not a poster.
-        columns = GridCells.Adaptive(minSize = if (wide) 72.dp else 54.dp),
+        columns = GridCells.Adaptive(minSize = if (wide) 90.dp else 68.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp),
         contentPadding = PaddingValues(bottom = 12.dp),
         modifier = Modifier.fillMaxWidth().weight(1f),
     ) {
         items(tiles, key = { it.key }) { t ->
             Column(
-                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(colors.surface)
+                modifier = Modifier.clip(RoundedCornerShape(10.dp)).focusOutline(RoundedCornerShape(10.dp)).background(colors.surface)
                     .clickable(onClick = t.onClick),
             ) {
-                Art(t.art, t.title, Modifier.fillMaxWidth(), wide)
+                Art(t.art, t.iconRes, t.title, Modifier.fillMaxWidth(), wide)
                 Column(modifier = Modifier.padding(horizontal = 5.dp, vertical = 4.dp)) {
                     Text(t.title, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = colors.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(t.sub, fontSize = 8.sp, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)

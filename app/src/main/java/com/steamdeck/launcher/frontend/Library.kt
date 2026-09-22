@@ -1,6 +1,7 @@
 package com.steamdeck.launcher.frontend
 
 import android.content.Context
+import com.steamdeck.launcher.R
 import com.steamdeck.launcher.runtime.LinuxRuntime
 import com.steamdeck.launcher.session.GameStorage
 import com.steamdeck.launcher.session.SessionPrefs
@@ -14,7 +15,14 @@ import java.io.File
 object Library {
     class SteamGame(val appId: Int, val name: String, val art: File?, val library: String)
     class Rom(val name: String, val hostPath: File, val guestPath: String, val emulatorId: String)
-    class Emulator(val id: String, val name: String, val system: String, val program: String, val installed: Boolean, val games: List<Rom>)
+    class Emulator(val id: String, val name: String, val system: String, val program: String, val installed: Boolean, val games: List<Rom>) {
+        /** The emulator's own icon, bundled (the runtime keeps them as theme SVGs the app cannot draw). */
+        val iconRes: Int get() = when (id) {
+            "rpcs3" -> R.drawable.emu_rpcs3; "pcsx2" -> R.drawable.emu_pcsx2; "dolphin" -> R.drawable.emu_dolphin
+            "duckstation" -> R.drawable.emu_duckstation; "melonds" -> R.drawable.emu_melonds; "cemu" -> R.drawable.emu_cemu
+            "ppsspp" -> R.drawable.emu_ppsspp; else -> R.drawable.emu_retroarch
+        }
+    }
 
     /** The client's own tools and runtimes live in steamapps beside the games; they are not titles. */
     private val NOT_GAMES = setOf(228980, 1493710, 3127680, 4183110, 4427310, 4185400)
