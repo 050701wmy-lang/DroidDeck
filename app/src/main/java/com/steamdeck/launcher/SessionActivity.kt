@@ -219,7 +219,6 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 when {
-                    showFrameGen -> showFrameGen = false
                     showProtons -> showProtons = false
                     else -> drawerOpen = !drawerOpen
                 }
