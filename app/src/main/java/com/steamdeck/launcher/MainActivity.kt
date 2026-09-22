@@ -121,6 +121,8 @@ class MainActivity : ComponentActivity() {
     private var touchMode by mutableStateOf(SessionPrefs.TOUCH_AUTO)
     private var oscMode by mutableStateOf(SessionPrefs.OSC_AUTO)
     private var renderer by mutableStateOf("pixman")
+    private var emulators by mutableStateOf<List<Pair<String, String>>>(emptyList())
+    private var showEmulatorHelp by mutableStateOf(false)
     private var romsDir by mutableStateOf<String?>(null)
     private var logsEnabled by mutableStateOf(true)
     private var showRoms by mutableStateOf(false)
@@ -138,7 +140,7 @@ class MainActivity : ComponentActivity() {
                         frameGenLabel = frameGenLabel,
                         desktopInstalled = desktopInstalled,
                         offlineAccount = offlineAccount, offline = offline,
-                        romsDir = romsDir, logsEnabled = logsEnabled,
+                        romsDir = romsDir, logsEnabled = logsEnabled, emulators = emulators,
                     ),
                     onPlay = { startActivity(Intent(this, SessionActivity::class.java)) },
                     onDesktop = {
@@ -158,6 +160,8 @@ class MainActivity : ComponentActivity() {
                     onPerformance = { refreshCores(); showPerformance = true },
                     onRoms = { showRoms = true },
                     onFiles = { startActivity(Intent(this, com.steamdeck.launcher.files.FileManagerActivity::class.java)) },
+                    onLaunchEmulator = { path -> launchProgram(path) },
+                    onEmulatorHelp = { showEmulatorHelp = true },
                     onLogs = {
                         SessionPrefs.setLogsEnabled(this, !SessionPrefs.logsEnabled(this))
                         logsEnabled = SessionPrefs.logsEnabled(this)
@@ -177,12 +181,7 @@ class MainActivity : ComponentActivity() {
                     rows = packageRows, busyStage = pkgStage, busyPercent = pkgPercent,
                     onInstall = { id -> installPackage(id) },
                     onRemove = { id -> catalog?.firstOrNull { it.id == id }?.let { DesktopCatalog.remove(this, it) }; refreshPackages() },
-                    onLaunch = { path ->
-                        showApps = false
-                        startActivity(Intent(this, SessionActivity::class.java)
-                            .putExtra(SessionService.EXTRA_MODE, SessionService.MODE_RUN)
-                            .putExtra(SessionService.EXTRA_PROGRAM, path))
-                    },
+                    onLaunch = { path -> showApps = false; launchProgram(path) },
                     onDismiss = { showApps = false },
                 )
                 if (showProtons) ProtonDialog(
@@ -271,6 +270,7 @@ class MainActivity : ComponentActivity() {
                     onDismiss = { showFrameGen = false },
                 )
                 if (showCredits) CreditsDialog { showCredits = false }
+                if (showEmulatorHelp) com.steamdeck.launcher.ui.EmulatorHelpDialog { showEmulatorHelp = false }
             }
         }
 
@@ -305,13 +305,37 @@ class MainActivity : ComponentActivity() {
                 DesktopCatalog.installed(this, it.id), launchersOf(it))
         }
         desktopInstalled = DesktopCatalog.desktopInstalled(this)
+        emulators = installedEmulators()
     }
 
     /** What a package can start on its own under gamescope; paths inside the runtime. */
-    private fun launchersOf(entry: DesktopCatalog.Entry): List<Pair<String, String>> = when {
-        entry.kind == "appimage" -> listOf(entry.name.substringBefore(" (").trim() to "/opt/appimages/${entry.id}.AppImage")
-        entry.id == "emulators" -> listOf("PPSSPP" to "/usr/bin/PPSSPPSDL", "RetroArch" to "/usr/bin/retroarch")
+    private fun launchersOf(entry: DesktopCatalog.Entry): List<Pair<String, String>> = launchersOf(entry.id)
+
+    /**
+     * The same, by package id alone, so the main screen's row is known from the install markers
+     * before (or without) the catalog. The AppImage packages launch as /opt/appimages/<id>.AppImage.
+     */
+    private fun launchersOf(id: String): List<Pair<String, String>> = when (id) {
+        "emulators" -> listOf("PPSSPP" to "/usr/bin/PPSSPPSDL", "RetroArch" to "/usr/bin/retroarch")
+        "rpcs3" -> listOf("RPCS3" to "/opt/appimages/rpcs3.AppImage")
+        "pcsx2" -> listOf("PCSX2" to "/opt/appimages/pcsx2.AppImage")
+        "dolphin" -> listOf("Dolphin" to "/opt/appimages/dolphin.AppImage")
+        "duckstation" -> listOf("DuckStation" to "/opt/appimages/duckstation.AppImage")
+        "melonds" -> listOf("melonDS" to "/opt/appimages/melonds.AppImage")
+        "cemu" -> listOf("Cemu" to "/opt/appimages/cemu.AppImage")
         else -> emptyList()
+    }
+
+    /** Every installed emulator's launcher, for the main screen. */
+    private fun installedEmulators(): List<Pair<String, String>> =
+        listOf("rpcs3", "pcsx2", "dolphin", "duckstation", "melonds", "cemu", "emulators")
+            .filter { DesktopCatalog.installed(this, it) != null }
+            .flatMap { launchersOf(it) }
+
+    private fun launchProgram(path: String) {
+        startActivity(Intent(this, SessionActivity::class.java)
+            .putExtra(SessionService.EXTRA_MODE, SessionService.MODE_RUN)
+            .putExtra(SessionService.EXTRA_PROGRAM, path))
     }
 
     private fun installPackage(id: String) {
@@ -444,6 +468,7 @@ class MainActivity : ComponentActivity() {
         frameGenLabel = FrameGen.label(this)
         romsDir = SessionPrefs.romsDir(this).takeIf { it.isNotEmpty() }
         logsEnabled = SessionPrefs.logsEnabled(this)
+        emulators = if (ready) installedEmulators() else emptyList()
     }
 
     private fun onRuntimeButton() {

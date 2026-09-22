@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -57,6 +59,8 @@ class MainUiState(
     /** The folder every session shows at /root/ROMs, or null if none is chosen. */
     val romsDir: String?,
     val logsEnabled: Boolean,
+    /** Installed emulators that can run under gamescope: label to path inside the runtime. */
+    val emulators: List<Pair<String, String>> = emptyList(),
 )
 
 /**
@@ -72,6 +76,7 @@ class MainUiState(
  * setting's current value under it, so the menu is read at a glance and fits without scrolling
  * on a handheld.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MainScreen(
     state: MainUiState,
@@ -87,6 +92,8 @@ fun MainScreen(
     onOffline: () -> Unit,
     onRoms: () -> Unit,
     onFiles: () -> Unit,
+    onLaunchEmulator: (path: String) -> Unit,
+    onEmulatorHelp: () -> Unit,
     onLogs: () -> Unit,
     onCredits: () -> Unit,
 ) {
@@ -167,6 +174,28 @@ fun MainScreen(
                     modifier = Modifier.weight(1f).height(buttonHeight),
                 ) { Text(if (state.desktopInstalled) "Desktop" else "Desktop — install it under Desktop & apps", fontSize = 13.sp * k, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 CogButton(k, onDesktopSettings)
+            }
+            // Every installed emulator, as a session of its own under gamescope (where the GPU
+            // is); the ? says why they are here and not on the desktop.
+            if (state.emulators.isNotEmpty()) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp * k),
+                    verticalArrangement = Arrangement.spacedBy(4.dp * k),
+                    modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k),
+                ) {
+                    for ((label, path) in state.emulators) {
+                        OutlinedButton(
+                            onClick = { onLaunchEmulator(path) }, enabled = state.ready && !state.busy,
+                            contentPadding = PaddingValues(horizontal = 10.dp * k, vertical = 0.dp),
+                            modifier = Modifier.height(30.dp * k),
+                        ) { Text("▶ $label", fontSize = 11.sp * k, maxLines = 1) }
+                    }
+                    OutlinedButton(
+                        onClick = onEmulatorHelp,
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier.width(30.dp * k).height(30.dp * k),
+                    ) { Text("?", fontSize = 12.sp * k) }
+                }
             }
             // Offline is read while the client starts, so it is decided here rather than in the
             // session's drawer, and it needs credentials from an earlier sign-in to be possible.
@@ -263,6 +292,44 @@ private fun MenuTile(
             }
         }
     }
+}
+
+/** The ? beside the emulator row: what the ▶ buttons are, how to use them, and why. */
+@Composable
+fun EmulatorHelpDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Emulators") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text("What the ▶ buttons are", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    "One per emulator installed under Desktop & apps. Each starts that emulator fullscreen, as a " +
+                        "session of its own under gamescope — the same way the Steam client runs — with the Steam " +
+                        "cog's display, driver and HDR settings.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text("How to use them", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    "Put your games in the ROMs folder (main screen). In the emulator, open root › ROMs " +
+                        "(/root/ROMs); the whole phone is at root › Storage. Firmware and BIOS files go in the " +
+                        "same way (RPCS3: File › Install Firmware). Back opens the drawer; Stop session ends it.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text("Why not from the desktop", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    "The desktop draws in software (labwc on pixman) and cannot hand a program the GPU: a Vulkan " +
+                        "emulator started there dies at its first frame (\"Surface lost\"). gamescope can, so an " +
+                        "emulator that renders with Vulkan or OpenGL belongs here. The desktop stays for files, " +
+                        "Firefox and anything that draws in software.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },
+    )
 }
 
 @Composable
