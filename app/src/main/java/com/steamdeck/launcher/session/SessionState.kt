@@ -12,6 +12,7 @@ object SessionState {
     var running = false
     /** MODE_RUN: the program inside the runtime the session was started for. */
     var program: String? = null
+    var programArgs: List<String> = emptyList()
     /** MODE_STEAM: "desktop" for the client's desktop UI, else Big Picture; and a steam:// URL to hand it. */
     var steamUi: String? = null
     var steamUrl: String? = null

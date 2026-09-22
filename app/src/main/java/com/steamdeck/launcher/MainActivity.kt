@@ -43,8 +43,10 @@ import com.steamdeck.launcher.ui.DriverRow
 import com.steamdeck.launcher.ui.ConfirmDialog
 import com.steamdeck.launcher.ui.CreditsDialog
 import com.steamdeck.launcher.ui.FrameGenDialog
-import com.steamdeck.launcher.ui.MainScreen
-import com.steamdeck.launcher.ui.MainUiState
+import com.steamdeck.launcher.ui.FrontEndScreen
+import com.steamdeck.launcher.ui.FrontEndState
+import com.steamdeck.launcher.ui.FrontEndActions
+import com.steamdeck.launcher.frontend.Library
 import com.steamdeck.launcher.ui.SteamDeckTheme
 import com.steamdeck.launcher.ui.RomsDialog
 import com.steamdeck.launcher.files.InAppFilePicker
@@ -130,6 +132,9 @@ class MainActivity : ComponentActivity() {
     private var emulators by mutableStateOf<List<Pair<String, String>>>(emptyList())
     private var showEmulatorHelp by mutableStateOf(false)
     private var romsDir by mutableStateOf<String?>(null)
+    private var steamGames by mutableStateOf<List<Library.SteamGame>>(emptyList())
+    private var emulatorList by mutableStateOf<List<Library.Emulator>>(emptyList())
+    private var runningLabel by mutableStateOf<String?>(null)
     private var logsEnabled by mutableStateOf(true)
     private var showRoms by mutableStateOf(false)
 
@@ -137,42 +142,59 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             SteamDeckTheme {
-                MainScreen(
-                    state = MainUiState(
-                        installed = installed, ready = ready,
-                        available = available?.version,
-                        availableSize = available?.let { FileUtils.sizeToString(it.size) },
-                        busy = busy, stage = stage, percent = percent, failed = failed,
-                        frameGenLabel = frameGenLabel,
+                FrontEndScreen(
+                    FrontEndState(
+                        installed = installed, ready = ready, available = available?.version,
+                        busy = busy, stage = stage, percent = percent,
                         desktopInstalled = desktopInstalled,
                         offlineAccount = offlineAccount, offline = offline,
-                        romsDir = romsDir, logsEnabled = logsEnabled, emulators = emulators,
+                        frameGenLabel = frameGenLabel, romsDir = romsDir, logsEnabled = logsEnabled,
+                        steamGames = steamGames, emulators = emulatorList, running = runningLabel,
                     ),
-                    onPlay = { startActivity(Intent(this, SessionActivity::class.java)) },
-                    onDesktop = {
-                        startActivity(Intent(this, SessionActivity::class.java)
-                            .putExtra(SessionService.EXTRA_MODE, SessionService.MODE_DESKTOP))
-                    },
-                    onApps = { openApps() },
-                    onOffline = {
-                        OfflineMode.setEnabled(this, !OfflineMode.enabled(this))
-                        offline = OfflineMode.enabled(this)
-                    },
-                    onRuntime = { onRuntimeButton() },
-                    onFrameGen = { showFrameGen = true },
-                    onProtons = { refreshProtons(); showProtons = true },
-                    onSteamSettings = { openModeSettings(SessionService.MODE_STEAM) },
-                    onDesktopSettings = { openModeSettings(SessionService.MODE_DESKTOP) },
-                    onPerformance = { refreshCores(); showPerformance = true },
-                    onRoms = { showRoms = true },
-                    onFiles = { startActivity(Intent(this, com.steamdeck.launcher.files.FileManagerActivity::class.java)) },
-                    onLaunchEmulator = { path -> launchProgram(path) },
-                    onEmulatorHelp = { showEmulatorHelp = true },
-                    onLogs = {
-                        SessionPrefs.setLogsEnabled(this, !SessionPrefs.logsEnabled(this))
-                        logsEnabled = SessionPrefs.logsEnabled(this)
-                    },
-                    onCredits = { showCredits = true },
+                    FrontEndActions(
+                        onPlay = { startActivity(Intent(this, SessionActivity::class.java)) },
+                        onPlayDesktopUi = {
+                            startActivity(Intent(this, SessionActivity::class.java)
+                                .putExtra(SessionService.EXTRA_STEAM_UI, "desktop"))
+                        },
+                        onSteamGame = { g ->
+                            startActivity(Intent(this, SessionActivity::class.java)
+                                .putExtra(SessionService.EXTRA_STEAM_URL, "steam://rungameid/${g.appId}"))
+                        },
+                        onDesktop = {
+                            startActivity(Intent(this, SessionActivity::class.java)
+                                .putExtra(SessionService.EXTRA_MODE, SessionService.MODE_DESKTOP))
+                        },
+                        onEmulator = { e -> launchProgram(e.program) },
+                        onRom = { g ->
+                            val e = emulatorList.first { it.id == g.emulatorId }
+                            startActivity(Intent(this, SessionActivity::class.java)
+                                .putExtra(SessionService.EXTRA_MODE, SessionService.MODE_RUN)
+                                .putExtra(SessionService.EXTRA_PROGRAM, e.program)
+                                .putExtra(SessionService.EXTRA_PROGRAM_ARGS, Library.launchArgs(e.id, g.guestPath).toTypedArray()))
+                        },
+                        // The activity re-attaches to the session that is running; nothing restarts.
+                        onResume = { startActivity(Intent(this, SessionActivity::class.java)) },
+                        onSteamSettings = { openModeSettings(SessionService.MODE_STEAM) },
+                        onDesktopSettings = { openModeSettings(SessionService.MODE_DESKTOP) },
+                        onApps = { openApps() },
+                        onRuntime = { onRuntimeButton() },
+                        onFrameGen = { showFrameGen = true },
+                        onProtons = { refreshProtons(); showProtons = true },
+                        onPerformance = { refreshCores(); showPerformance = true },
+                        onRoms = { showRoms = true },
+                        onFiles = { startActivity(Intent(this, com.steamdeck.launcher.files.FileManagerActivity::class.java)) },
+                        onLogs = {
+                            SessionPrefs.setLogsEnabled(this, !SessionPrefs.logsEnabled(this))
+                            logsEnabled = SessionPrefs.logsEnabled(this)
+                        },
+                        onOffline = {
+                            OfflineMode.setEnabled(this, !OfflineMode.enabled(this))
+                            offline = OfflineMode.enabled(this)
+                        },
+                        onEmulatorHelp = { showEmulatorHelp = true },
+                        onCredits = { showCredits = true },
+                    ),
                 )
                 if (showRoms) RomsDialog(
                     path = romsDir,
@@ -496,6 +518,17 @@ class MainActivity : ComponentActivity() {
         romsDir = SessionPrefs.romsDir(this).takeIf { it.isNotEmpty() }
         logsEnabled = SessionPrefs.logsEnabled(this)
         emulators = if (ready) installedEmulators() else emptyList()
+        runningLabel = if (SessionState.running) when (SessionState.mode) {
+            SessionService.MODE_DESKTOP -> "Desktop"
+            SessionService.MODE_RUN -> SessionState.program?.substringAfterLast('/')?.substringBefore('.') ?: "Program"
+            else -> "Steam"
+        } else null
+        // The libraries, off the main thread: manifests and a folder scan.
+        Thread({
+            val games = if (ready) Library.steamGames(this) else emptyList()
+            val emus = Library.emulators(this) { id -> DesktopCatalog.installed(this, id) != null }
+            ui.post { steamGames = games; emulatorList = emus }
+        }, "library").start()
     }
 
     private fun onRuntimeButton() {

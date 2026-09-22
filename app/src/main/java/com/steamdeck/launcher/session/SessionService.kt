@@ -69,6 +69,7 @@ class SessionService : Service() {
         if (SessionState.running) return START_NOT_STICKY
         SessionState.mode = intent?.getStringExtra(EXTRA_MODE) ?: MODE_STEAM
         SessionState.program = intent?.getStringExtra(EXTRA_PROGRAM)
+        SessionState.programArgs = intent?.getStringArrayExtra(EXTRA_PROGRAM_ARGS)?.toList().orEmpty()
         SessionState.steamUi = intent?.getStringExtra(EXTRA_STEAM_UI)
         SessionState.steamUrl = intent?.getStringExtra(EXTRA_STEAM_URL)
         // Another Steam client on the device signs ours out seconds after every login; the one that
@@ -320,7 +321,8 @@ class SessionService : Service() {
                 return
             }
             guest.add(program)
-            Log.i(TAG, "run: $program under gamescope")
+            guest.addAll(SessionState.programArgs)
+            Log.i(TAG, "run: $program ${SessionState.programArgs.joinToString(" ")} under gamescope")
         }
 
         // Android has no /dev/shm; the cache stands in for it and, unlike the real thing, keeps
@@ -692,6 +694,8 @@ class SessionService : Service() {
         /** A program inside the runtime, fullscreen under gamescope (EXTRA_PROGRAM = its path). */
         const val MODE_RUN = "run"
         const val EXTRA_PROGRAM = "program"
+        /** MODE_RUN: arguments after the program (a game to boot). */
+        const val EXTRA_PROGRAM_ARGS = "programArgs"
         /** MODE_STEAM: "desktop" for the client's desktop UI (default Big Picture); a steam:// URL to hand it. */
         const val EXTRA_STEAM_UI = "steamUi"
         const val EXTRA_STEAM_URL = "steamUrl"
