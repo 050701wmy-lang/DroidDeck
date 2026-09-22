@@ -175,14 +175,23 @@ fun MainScreen(
                 ) { Text(if (state.desktopInstalled) "Desktop" else "Desktop — install it under Desktop & apps", fontSize = 13.sp * k, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 CogButton(k, onDesktopSettings)
             }
-            // Every installed emulator, as a session of its own under gamescope (where the GPU
-            // is); the ? says why they are here and not on the desktop.
-            if (state.emulators.isNotEmpty()) {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp * k),
-                    verticalArrangement = Arrangement.spacedBy(4.dp * k),
-                    modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k),
-                ) {
+            // The ROMs folder, then every installed emulator as a session of its own under
+            // gamescope (where the GPU is); the ? says why they are here and not on the desktop.
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(4.dp * k),
+                verticalArrangement = Arrangement.spacedBy(4.dp * k),
+                modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k),
+            ) {
+                    OutlinedButton(
+                        onClick = onRoms,
+                        contentPadding = PaddingValues(horizontal = 10.dp * k, vertical = 0.dp),
+                        modifier = Modifier.height(30.dp * k),
+                    ) {
+                        Text(
+                            "ROMs: " + (state.romsDir?.substringAfterLast('/')?.ifEmpty { state.romsDir } ?: "choose folder"),
+                            fontSize = 11.sp * k, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                     for ((label, path) in state.emulators) {
                         OutlinedButton(
                             onClick = { onLaunchEmulator(path) }, enabled = state.ready && !state.busy,
@@ -195,7 +204,6 @@ fun MainScreen(
                         contentPadding = PaddingValues(0.dp),
                         modifier = Modifier.width(30.dp * k).height(30.dp * k),
                     ) { Text("?", fontSize = 12.sp * k) }
-                }
             }
             // Offline is read while the client starts, so it is decided here rather than in the
             // session's drawer, and it needs credentials from an earlier sign-in to be possible.
@@ -233,15 +241,10 @@ fun MainScreen(
             Spacer(Modifier.height(6.dp * k))
             Row(horizontalArrangement = tileGap, modifier = Modifier.fillMaxWidth()) {
                 MenuTile("Performance", null, k, Modifier.weight(1f), onClick = onPerformance)
-                // The folder's own name is the value; the whole path is in the dialog.
-                MenuTile(
-                    "ROMs folder", state.romsDir?.substringAfterLast('/')?.ifEmpty { state.romsDir } ?: "not chosen",
-                    k, Modifier.weight(1f), onClick = onRoms,
-                )
+                MenuTile("Files", null, k, Modifier.weight(1f), onClick = onFiles)
             }
             Spacer(Modifier.height(6.dp * k))
-            Row(horizontalArrangement = tileGap, modifier = Modifier.fillMaxWidth()) {
-                MenuTile("Files", null, k, Modifier.weight(1f), onClick = onFiles)
+            Row(modifier = Modifier.fillMaxWidth()) {
                 MenuTile(
                     "Session logs", if (state.logsEnabled) "on · Download/SteamDeck" else "off",
                     k, Modifier.weight(1f), onClick = onLogs,
@@ -312,7 +315,7 @@ fun EmulatorHelpDialog(onDismiss: () -> Unit) {
                 Spacer(Modifier.height(8.dp))
                 Text("How to use them", style = MaterialTheme.typography.titleSmall)
                 Text(
-                    "Put your games in the ROMs folder (main screen). In the emulator, open root › ROMs " +
+                    "Put your games in the folder the ROMs chip beside these buttons points at. In the emulator, open root › ROMs " +
                         "(/root/ROMs); the whole phone is at root › Storage. Firmware and BIOS files go in the " +
                         "same way (RPCS3: File › Install Firmware). Back opens the drawer; Stop session ends it.",
                     style = MaterialTheme.typography.bodySmall,
