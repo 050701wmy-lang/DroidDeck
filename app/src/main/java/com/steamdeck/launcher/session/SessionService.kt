@@ -324,17 +324,19 @@ class SessionService : Service() {
         // A second Steam library: the storage chosen in the Steam cog, at the path the runtime's
         // bannerlator-steam-library registers with the client. Nothing bound = the script removes
         // the entry, so the client never offers a place that is not there.
-        val library = SessionPrefs.gameStorage(this).takeIf { it.isNotEmpty() }
+        val library = GameStorage.effective(this)
         if (library != null) {
-            val problem = GameStorage.prepare(library)
+            val problem = GameStorage.prepare(library.path)
             if (problem == null) {
                 File(LinuxRuntime.rootDir(this), "mnt/bannerlator-sd").mkdirs()
-                binds.add("$library:/mnt/bannerlator-sd")
-                guest.add("BL_LIBRARY_LABEL=" + SessionPrefs.gameStorageLabel(this).replace('"', ' '))
-                Log.i(TAG, "game storage: $library -> /mnt/bannerlator-sd (\"${SessionPrefs.gameStorageLabel(this)}\")")
+                binds.add("${library.path}:/mnt/bannerlator-sd")
+                guest.add("BL_LIBRARY_LABEL=" + library.label.replace('"', ' '))
+                Log.i(TAG, "game storage: ${library.path} -> /mnt/bannerlator-sd (\"${library.label}\")")
             } else {
                 Log.w(TAG, "game storage: $problem; internal only this session")
             }
+        } else {
+            Log.i(TAG, "game storage: internal only")
         }
         val roms = SessionPrefs.romsDir(this).takeIf { it.isNotEmpty() }?.let { File(it) }
         if (roms != null && roms.isDirectory && roms.canRead()) {

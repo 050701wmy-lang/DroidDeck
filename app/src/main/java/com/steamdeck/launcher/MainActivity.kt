@@ -386,7 +386,7 @@ class MainActivity : ComponentActivity() {
 
     /** A second Steam library, proven writable first; "" = internal only. */
     private fun setGameStorage(path: String, label: String) {
-        if (path.isNotEmpty()) {
+        if (path.isNotEmpty() && path != SessionPrefs.GAME_STORAGE_OFF) {
             val problem = GameStorage.prepare(path)
             if (problem != null) {
                 android.widget.Toast.makeText(this, "Not usable: $problem", android.widget.Toast.LENGTH_LONG).show()

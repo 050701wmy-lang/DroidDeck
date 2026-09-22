@@ -248,16 +248,21 @@ fun ModeSettingsDialog(s: ModeSettings, a: ModeSettingsActions) {
                             "storage" -> if (s.gameStorage != null) {
                                 Section(
                                     "Game storage",
-                                    "Where Steam may install games. Internal is the client's own library and always there. A second " +
-                                        "place is registered with the client at the next session start: it then asks where to install " +
-                                        "every game, lists both on its Storage page, and can move a game between them itself.",
+                                    "The choice itself is made inside Steam: with a second place registered, every Install asks which " +
+                                        "drive, Settings › Storage lists both, and Steam moves games between them. Internal is the " +
+                                        "client's own library and always there. Applies at the next session start.",
                                 )
                                 Spacer(Modifier.height(6.dp))
-                                Choice("Internal only — the default", s.gameStorage.isEmpty()) { a.onGameStorage("", "") }
+                                Choice(
+                                    "Automatic — the SD card when one is in the phone" +
+                                        (if (s.storageOptions.isEmpty()) " (none right now)" else ""),
+                                    s.gameStorage.isEmpty(),
+                                ) { a.onGameStorage("", "") }
+                                Choice("Internal only", s.gameStorage == "off") { a.onGameStorage("off", "") }
                                 for ((label, path) in s.storageOptions) {
                                     Choice(label, s.gameStorage == path) { a.onGameStorage(path, label.substringBefore(" ·")) }
                                 }
-                                val custom = s.gameStorage.isNotEmpty() && s.storageOptions.none { it.second == s.gameStorage }
+                                val custom = s.gameStorage.isNotEmpty() && s.gameStorage != "off" && s.storageOptions.none { it.second == s.gameStorage }
                                 if (custom) Choice("Folder: ${s.gameStorage}", true) {}
                                 OutlinedButton(onClick = a.onPickGameStorageFolder, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                                     Text("Choose a folder…")

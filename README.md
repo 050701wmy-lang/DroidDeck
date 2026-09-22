@@ -174,9 +174,11 @@ under proot; Firefox's are turned off in the session's environment, without whic
 
 ### Game storage: internal, an SD card, or a folder
 
-The client's own library is internal storage and always there. **Game storage** in the Steam cog
-registers one more: an SD card (through the app's own folder on it, the one place a card lets
-this app write) or any folder chosen in the File Manager. The session binds it at
+The client's own library is internal storage and always there. An **SD card in the phone is
+registered as a second library by itself** (through the app's own folder on it, the one place a
+card lets this app write), so the choice is made where it is anywhere else - inside Steam, on
+every Install. **Game storage** in the Steam cog is only for turning that off or pointing it at a
+folder chosen in the File Manager instead. The session binds it at
 `/mnt/bannerlator-sd` and `bannerlator-steam-library` registers it with the client under the name
 the app gives it; the client then asks where to install every game, lists both on its Storage
 page and moves games between them itself. Set to internal only, the entry is removed again. A

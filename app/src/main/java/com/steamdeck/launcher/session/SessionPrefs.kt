@@ -229,9 +229,13 @@ object SessionPrefs {
     /**
      * A second Steam library on this device: the folder bound at /mnt/bannerlator-sd and
      * registered with the client, which then asks where to install every game and shows both
-     * on its Storage page. "" = internal only (the client's own library, the default).
+     * on its Storage page. "" = automatic: the SD card when one is in the phone (the default,
+     * so the choice is made inside the client like anywhere else); GAME_STORAGE_OFF = internal
+     * only; otherwise the folder chosen.
      */
     fun gameStorage(context: Context): String = prefs(context).getString("gameStorage", "") ?: ""
+
+    const val GAME_STORAGE_OFF = "off"
 
     fun gameStorageLabel(context: Context): String = prefs(context).getString("gameStorageLabel", "SD Card") ?: "SD Card"
 

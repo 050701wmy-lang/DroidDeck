@@ -53,6 +53,16 @@ object GameStorage {
         }
     }
 
+    /** The root the session binds, from the setting: automatic = the first card in the phone. */
+    fun effective(context: Context): Option? {
+        val pref = SessionPrefs.gameStorage(context)
+        return when {
+            pref == SessionPrefs.GAME_STORAGE_OFF -> null
+            pref.isEmpty() -> options(context).firstOrNull()?.let { Option(it.label.substringBefore(" ·"), it.path) }
+            else -> Option(SessionPrefs.gameStorageLabel(context), pref)
+        }
+    }
+
     /** The label the client shows for a chosen folder: its last name, or the volume's. */
     fun labelFor(context: Context, path: String): String =
         options(context).firstOrNull { it.path == path }?.label?.substringBefore(" ·")
