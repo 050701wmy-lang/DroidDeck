@@ -10,6 +10,8 @@ import java.io.File
 object SessionState {
     @Volatile
     var running = false
+    /** MODE_RUN: the program inside the runtime the session was started for. */
+    var program: String? = null
     /** HDR10 was asked for and the panel can show it: the compositor was told, and the session
      *  gets DXVK_HDR=1 and gamescope --hdr-enabled. Decided by the activity before the compositor starts. */
     @JvmStatic var hdr = false

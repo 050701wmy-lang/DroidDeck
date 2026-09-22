@@ -105,6 +105,9 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         goFullscreen()
+        // The device's volume keys change the stream the session plays on (the relay and
+        // PulseAudio are media playback); they are never forwarded to the guest.
+        volumeControlStream = android.media.AudioManager.STREAM_MUSIC
 
         if (!LinuxRuntime.isInstalled(this)) {
             Log.e(TAG, "the Linux runtime is not installed")
@@ -300,7 +303,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         // process), from the panel's own word and the mode's setting. Zero-copy presentation is
         // what puts an HDR frame on a display layer tagged BT2020_PQ, so it is turned on with it.
         if (!CompositorHost.isStarted) {
-            val mode = intent.getStringExtra(SessionService.EXTRA_MODE) ?: SessionService.MODE_STEAM
+            val mode = SessionPrefs.prefMode(intent.getStringExtra(SessionService.EXTRA_MODE) ?: SessionService.MODE_STEAM)
             val probe = HdrSupport.probe(this)
             WaylandCompositor.nativeSetHdrDisplay(
                 probe.displayId, probe.name, probe.formats, probe.hdr10,
@@ -332,7 +335,10 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         // start nothing, and leave the loading panel counting up over a dead session.
         if (!SessionState.running) {
             CompositorHost.newSession()
-            SessionService.start(this, intent.getStringExtra(SessionService.EXTRA_MODE) ?: SessionService.MODE_STEAM)
+            SessionService.start(
+                this, intent.getStringExtra(SessionService.EXTRA_MODE) ?: SessionService.MODE_STEAM,
+                intent.getStringExtra(SessionService.EXTRA_PROGRAM),
+            )
         }
         applyFrameGen()
     }
@@ -383,7 +389,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         // 1080 tall at most by default: the client's CEF is the heaviest thing in the session, and
         // above 1080p it costs frames for nothing anyone can see on a handheld panel. The mode's
         // settings (the cog beside Play / Desktop) can lower the cap or lift it to the panel.
-        val mode = intent.getStringExtra(SessionService.EXTRA_MODE) ?: SessionService.MODE_STEAM
+        val mode = SessionPrefs.prefMode(intent.getStringExtra(SessionService.EXTRA_MODE) ?: SessionService.MODE_STEAM)
         val cap = SessionPrefs.resolutionCap(this, mode)
         val height = (if (cap <= 0) panelH else minOf(panelH, cap.toFloat())).toInt()
         val width = (height * aspect).toInt()
@@ -444,6 +450,12 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     // ── Input ───────────────────────────────────────────────────────────────────────────────
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // The device's own volume keys belong to Android: forwarded to the guest as keys they
+        // changed nothing anyone could hear (a Pocket FIT report, on the desktop).
+        when (event.keyCode) {
+            KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_MUTE ->
+                return super.dispatchKeyEvent(event)
+        }
         if (padBridge?.onKeyEvent(event) == true) return true
         // A hardware keyboard, forwarded to the compositor's wl_keyboard. Back is left to the
         // activity, which opens the drawer.
@@ -529,14 +541,14 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         cursorPos = androidx.compose.ui.geometry.Offset(x, y)
         cursorVisible = true
         uiHandler.removeCallbacks(cursorHide)
-        if (SessionState.mode != SessionService.MODE_DESKTOP) uiHandler.postDelayed(cursorHide, 2500)
+        if (SessionState.mode == SessionService.MODE_STEAM) uiHandler.postDelayed(cursorHide, 2500)
     }
 
     /** Touchpad on the desktop, direct in Steam, unless the drawer says otherwise. */
     private fun usingTouchpad(): Boolean = when (SessionPrefs.touchMode(this)) {
         SessionPrefs.TOUCH_PAD -> true
         SessionPrefs.TOUCH_DIRECT -> false
-        else -> SessionState.mode == SessionService.MODE_DESKTOP
+        else -> SessionState.mode != SessionService.MODE_STEAM
     }
 
     /** The picture's rectangle inside the view: where the pointer may go. */

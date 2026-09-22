@@ -63,6 +63,8 @@ ledger rather than a feature list — where something has not been run on hardwa
 | The cog beside Play / Desktop: resolution, shape, HDR, drivers, touch, audio, renderer | ⚠️ built; the resolution cap and HDR not yet seen on a device |
 | Leftover session processes swept at the next start | ⚠️ built; not yet forced on a device |
 | The drawer's "Steam menu" (Guide) | ⚠️ built; not yet tried |
+| Emulators launched under gamescope (▶ in Desktop & apps) | ⚠️ built; not yet seen with a game |
+| The device's volume keys during a session | ⚠️ fixed (they were swallowed); not yet re-tried |
 | Stopping a competing Steam client | ⚠️ it is asked to stop and says so, but one that restarts itself from boot wins the race — uninstall it |
 | DirectAudio for games, and the microphone | ⚠️ wired and the modules load; voice not yet confirmed in Steam's tester |
 | Client and game core masks | ⚠️ applied and logged; no measured difference yet |
@@ -168,6 +170,17 @@ themselves through Vulkan and Turnip — it is the desktop's own compositing tha
 
 Programs whose child processes sandbox themselves with seccomp and namespaces cannot set those up
 under proot; Firefox's are turned off in the session's environment, without which its tabs crash.
+
+### Running an emulator with the GPU
+
+The desktop composites in software (labwc on pixman) and so offers its programs no dma-buf: a
+Vulkan program on it has no swapchain to draw into and dies at its first frame — RPCS3 with
+`VK_ERROR_SURFACE_LOST`. The GPU path that works on this hardware is gamescope's, the one Steam's
+games render through. So an emulator is started **as a session of its own**: ▶ beside an installed
+emulator under **Desktop & apps** runs it fullscreen under gamescope (the session script's `run`
+mode, an AppImage or a binary inside the runtime), with Steam's display, driver and HDR settings.
+The desktop remains for files, Firefox and everything that draws in software. ⚠️ Built; not yet
+seen with a game.
 
 ### The device's files, and the ROMs folder
 

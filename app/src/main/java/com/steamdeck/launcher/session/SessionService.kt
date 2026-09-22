@@ -66,6 +66,7 @@ class SessionService : Service() {
         startForeground(NOTIFICATION_ID, buildNotification())
         if (SessionState.running) return START_NOT_STICKY
         SessionState.mode = intent?.getStringExtra(EXTRA_MODE) ?: MODE_STEAM
+        SessionState.program = intent?.getStringExtra(EXTRA_PROGRAM)
         // Another Steam client on the device signs ours out seconds after every login; the one that
         // does it here runs from boot without being opened. Only the Steam session signs in.
         if (SessionState.mode == MODE_STEAM) RivalClients.stopBeforeSession(this)
@@ -170,7 +171,7 @@ class SessionService : Service() {
         // An imported glibc Turnip for this mode, when the user chose one: the session script checks
         // the manifest and its library from inside and points the loader at it with VK_DRIVER_FILES,
         // so the runtime's own driver above stays untouched and is what a bad import falls back to.
-        val linuxDriverId = SessionPrefs.linuxDriver(this, SessionState.mode)
+        val linuxDriverId = SessionPrefs.linuxDriver(this, SessionPrefs.prefMode(SessionState.mode))
         LinuxVulkanDriver.resolveIcdPath(this, linuxDriverId)
             ?.let { guest.add(LinuxVulkanDriver.ENV + "=" + it) }
         // Turnip's own debug switches, for the runtime's driver and everything on it. The file in
@@ -289,6 +290,21 @@ class SessionService : Service() {
         }
         guest.add(LinuxRuntime.SESSION_SCRIPT)
         guest.add(SessionState.mode)
+        // A program under gamescope: the script's run mode takes the path (an AppImage, a script
+        // or a binary inside the runtime). This is how an emulator gets the GPU - the desktop's
+        // labwc composites in software and offers no dma-buf, so a Vulkan swapchain cannot exist
+        // there (RPCS3 died with VK_ERROR_SURFACE_LOST); gamescope's Xwayland is the path the
+        // Steam games already render through.
+        if (SessionState.mode == MODE_RUN) {
+            val program = SessionState.program
+            if (program.isNullOrEmpty()) {
+                Log.e(TAG, "run mode without a program")
+                stopSession(65)
+                return
+            }
+            guest.add(program)
+            Log.i(TAG, "run: $program under gamescope")
+        }
 
         // Android has no /dev/shm; the cache stands in for it and, unlike the real thing, keeps
         // whatever a session leaves behind. The client abandons tens of megabytes of streams a run.
@@ -590,9 +606,13 @@ class SessionService : Service() {
         const val EXTRA_MODE = "mode"
         const val MODE_STEAM = "steam"
         const val MODE_DESKTOP = "lxqt"
+        /** A program inside the runtime, fullscreen under gamescope (EXTRA_PROGRAM = its path). */
+        const val MODE_RUN = "run"
+        const val EXTRA_PROGRAM = "program"
 
-        fun start(context: Context, mode: String = MODE_STEAM) {
+        fun start(context: Context, mode: String = MODE_STEAM, program: String? = null) {
             val intent = Intent(context, SessionService::class.java).putExtra(EXTRA_MODE, mode)
+            if (program != null) intent.putExtra(EXTRA_PROGRAM, program)
             if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(intent)
             else context.startService(intent)
         }

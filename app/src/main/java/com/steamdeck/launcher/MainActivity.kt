@@ -177,6 +177,12 @@ class MainActivity : ComponentActivity() {
                     rows = packageRows, busyStage = pkgStage, busyPercent = pkgPercent,
                     onInstall = { id -> installPackage(id) },
                     onRemove = { id -> catalog?.firstOrNull { it.id == id }?.let { DesktopCatalog.remove(this, it) }; refreshPackages() },
+                    onLaunch = { path ->
+                        showApps = false
+                        startActivity(Intent(this, SessionActivity::class.java)
+                            .putExtra(SessionService.EXTRA_MODE, SessionService.MODE_RUN)
+                            .putExtra(SessionService.EXTRA_PROGRAM, path))
+                    },
                     onDismiss = { showApps = false },
                 )
                 if (showProtons) ProtonDialog(
@@ -296,9 +302,16 @@ class MainActivity : ComponentActivity() {
     private fun refreshPackages() {
         packageRows = catalog?.sortedBy { it.tier }?.map {
             PackageRow(it.id, it.name, it.tier, it.version, FileUtils.sizeToString(it.size), it.notes,
-                DesktopCatalog.installed(this, it.id))
+                DesktopCatalog.installed(this, it.id), launchersOf(it))
         }
         desktopInstalled = DesktopCatalog.desktopInstalled(this)
+    }
+
+    /** What a package can start on its own under gamescope; paths inside the runtime. */
+    private fun launchersOf(entry: DesktopCatalog.Entry): List<Pair<String, String>> = when {
+        entry.kind == "appimage" -> listOf(entry.name.substringBefore(" (").trim() to "/opt/appimages/${entry.id}.AppImage")
+        entry.id == "emulators" -> listOf("PPSSPP" to "/usr/bin/PPSSPPSDL", "RetroArch" to "/usr/bin/retroarch")
+        else -> emptyList()
     }
 
     private fun installPackage(id: String) {
