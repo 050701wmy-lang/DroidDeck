@@ -168,6 +168,9 @@ class SessionService : Service() {
         guest.add("PATH=/usr/local/bin:/usr/bin:/bin")
         guest.add("TERM=xterm-256color")
         guest.add("LANG=C.UTF-8")
+        // Without this the session is UTC: the client's clock, its logs and every timestamp in a
+        // session bundle sit hours off the device's. Bannerlator carries the same line.
+        guest.add("TZ=" + java.util.TimeZone.getDefault().id)
         guest.add("XDG_RUNTIME_DIR=" + runtimeDir.path)
         guest.add("XDG_SESSION_TYPE=wayland")
         guest.add("WAYLAND_DISPLAY=wayland-0")
