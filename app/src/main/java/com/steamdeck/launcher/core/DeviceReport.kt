@@ -53,7 +53,7 @@ object DeviceReport {
         b.append("SteamDeck session report\n")
         b.append("========================\n")
         k("Written", SimpleDateFormat("yyyy-MM-dd HH:mm:ss zzz", Locale.US).format(Date()))
-        k("Session mode", if (mode == SessionService.MODE_DESKTOP) "desktop (labwc/LXQt)" else "Steam client (gamescope)")
+        k("Session mode", when (mode) { SessionService.MODE_DESKTOP -> "desktop (labwc/LXQt)"; SessionService.MODE_RUN -> "a program under gamescope"; else -> "Steam client (gamescope)" })
 
         h("App")
         runCatching {
