@@ -6,6 +6,26 @@ the timeline, then lessons and backlog. Companion to the README (what the app *d
 
 ---
 
+## 🔖 Checkpoint 2026-09-22 22:xx — known-good point for the front end
+
+- **`main` @ `36cde7d`**, APK `SteamDeck-r51.apk` staged (sha `adb5acf5…`, run 35761437514) =
+  frontend-r6 + docs. Same versionCode 5 / 0.1.4 inside; **0.1.5 not cut yet**.
+- **Proven on the Pocket FIT this evening:** the front end renders and navigates (rail, art,
+  square emulator icons, focus outline); RPCS3 lists Tomb Raider (ISO in a subfolder) and God of
+  War II HD (its HDD); ▶ God of War II HD boots the game under gamescope at ~40 fps
+  (`session-20260922-133044`: `run: rpcs3.AppImage --no-gui …NPUA80491/USRDIR/EBOOT.BIN`, 399
+  frames on screen in 10 s).
+- **Not yet proven:** desktop→Steam hand-off after the three fixes (r47–r50); ▶ FlatOut from the
+  rail (Steam session with rungameid); Running tile; volume keys; automatic SD game storage
+  (Install drive drop-down); Steam desktop-UI session; Tomb Raider ISO boot.
+- **Open decision:** rename the app away from Valve's marks before it spreads (shortlist offered:
+  Linuxlator / Pocketscope / Portascope); rename = label, icon text, `applicationId` (fresh
+  install + runtime re-download), `Download/SteamDeck/` log folder, repo, release-tag pattern.
+- **Rollback:** `git checkout 36cde7d` (or 0.1.4 tag `8e58e8e` for the last release), reinstall
+  `SteamDeck-r51.apk` / `SteamDeck-0.1.4.apk` from Downloads.
+- Loose ends: `ui/MainScreen.kt` keeps ConfirmDialog/CreditsDialog/EmulatorHelpDialog but its
+  `MainScreen`/tiles are dead; worktree `~/steamdeck-frontend` still exists (branch merged).
+
 ## Current state (2026-09-22, evening)
 
 - **`main` @ the front end merge** (`feat/frontend` fast-forwarded): the launcher main screen -
