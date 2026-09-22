@@ -12,6 +12,11 @@ object SessionState {
     var running = false
     /** MODE_RUN: the program inside the runtime the session was started for. */
     var program: String? = null
+    /** MODE_STEAM: "desktop" for the client's desktop UI, else Big Picture; and a steam:// URL to hand it. */
+    var steamUi: String? = null
+    var steamUrl: String? = null
+    /** A session the guest asked for (the desktop's Steam launchers): started by the activity once this one has ended. */
+    var relaunch: android.content.Intent? = null
     /** HDR10 was asked for and the panel can show it: the compositor was told, and the session
      *  gets DXVK_HDR=1 and gamescope --hdr-enabled. Decided by the activity before the compositor starts. */
     @JvmStatic var hdr = false

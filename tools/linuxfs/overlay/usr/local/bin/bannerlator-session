@@ -319,9 +319,13 @@ BUSCONF
     # FEX_ROOTFS names it outright and is read whatever the config situation.
     [ -d /usr/share/guestos/fex-mesa ] && export FEX_ROOTFS=/usr/share/guestos/fex-mesa
     # The client exits 42 when it has updated itself and wants a fresh start (steam.sh does this).
+    # BL_STEAM_UI=desktop = the client's desktop UI (a window, the library as a list), which the
+    # desktop's launchers ask for; gamescope shows one window at a time and the game takes over.
+    _bl_ui=(-gamepadui)
+    [ "${BL_STEAM_UI:-}" = desktop ] && _bl_ui=()
     while :; do
-      step "starting the Steam client"
-      "$steam_root/steamrtarm64/steam" -gamepadui -clientbeta publicbeta \
+      step "starting the Steam client${BL_STEAM_UI:+ ($BL_STEAM_UI UI)}"
+      "$steam_root/steamrtarm64/steam" "${_bl_ui[@]}" -clientbeta publicbeta \
         -no-cef-sandbox -cef-force-gpu -cef-ozone-platform=x11 \
         -cef-use-gl=angle -cef-use-angle=vulkan "$@"
       rc=$?

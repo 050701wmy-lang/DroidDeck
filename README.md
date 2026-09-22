@@ -66,6 +66,7 @@ ledger rather than a feature list — where something has not been run on hardwa
 | Emulators launched under gamescope (▶ in Desktop & apps) | ⚠️ built; not yet seen with a game |
 | The device's volume keys during a session | ⚠️ fixed (they were swallowed); not yet re-tried |
 | Game storage: a second Steam library on a card or a folder | ⚠️ built; not yet seen installing to it |
+| The client's games in the desktop menu, launching Steam's desktop UI under gamescope | ⚠️ built; not yet tried |
 | Stopping a competing Steam client | ⚠️ it is asked to stop and says so, but one that restarts itself from boot wins the race — uninstall it |
 | DirectAudio for games, and the microphone | ⚠️ wired and the modules load; voice not yet confirmed in Steam's tester |
 | Client and game core masks | ⚠️ applied and logged; no measured difference yet |
@@ -184,6 +185,17 @@ the app gives it; the client then asks where to install every game, lists both o
 page and moves games between them itself. Set to internal only, the entry is removed again. A
 card and shared storage are FUSE-backed and stream slowly - keep games that stream video or big
 assets internal. ⚠️ Built; not yet seen installing to a card.
+
+### The client's games on the desktop
+
+The desktop's menu lists every game the Steam client has installed (Games category, the game's
+own artwork), and the home folder has **Steam Games** and **SD Games** links to their files. A
+game entry - and the menu's **Steam** / **Steam Big Picture** entries - cannot run the client on
+the desktop, where nothing can draw with Vulkan; they hand off to the app
+(`bannerlator-steam-launch`), which ends the desktop session and starts a Steam session in its
+place: the client's **desktop UI** under gamescope, and the game straight away when one was
+chosen. Back opens the drawer as in any session; Stop session returns to the app. The list is
+rebuilt at every desktop start. ⚠️ Built; not yet tried on a device.
 
 ### Running an emulator with the GPU
 

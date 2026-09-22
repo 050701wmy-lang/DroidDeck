@@ -67,6 +67,8 @@ class SessionService : Service() {
         if (SessionState.running) return START_NOT_STICKY
         SessionState.mode = intent?.getStringExtra(EXTRA_MODE) ?: MODE_STEAM
         SessionState.program = intent?.getStringExtra(EXTRA_PROGRAM)
+        SessionState.steamUi = intent?.getStringExtra(EXTRA_STEAM_UI)
+        SessionState.steamUrl = intent?.getStringExtra(EXTRA_STEAM_URL)
         // Another Steam client on the device signs ours out seconds after every login; the one that
         // does it here runs from boot without being opened. Only the Steam session signs in.
         if (SessionState.mode == MODE_STEAM) RivalClients.stopBeforeSession(this)
@@ -288,8 +290,15 @@ class SessionService : Service() {
                 .takeIf { it.isFile }?.let { FileUtils.readString(it)?.trim() }
             guest.add("BL_WLR_RENDERER=" + (override?.takeIf { it.isNotEmpty() } ?: SessionPrefs.desktopRenderer(this)))
         }
+        // Where the guest leaves a request for another session (the desktop's Steam launchers).
+        guest.add("BL_LAUNCH_DIR=" + sessionRoot.path)
+        if (SessionState.mode == MODE_STEAM && SessionState.steamUi == "desktop") guest.add("BL_STEAM_UI=desktop")
         guest.add(LinuxRuntime.SESSION_SCRIPT)
         guest.add(SessionState.mode)
+        if (SessionState.mode == MODE_STEAM) SessionState.steamUrl?.takeIf { it.startsWith("steam://") }?.let {
+            guest.add(it)
+            Log.i(TAG, "steam: handing the client $it")
+        }
         // A program under gamescope: the script's run mode takes the path (an AppImage, a script
         // or a binary inside the runtime). This is how an emulator gets the GPU - the desktop's
         // labwc composites in software and offers no dma-buf, so a Vulkan swapchain cannot exist
@@ -376,6 +385,7 @@ class SessionService : Service() {
         components.forEach { it.start() }
 
         val line = command.joinToString(" ") { it.replace(" ", "\\ ") }
+        watchLaunchRequests(sessionRoot)
         sessionPid = ProcessHelper.exec(line, hostEnv.toStringArray(), root, { status ->
             Log.i(TAG, "session ended: $status")
             stopSession(status ?: -1)
@@ -468,9 +478,49 @@ class SessionService : Service() {
         if (killed > 0) Log.w(TAG, "killed $killed leftover process(es) of a previous session")
     }
 
+    /**
+     * The desktop's Steam launchers cannot start the client where they are (no dma-buf on the
+     * desktop), so they leave `steam-launch` in the session directory instead: which UI, and a
+     * steam:// URL or nothing. This ends the session and hands the activity the one to start.
+     */
+    private var launchWatcher: android.os.FileObserver? = null
+
+    private fun watchLaunchRequests(dir: File) {
+        launchWatcher?.stopWatching()
+        @Suppress("DEPRECATION")
+        val watcher = object : android.os.FileObserver(dir.path, CLOSE_WRITE or MOVED_TO) {
+            override fun onEvent(event: Int, path: String?) {
+                if (path != "steam-launch") return
+                val file = File(dir, path)
+                val text = try { file.readText() } catch (e: Exception) { return }
+                file.delete()
+                var ui = "desktop"
+                var url = ""
+                text.lineSequence().forEach { line ->
+                    when {
+                        line.startsWith("ui=") -> ui = line.removePrefix("ui=").trim()
+                        line.startsWith("url=") -> url = line.removePrefix("url=").trim()
+                    }
+                }
+                Log.i(TAG, "launch request from the session: Steam $ui" + (if (url.isNotEmpty()) " $url" else ""))
+                val next = Intent(this@SessionService, com.steamdeck.launcher.SessionActivity::class.java)
+                    .putExtra(EXTRA_MODE, MODE_STEAM)
+                    .putExtra(EXTRA_STEAM_UI, ui)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                if (url.isNotEmpty()) next.putExtra(EXTRA_STEAM_URL, url)
+                SessionState.relaunch = next
+                android.os.Handler(android.os.Looper.getMainLooper()).post { stopSession(0) }
+            }
+        }
+        watcher.startWatching()
+        launchWatcher = watcher
+    }
+
     private fun stopSession(status: Int) {
         if (!SessionState.running) return
         SessionState.running = false
+        launchWatcher?.stopWatching()
+        launchWatcher = null
         // proot's --kill-on-exit takes the guest tree down only if proot gets to run it, and
         // SIGKILL never lets it. A SIGKILLed proot left its tracees alive with no tracer: every
         // seccomp-trapped syscall then failed with ENOSYS, they spun on retries at a full core
@@ -626,10 +676,18 @@ class SessionService : Service() {
         /** A program inside the runtime, fullscreen under gamescope (EXTRA_PROGRAM = its path). */
         const val MODE_RUN = "run"
         const val EXTRA_PROGRAM = "program"
+        /** MODE_STEAM: "desktop" for the client's desktop UI (default Big Picture); a steam:// URL to hand it. */
+        const val EXTRA_STEAM_UI = "steamUi"
+        const val EXTRA_STEAM_URL = "steamUrl"
 
-        fun start(context: Context, mode: String = MODE_STEAM, program: String? = null) {
+        fun start(
+            context: Context, mode: String = MODE_STEAM, program: String? = null,
+            steamUi: String? = null, steamUrl: String? = null,
+        ) {
             val intent = Intent(context, SessionService::class.java).putExtra(EXTRA_MODE, mode)
             if (program != null) intent.putExtra(EXTRA_PROGRAM, program)
+            if (steamUi != null) intent.putExtra(EXTRA_STEAM_UI, steamUi)
+            if (steamUrl != null) intent.putExtra(EXTRA_STEAM_URL, steamUrl)
             if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(intent)
             else context.startService(intent)
         }

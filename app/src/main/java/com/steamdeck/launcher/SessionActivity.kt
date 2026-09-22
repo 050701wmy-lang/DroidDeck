@@ -338,6 +338,8 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
             SessionService.start(
                 this, intent.getStringExtra(SessionService.EXTRA_MODE) ?: SessionService.MODE_STEAM,
                 intent.getStringExtra(SessionService.EXTRA_PROGRAM),
+                intent.getStringExtra(SessionService.EXTRA_STEAM_UI),
+                intent.getStringExtra(SessionService.EXTRA_STEAM_URL),
             )
         }
         applyFrameGen()
@@ -436,7 +438,16 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
 
     private fun onSessionEnded(status: Int) {
         if (status == 0) {
-            runOnUiThread { if (!isFinishing && !isDestroyed) finish() }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                // A session the guest asked for (the desktop's Steam launchers) takes this one's
+                // place: the compositor stays, a new activity attaches and starts the service.
+                SessionState.relaunch?.let { next ->
+                    SessionState.relaunch = null
+                    startActivity(next)
+                }
+                finish()
+            }
             return
         }
         // What the log says about why, read off the main thread (notifyEnded arrives on it).
@@ -590,14 +601,14 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         cursorPos = androidx.compose.ui.geometry.Offset(x, y)
         cursorVisible = true
         uiHandler.removeCallbacks(cursorHide)
-        if (SessionState.mode == SessionService.MODE_STEAM) uiHandler.postDelayed(cursorHide, 2500)
+        if (SessionState.mode == SessionService.MODE_STEAM && SessionState.steamUi != "desktop") uiHandler.postDelayed(cursorHide, 2500)
     }
 
     /** Touchpad on the desktop, direct in Steam, unless the drawer says otherwise. */
     private fun usingTouchpad(): Boolean = when (SessionPrefs.touchMode(this)) {
         SessionPrefs.TOUCH_PAD -> true
         SessionPrefs.TOUCH_DIRECT -> false
-        else -> SessionState.mode != SessionService.MODE_STEAM
+        else -> SessionState.mode != SessionService.MODE_STEAM || SessionState.steamUi == "desktop"
     }
 
     /** The picture's rectangle inside the view: where the pointer may go. */
