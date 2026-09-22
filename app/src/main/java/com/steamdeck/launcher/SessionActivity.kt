@@ -234,7 +234,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                 hud.start()
             }
         }
-        SessionState.endListener = { status -> onSessionEnded(status) }
+        SessionState.endListener = endListener
         // Back opens the drawer (and closes it again). Leaving the session running in the
         // background and ending it are both actions in there, so neither can happen by accident
         // from a button a game might also be reading.
@@ -724,13 +724,16 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         }
     }
 
+    /** Ours, so a finishing activity never unhooks the one that replaced it. */
+    private val endListener: (Int) -> Unit = { status -> onSessionEnded(status) }
+
     override fun onDestroy() {
         // Deliberately does NOT end the session: this activity can be destroyed while the user is
         // in another app, and the whole point of the service is that Steam survives that.
         watching = false
         if (::hud.isInitialized) hud.stop()
         padBridge?.stop()
-        SessionState.endListener = null
+        if (SessionState.endListener === endListener) SessionState.endListener = null
         WaylandCompositor.setFirstFrameListener(null)
         super.onDestroy()
     }

@@ -56,6 +56,8 @@ class SessionService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
     private var sessionPid = -1
+    /** Counts sessions this service has started; a process exit from an earlier one is ignored. */
+    private var sessionGen = 0
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
@@ -98,9 +100,10 @@ class SessionService : Service() {
         try {
             SessionArtifacts.collect(this, dir, "session stopped")
         } finally {
-            // Last, so everything above is in the file it is about.
-            SessionLogCapture.stop()
-            SessionPaths.release(this)
+            // Last, so everything above is in the file it is about - and only this session's:
+            // a session that replaced this one may already own the capture and the folder.
+            SessionLogCapture.stopFor(dir)
+            SessionPaths.release(this, dir)
         }
     }
 
@@ -387,7 +390,16 @@ class SessionService : Service() {
 
         val line = command.joinToString(" ") { it.replace(" ", "\\ ") }
         watchLaunchRequests(sessionRoot)
+        // One session replacing another (the desktop's Steam launchers): the old proot is killed
+        // by the teardown a second after the new one has started, and its exit used to arrive
+        // here as "session ended: 137" and end the NEW session. An exit belongs to the session
+        // that started it.
+        val gen = ++sessionGen
         sessionPid = ProcessHelper.exec(line, hostEnv.toStringArray(), root, { status ->
+            if (gen != sessionGen) {
+                Log.i(TAG, "an earlier session's process ended ($status); the current one carries on")
+                return@exec
+            }
             Log.i(TAG, "session ended: $status")
             stopSession(status ?: -1)
         }, null)

@@ -28,6 +28,7 @@ object SessionLogCapture {
 
     private var pid = -1
     private var writer: BufferedWriter? = null
+    private var target: File? = null
 
     /** Start mirroring this process's log lines into [target]. Safe to call twice. */
     @Synchronized
@@ -39,6 +40,7 @@ object SessionLogCapture {
             out.write("Lines the app wrote before the session folder existed are in logcat only.\n\n")
             out.flush()
             writer = out
+            this.target = target
             // -T 1 starts at the newest line rather than replaying the whole buffer; -v threadtime
             // keeps the timestamps and thread ids that make two logs line up.
             pid = ProcessHelper.exec(
@@ -63,8 +65,16 @@ object SessionLogCapture {
         }
     }
 
+    /** Stops the capture only if it is the one writing into [dir]: a newer session's is left alone. */
+    @Synchronized
+    fun stopFor(dir: File) {
+        val t = target ?: return
+        if (t.parentFile?.absolutePath == dir.absolutePath) stop()
+    }
+
     @Synchronized
     fun stop() {
+        target = null
         if (pid != -1) {
             try {
                 Process.killProcess(pid)

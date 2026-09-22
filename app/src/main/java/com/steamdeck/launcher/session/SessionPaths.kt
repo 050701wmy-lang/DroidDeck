@@ -56,8 +56,10 @@ object SessionPaths {
 
     /** Let the next session claim a new folder. Called when a session ends. */
     @Synchronized
-    fun release(context: Context) {
-        val ended = dir
+    fun release(context: Context, ended: File) {
+        // Only the session that owns the folder lets go of it: the next session may have claimed
+        // its own by the time the last one's collecting thread gets here.
+        if (dir != ended) return
         dir = null
         // A folder kept in the cache was never meant to outlive its session.
         if (ended != null && ended.path.startsWith(context.cacheDir.path)) {
