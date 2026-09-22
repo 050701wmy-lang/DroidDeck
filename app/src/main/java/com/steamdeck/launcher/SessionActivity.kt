@@ -164,9 +164,9 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                             // Xbox button, or a pad the client hides the controls for, has no other
                             // way to open the client's menu in a game.
                             drawerOpen = false
-                            padBridge?.applyTouch { st -> st.setPressed(com.steamdeck.launcher.input.GamepadState.IDX_BUTTON_MODE, true) }
+                            padBridge?.applyTouch { st -> st.setPressed(com.steamdeck.launcher.input.GamepadState.IDX_BUTTON_MODE.toInt(), true) }
                             Handler(Looper.getMainLooper()).postDelayed({
-                                padBridge?.applyTouch { st -> st.setPressed(com.steamdeck.launcher.input.GamepadState.IDX_BUTTON_MODE, false) }
+                                padBridge?.applyTouch { st -> st.setPressed(com.steamdeck.launcher.input.GamepadState.IDX_BUTTON_MODE.toInt(), false) }
                             }, 90)
                         }) else null,
                         onProtons = { refreshProtons(); showProtons = true },

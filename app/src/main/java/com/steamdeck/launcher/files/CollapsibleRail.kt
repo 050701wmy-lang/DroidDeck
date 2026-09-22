@@ -120,7 +120,8 @@ class RailState internal constructor(
 @Composable
 fun rememberRailState(screenKey: String): RailState {
     val context = LocalContext.current
-    val prefs = remember { androidx.preference.PreferenceManager.getDefaultSharedPreferences(context) }
+    // The same file the File Manager keeps its own browse settings in (no androidx.preference here).
+    val prefs = remember { context.getSharedPreferences("file_manager", android.content.Context.MODE_PRIVATE) }
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     val choseKey = "rail_${screenKey}_userChose"

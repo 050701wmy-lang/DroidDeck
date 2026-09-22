@@ -60,6 +60,7 @@ import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.AlertDialog
