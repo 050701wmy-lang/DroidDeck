@@ -76,13 +76,17 @@ class SessionService : Service() {
         if (SessionState.mode == MODE_STEAM) RivalClients.stopBeforeSession(this)
         SessionState.running = true
         SessionState.firstFrameSeen = false
+        // This session's number, claimed here and not when its process starts: the session it
+        // replaces can report its own exit in the gap between the two, and that exit must not
+        // be taken as this one's.
+        val gen = ++sessionGen
         acquireLocks()
         Thread({
             // A tree the last session left behind (the app was killed or crashed, so its teardown
             // never ran) would hold the rootfs, the GPU and Steam's lock: nothing of ours should
             // be alive between sessions outside this process.
             OrphanReaper.reap("session starting")
-            runSession()
+            runSession(gen)
         }, "session-start").start()
         // The activity or the notification stops us; the system must not resurrect a session whose
         // guest processes are long gone.
@@ -128,7 +132,7 @@ class SessionService : Service() {
 
     // ── The session ─────────────────────────────────────────────────────────────────────────
 
-    private fun runSession() {
+    private fun runSession(gen: Int) {
         try {
             LinuxRuntime.writeAccounts(this)
         } catch (e: Exception) {
@@ -394,7 +398,6 @@ class SessionService : Service() {
         // by the teardown a second after the new one has started, and its exit used to arrive
         // here as "session ended: 137" and end the NEW session. An exit belongs to the session
         // that started it.
-        val gen = ++sessionGen
         sessionPid = ProcessHelper.exec(line, hostEnv.toStringArray(), root, { status ->
             if (gen != sessionGen) {
                 Log.i(TAG, "an earlier session's process ended ($status); the current one carries on")
