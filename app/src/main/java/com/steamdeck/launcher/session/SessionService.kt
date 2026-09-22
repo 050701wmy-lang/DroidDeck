@@ -447,7 +447,12 @@ class SessionService : Service() {
             sessionPid = -1
             Thread({ teardown(prootPid) }, "session-teardown").start()
         }
-        collectSessionArtifacts()
+        // On its own thread, never here: stopSession runs on the main thread (the notification's
+        // Stop action arrives there), and collecting means copying the compositor's log, scrubbing
+        // every Steam log line by line - 42 files on one measured run - and waiting for logcat to
+        // dump the crash buffer. That was about four and a half seconds of blocked main thread,
+        // and Android ANR'd the app for it: the desktop session that would not let go.
+        Thread({ collectSessionArtifacts() }, "session-collect").start()
         components.reversed().forEach {
             try {
                 it.stop()

@@ -88,20 +88,27 @@ object SessionLogCapture {
     fun dumpCrashBuffer(target: File) {
         try {
             val lines = StringBuilder()
-            val rc = ProcessHelper.exec(
-                "/system/bin/logcat -b crash -d -v threadtime -t 400", null, target.parentFile, null,
-            ) { line -> lines.append(line).append('\n') }
-            // exec returns a pid and runs on; give the dump a moment to finish rather than racing it.
-            var waited = 0
-            while (waited < 3000 && lines.isEmpty()) {
-                Thread.sleep(100)
-                waited += 100
-            }
+            val done = java.util.concurrent.CountDownLatch(1)
+            // Wait on the process ENDING, not on the first line arriving: the lines come through a
+            // callback on another thread, so a poll for "is it empty yet" declared an empty buffer
+            // every time and still cost the wait. exec() returns a pid, never an exit status - the
+            // first version printed that pid as "rc", which was nonsense in the file.
+            val pid = ProcessHelper.exec(
+                "/system/bin/logcat -b crash -d -v threadtime -t 400", null, target.parentFile,
+                { done.countDown() },
+            ) { line -> synchronized(lines) { lines.append(line).append('\n') } }
+            val finished = pid != -1 && done.await(10, java.util.concurrent.TimeUnit.SECONDS)
+            val body = synchronized(lines) { lines.toString() }
             target.writeText(
                 "Android's crash buffer, as it stood when this session ended.\n" +
                     "Not only this app: anything on the device that crashed is in here, which is the\n" +
                     "point - a session killed by the system leaves its trace here and nowhere else.\n\n" +
-                    (if (lines.isEmpty()) "(empty, or this ROM does not hand an app the crash buffer; logcat rc=$rc)\n" else lines.toString())
+                    when {
+                        body.isNotEmpty() -> body
+                        pid == -1 -> "(logcat could not be started at all)\n"
+                        !finished -> "(logcat did not finish within 10 s; nothing captured)\n"
+                        else -> "(the crash buffer is empty - nothing on the device has crashed recently)\n"
+                    }
             )
         } catch (e: Exception) {
             Log.w(TAG, "could not dump the crash buffer", e)
