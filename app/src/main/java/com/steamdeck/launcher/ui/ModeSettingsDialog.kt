@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.unit.dp
+import com.steamdeck.launcher.session.SessionPrefs
 import com.steamdeck.launcher.session.SessionService
 
 /** One driver as the dialog shows it. [removable] is false for the runtime's own and the bundled builds. */
@@ -169,13 +170,14 @@ fun ModeSettingsDialog(s: ModeSettings, a: ModeSettingsActions) {
                             "display" -> {
                                 Section("Display", "Takes effect at the next session: gamescope sizes its display once, when it starts.")
                                 Text("Resolution", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+                                val default = SessionPrefs.defaultResolutionCap(s.mode)
                                 listOf(
-                                    1080 to "Up to 1080p — the default",
+                                    1080 to "Up to 1080p",
                                     900 to "Up to 900p",
-                                    720 to "Up to 720p — lighter on the GPU",
+                                    720 to "Up to 720p — lighter on the GPU, menus stay responsive",
                                     0 to "The panel's own — above 1080p costs frames for nothing a handheld can show",
                                 ).forEach { (cap, label) ->
-                                    Choice(label, s.resolutionCap == cap) { a.onResolution(cap) }
+                                    Choice(if (cap == default) "$label — the default" else label, s.resolutionCap == cap) { a.onResolution(cap) }
                                 }
                                 Text("Shape", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 10.dp))
                                 Choice("The panel's shape (never narrower than 16:9)", s.shapeMode == "auto") { a.onShape("auto") }
