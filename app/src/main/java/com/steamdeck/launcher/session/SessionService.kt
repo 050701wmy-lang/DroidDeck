@@ -99,8 +99,7 @@ class SessionService : Service() {
      * which is when they matter. The collecting itself is [SessionArtifacts], shared with the
      * crash handler and the next-start sweep so a folder is finished whichever way it ends.
      */
-    private fun collectSessionArtifacts() {
-        val dir = SessionPaths.current() ?: return
+    private fun collectSessionArtifacts(dir: File) {
         try {
             SessionArtifacts.collect(this, dir, "session stopped")
         } finally {
@@ -554,7 +553,8 @@ class SessionService : Service() {
         // every Steam log line by line - 42 files on one measured run - and waiting for logcat to
         // dump the crash buffer. That was about four and a half seconds of blocked main thread,
         // and Android ANR'd the app for it: the desktop session that would not let go.
-        Thread({ collectSessionArtifacts() }, "session-collect").start()
+        val ended = SessionPaths.take()
+        if (ended != null) Thread({ collectSessionArtifacts(ended) }, "session-collect").start()
         components.reversed().forEach {
             try {
                 it.stop()

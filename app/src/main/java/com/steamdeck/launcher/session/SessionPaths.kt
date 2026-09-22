@@ -51,16 +51,27 @@ object SessionPaths {
     /** The current session's folder, or null between sessions. */
     fun current(): File? = dir
 
+    /**
+     * The ending session takes its folder with it: the next session (one that replaces this one
+     * in place) then claims a folder of its own instead of sharing, and this one's collector
+     * finishes the folder it was handed. Called on the main thread as the session stops.
+     */
+    @Synchronized
+    fun take(): File? {
+        val ended = dir
+        dir = null
+        return ended
+    }
+
     /** A file in the current session's folder, or null between sessions. */
     fun file(name: String): File? = dir?.let { File(it, name) }
 
     /** Let the next session claim a new folder. Called when a session ends. */
     @Synchronized
     fun release(context: Context, ended: File) {
-        // Only the session that owns the folder lets go of it: the next session may have claimed
-        // its own by the time the last one's collecting thread gets here.
-        if (dir != ended) return
-        dir = null
+        // Only the session that owns the folder lets go of it (take() usually has already): the
+        // next session may have claimed its own by the time the last one's collector gets here.
+        if (dir == ended) dir = null
         // A folder kept in the cache was never meant to outlive its session.
         if (ended != null && ended.path.startsWith(context.cacheDir.path)) {
             com.steamdeck.launcher.core.FileUtils.delete(ended)
