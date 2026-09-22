@@ -236,6 +236,9 @@ fun FrontEndScreen(s: FrontEndState, a: FrontEndActions) {
     var openDesktop by rememberSaveable { mutableStateOf(true) }
     var openSteam by rememberSaveable { mutableStateOf(true) }
     var openEmu by rememberSaveable { mutableStateOf("") }
+    // Setup starts open only while there is setting up to do (no runtime yet); otherwise it is
+    // folded so the rail is the library.
+    var openSetup by rememberSaveable { mutableStateOf(!s.ready) }
     val colors = MaterialTheme.colorScheme
     val ctx = LocalContext.current
     remember { Motion.scale = Settings.Global.getFloat(ctx.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f); true }
@@ -244,7 +247,8 @@ fun FrontEndScreen(s: FrontEndState, a: FrontEndActions) {
         val wide = maxWidth >= 640.dp
         val rail: @Composable () -> Unit = {
             Rail(
-                s, selected, openSteam, openDesktop, openEmu,
+                s, selected, openSteam, openDesktop, openEmu, openSetup,
+                onToggleSetup = { openSetup = !openSetup },
                 onSelect = { key ->
                     if (key == "steam") openSteam = if (selected == "steam") !openSteam else true
                     if (key == "desktop") openDesktop = if (selected == "desktop") !openDesktop else true
@@ -265,8 +269,8 @@ fun FrontEndScreen(s: FrontEndState, a: FrontEndActions) {
 
 @Composable
 private fun Rail(
-    s: FrontEndState, selected: String, openSteam: Boolean, openDesktop: Boolean, openEmu: String,
-    onSelect: (String) -> Unit, a: FrontEndActions, modifier: Modifier,
+    s: FrontEndState, selected: String, openSteam: Boolean, openDesktop: Boolean, openEmu: String, openSetup: Boolean,
+    onToggleSetup: () -> Unit, onSelect: (String) -> Unit, a: FrontEndActions, modifier: Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     Column(
@@ -352,9 +356,9 @@ private fun Rail(
             }
         }
 
-        Spacer(Modifier.height(10.dp))
-        Text("SETUP", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 2.sp, color = colors.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, top = 4.dp, bottom = 6.dp))
-        for ((label, value, act) in listOf(
+        Spacer(Modifier.height(6.dp))
+        // Setup: the same fold as Steam and Desktop, a header that opens its list.
+        val setup = listOf(
             Triple("Files", null, a.onFiles), Triple("Desktop & apps", null, a.onApps), Triple("Compatibility tools", null, a.onProtons),
             Triple("Frame generation", s.frameGenLabel, a.onFrameGen), Triple("Performance", null, a.onPerformance),
             Triple("ROMs folder", s.romsDir?.substringAfterLast('/')?.ifEmpty { s.romsDir } ?: "choose", a.onRoms),
@@ -366,7 +370,14 @@ private fun Rail(
                 s.available != null && s.available != s.installed -> "update"
                 else -> "remove"
             }, a.onRuntime),
-        )) NavItem(label, "x", false, small = true, tiny = true, muted = true, value = value) { act() }
+        )
+        NavItem("Setup", "x", false, caret = openSetup, count = setup.size, onClick = onToggleSetup)
+        Sub(openSetup) {
+            for ((i, t) in setup.withIndex()) {
+                val (label, value, act) = t
+                NavItem(label, "x", false, small = true, tiny = true, muted = true, value = value, i = i, register = { _, _ -> }, unregister = {}) { act() }
+            }
+        }
         Text(
             "credits", fontSize = 11.sp, color = colors.onSurfaceVariant,
             modifier = Modifier.clip(Shape10).clickable(onClick = a.onCredits).padding(horizontal = 10.dp, vertical = 8.dp),
@@ -564,7 +575,7 @@ private fun Content(s: FrontEndState, selected: String, a: FrontEndActions, modi
             }
             selected == "desktop" -> {
                 Rise(0) { Eyebrow("Desktop") }
-                Rise(1) { Title("LXQt on labwc") }
+                Rise(1) { Title("Linux desktop environment") }
                 Rise(2) { Lede("Files, Firefox and the emulators' own windows. Emulators and their games launch from the rail, under gamescope, where the GPU is.") }
                 Rise(3) {
                     Actions {
@@ -574,11 +585,11 @@ private fun Content(s: FrontEndState, selected: String, a: FrontEndActions, modi
                     }
                 }
                 Rise(4) { SectionTitle("Emulators", "${s.emulators.count { it.installed }} installed · ${s.emulators.count { !it.installed }} available") }
-                Rise(5, Modifier.weight(1f).fillMaxWidth()) {
-                    ArtGrid(s.emulators.map { e -> Tile(e.name, if (e.installed) (if (e.id == "retroarch") "browses its own games" else "${e.games.size} game${if (e.games.size == 1) "" else "s"}") else "not installed", null, "emu:${e.id}", e.iconRes, dim = !e.installed) { if (e.installed) a.onEmulator(e) else a.onApps() } })
+                Rise(5) {
+                    Text("?  why emulators do not run on the desktop", fontSize = 12.sp, color = colors.onSurfaceVariant, modifier = Modifier.padding(bottom = 6.dp).clip(Shape10).clickable(onClick = a.onEmulatorHelp).padding(horizontal = 6.dp, vertical = 4.dp))
                 }
-                Rise(6) {
-                    Text("?  why emulators do not run on the desktop", fontSize = 12.sp, color = colors.onSurfaceVariant, modifier = Modifier.clip(Shape10).clickable(onClick = a.onEmulatorHelp).padding(6.dp))
+                Rise(6, Modifier.weight(1f).fillMaxWidth()) {
+                    ArtGrid(s.emulators.map { e -> Tile(e.name, if (e.installed) (if (e.id == "retroarch") "browses its own games" else "${e.games.size} game${if (e.games.size == 1) "" else "s"}") else "not installed", null, "emu:${e.id}", e.iconRes, dim = !e.installed) { if (e.installed) a.onEmulator(e) else a.onApps() } })
                 }
             }
             selected.startsWith("emu:") -> {
