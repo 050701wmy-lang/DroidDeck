@@ -45,6 +45,10 @@ import com.steamdeck.launcher.ui.FrameGenDialog
 import com.steamdeck.launcher.ui.MainScreen
 import com.steamdeck.launcher.ui.MainUiState
 import com.steamdeck.launcher.ui.SteamDeckTheme
+import com.steamdeck.launcher.ui.RomsDialog
+import com.steamdeck.launcher.files.InAppFilePicker
+import com.steamdeck.launcher.session.SessionArtifacts
+import com.steamdeck.launcher.session.SessionState
 
 /**
  * The whole app outside a session: is the runtime installed, is there a newer one, frame
@@ -95,14 +99,23 @@ class MainActivity : ComponentActivity() {
     private var androidRows by mutableStateOf<List<DriverRow>>(emptyList())
     private var androidSelected by mutableStateOf("")
 
-    // The system file picker, once per driver list: the two lists validate differently, and the
-    // reason a zip is refused names the list it belongs in.
-    private val pickLinuxDriver = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) importDriver(uri, linux = true)
+    // The app's own picker (files/), once per kind of pick: the two driver lists validate
+    // differently, and the reason a zip is refused names the list it belongs in.
+    private val pickLinuxDriver = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        if (r.resultCode == RESULT_OK) InAppFilePicker.pickedUri(r.data)?.let { importDriver(it, linux = true) }
     }
-    private val pickAndroidDriver = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) importDriver(uri, linux = false)
+    private val pickAndroidDriver = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        if (r.resultCode == RESULT_OK) InAppFilePicker.pickedUri(r.data)?.let { importDriver(it, linux = false) }
     }
+    private val pickRomsDir = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        if (r.resultCode == RESULT_OK) InAppFilePicker.pickedPath(r.data)?.let { path ->
+            SessionPrefs.setRomsDir(this, path)
+            romsDir = path
+        }
+    }
+    private var romsDir by mutableStateOf<String?>(null)
+    private var logsEnabled by mutableStateOf(true)
+    private var showRoms by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -117,6 +130,7 @@ class MainActivity : ComponentActivity() {
                         frameGenLabel = frameGenLabel,
                         desktopInstalled = desktopInstalled,
                         offlineAccount = offlineAccount, offline = offline,
+                        romsDir = romsDir, logsEnabled = logsEnabled,
                     ),
                     onPlay = { startActivity(Intent(this, SessionActivity::class.java)) },
                     onDesktop = {
@@ -134,7 +148,21 @@ class MainActivity : ComponentActivity() {
                     onDrivers = { refreshDrivers(); showDrivers = true },
                     onAudio = { directAudio = SessionPrefs.directAudio(this); mic = SessionPrefs.micEnabled(this); showAudio = true },
                     onPerformance = { refreshCores(); showPerformance = true },
+                    onRoms = { showRoms = true },
+                    onLogs = {
+                        SessionPrefs.setLogsEnabled(this, !SessionPrefs.logsEnabled(this))
+                        logsEnabled = SessionPrefs.logsEnabled(this)
+                    },
                     onCredits = { showCredits = true },
+                )
+                if (showRoms) RomsDialog(
+                    path = romsDir,
+                    onChoose = {
+                        showRoms = false
+                        pickRomsDir.launch(InAppFilePicker.buildDirIntent(this, "Choose the ROMs folder", romsDir))
+                    },
+                    onClear = { SessionPrefs.setRomsDir(this, ""); romsDir = null; showRoms = false },
+                    onDismiss = { showRoms = false },
                 )
                 if (showApps) DesktopAppsDialog(
                     rows = packageRows, busyStage = pkgStage, busyPercent = pkgPercent,
@@ -153,10 +181,10 @@ class MainActivity : ComponentActivity() {
                     linuxRows = linuxRows, linuxSteam = linuxSteam, linuxDesktop = linuxDesktop,
                     androidRows = androidRows, androidSelected = androidSelected,
                     onSelectLinux = { mode, id -> SessionPrefs.setLinuxDriver(this, mode, id); refreshDrivers() },
-                    onImportLinux = { pickLinuxDriver.launch(ZIP_TYPES) },
+                    onImportLinux = { pickLinuxDriver.launch(InAppFilePicker.buildIntent(this, ZIP_EXT, "Choose a Linux runtime driver (-Linux zip)")) },
                     onRemoveLinux = { id -> LinuxVulkanDriverManager(this).removeDriver(id); refreshDrivers() },
                     onSelectAndroid = { id -> SessionPrefs.setAndroidDriver(this, id); refreshDrivers() },
-                    onImportAndroid = { pickAndroidDriver.launch(ZIP_TYPES) },
+                    onImportAndroid = { pickAndroidDriver.launch(InAppFilePicker.buildIntent(this, ZIP_EXT, "Choose a display driver (AdrenoTools zip)")) },
                     onRemoveAndroid = { id -> TurnipDriver(this).remove(id); refreshDrivers() },
                     onDismiss = { showDrivers = false },
                 )
@@ -221,6 +249,8 @@ class MainActivity : ComponentActivity() {
         if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 1)
         }
+        // A session folder left without its ending - the process was killed - gets it now.
+        if (!SessionState.running) Thread({ SessionArtifacts.finishAbandoned(this) }, "finish-abandoned").start()
     }
 
     override fun onResume() {
@@ -319,7 +349,7 @@ class MainActivity : ComponentActivity() {
         }, "import-driver").start()
     }
 
-    private fun displayNameOf(uri: Uri): String? = try {
+    private fun displayNameOf(uri: Uri): String? = if (uri.scheme == "file") uri.lastPathSegment else try {
         contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
             ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
     } catch (e: Exception) {
@@ -359,6 +389,8 @@ class MainActivity : ComponentActivity() {
         installed = LinuxRuntimeInstaller.installedVersion(this)
         ready = LinuxRuntime.isInstalled(this)
         frameGenLabel = FrameGen.label(this)
+        romsDir = SessionPrefs.romsDir(this).takeIf { it.isNotEmpty() }
+        logsEnabled = SessionPrefs.logsEnabled(this)
     }
 
     private fun onRuntimeButton() {
@@ -402,6 +434,6 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val TAG = "MainActivity"
         /** What the picker offers for a driver zip; some file apps label a zip as a plain stream. */
-        private val ZIP_TYPES = arrayOf("application/zip", "application/octet-stream")
+        private val ZIP_EXT = listOf("zip")
     }
 }

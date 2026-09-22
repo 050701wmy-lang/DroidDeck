@@ -156,4 +156,29 @@ object SessionPrefs {
     fun setAndroidDriver(context: Context, id: String) {
         prefs(context).edit().putString("androidDriver", id).apply()
     }
+
+    // ── Storage the session can see ─────────────────────────────────────────────────────────────
+
+    /**
+     * The folder on this device that every session shows at `/root/ROMs`, for the emulators on the
+     * desktop. "" = none chosen. All of internal storage is at `/root/Storage` regardless.
+     */
+    fun romsDir(context: Context): String =
+        prefs(context).getString("romsDir", "") ?: ""
+
+    fun setRomsDir(context: Context, path: String) {
+        prefs(context).edit().putString("romsDir", path).apply()
+    }
+
+    /**
+     * Whether a session writes its folder under Download/SteamDeck. Off, the same logs are kept in
+     * the app's cache for the session's lifetime (the scripts need somewhere to write) and thrown
+     * away at the end, so nothing accumulates in Downloads.
+     */
+    fun logsEnabled(context: Context): Boolean =
+        prefs(context).getBoolean("logs", true)
+
+    fun setLogsEnabled(context: Context, on: Boolean) {
+        prefs(context).edit().putBoolean("logs", on).apply()
+    }
 }

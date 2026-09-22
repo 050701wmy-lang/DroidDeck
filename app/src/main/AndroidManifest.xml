@@ -26,6 +26,7 @@
     <uses-feature android:name="android.hardware.gamepad" android:required="false" />
 
     <application
+        android:name=".App"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -54,6 +55,11 @@
             fixed-shape window instead and STRETCHES it onto the other panel — the app never sees a
             size change, so nothing it does can help.
         -->
+        <activity
+            android:name=".files.FilePickerActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme" />
+
         <activity
             android:name=".SessionActivity"
             android:exported="false"

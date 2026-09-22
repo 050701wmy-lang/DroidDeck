@@ -3,7 +3,10 @@ package com.steamdeck.launcher.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.steamdeck.launcher.R
@@ -46,6 +50,9 @@ class MainUiState(
     /** The account the client would sign in as offline, or null if it has never signed in. */
     val offlineAccount: String?,
     val offline: Boolean,
+    /** The folder every session shows at /root/ROMs, or null if none is chosen. */
+    val romsDir: String?,
+    val logsEnabled: Boolean,
 )
 
 /**
@@ -56,6 +63,10 @@ class MainUiState(
  * scaled by the height available — everything on it, text included, shrinks together until it
  * fits — with scrolling left as the last resort, and a width cap so the buttons never span a
  * wide panel. The system bars are kept clear of.
+ *
+ * Play and Desktop span the column; everything else is a tile in two columns, a title with the
+ * setting's current value under it, so the menu is read at a glance and fits without scrolling
+ * on a handheld.
  */
 @Composable
 fun MainScreen(
@@ -70,6 +81,8 @@ fun MainScreen(
     onAudio: () -> Unit,
     onPerformance: () -> Unit,
     onOffline: () -> Unit,
+    onRoms: () -> Unit,
+    onLogs: () -> Unit,
     onCredits: () -> Unit,
 ) {
     BoxWithConstraints(
@@ -141,63 +154,91 @@ fun MainScreen(
             ) { Text("Play", fontSize = 14.sp * k) }
             OutlinedButton(
                 onClick = onDesktop, enabled = state.ready && !state.busy && state.desktopInstalled,
-                modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight + 5.dp * k),
+                modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight),
             ) { Text(if (state.desktopInstalled) "Desktop" else "Desktop — install it under Desktop & apps", fontSize = 13.sp * k) }
-            // Offline is read while the client starts, so it is decided here rather than in the
-            // session's drawer, and it needs credentials from an earlier sign-in to be possible.
-            OutlinedButton(
-                onClick = onOffline, enabled = state.offlineAccount != null,
-                modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight + 5.dp * k),
-            ) {
-                Text(
-                    when {
-                        state.offlineAccount == null -> "Start offline — sign in once first"
-                        state.offline -> "Start offline: on · ${state.offlineAccount}"
-                        else -> "Start offline: off"
-                    },
-                    fontSize = 13.sp * k,
-                )
-            }
+            Spacer(Modifier.height(8.dp * k))
+
             val runtimeLabel = when {
                 state.busy -> "Working…"
                 !state.ready -> "Install Linux runtime"
                 state.available != null && state.available != state.installed -> "Update Linux runtime"
                 else -> "Remove Linux runtime"
             }
-            OutlinedButton(
-                onClick = onRuntime, enabled = !state.busy,
-                modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight + 5.dp * k),
-            ) { Text(runtimeLabel, fontSize = 13.sp * k) }
-            OutlinedButton(
-                onClick = onFrameGen,
-                modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight + 5.dp * k),
-            ) { Text("Frame generation: ${state.frameGenLabel}", fontSize = 13.sp * k) }
-            OutlinedButton(
-                onClick = onApps, enabled = state.ready && !state.busy,
-                modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight + 5.dp * k),
-            ) { Text("Desktop & apps", fontSize = 13.sp * k) }
-            OutlinedButton(
-                onClick = onProtons,
-                modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight + 5.dp * k),
-            ) { Text("Compatibility tools", fontSize = 13.sp * k) }
-            OutlinedButton(
-                onClick = onDrivers,
-                modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight + 5.dp * k),
-            ) { Text("Graphics drivers", fontSize = 13.sp * k) }
-            OutlinedButton(
-                onClick = onAudio,
-                modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight + 5.dp * k),
-            ) { Text("Audio", fontSize = 13.sp * k) }
-            OutlinedButton(
-                onClick = onPerformance,
-                modifier = Modifier.fillMaxWidth().padding(top = 5.dp * k).height(buttonHeight + 5.dp * k),
-            ) { Text("Performance", fontSize = 13.sp * k) }
+            val tileGap = Arrangement.spacedBy(6.dp * k)
+            Row(horizontalArrangement = tileGap, modifier = Modifier.fillMaxWidth()) {
+                MenuTile(runtimeLabel, null, k, Modifier.weight(1f), enabled = !state.busy, onClick = onRuntime)
+                MenuTile("Desktop & apps", null, k, Modifier.weight(1f), enabled = state.ready && !state.busy, onClick = onApps)
+            }
+            Spacer(Modifier.height(6.dp * k))
+            Row(horizontalArrangement = tileGap, modifier = Modifier.fillMaxWidth()) {
+                MenuTile("Frame generation", state.frameGenLabel, k, Modifier.weight(1f), onClick = onFrameGen)
+                MenuTile("Compatibility tools", null, k, Modifier.weight(1f), onClick = onProtons)
+            }
+            Spacer(Modifier.height(6.dp * k))
+            Row(horizontalArrangement = tileGap, modifier = Modifier.fillMaxWidth()) {
+                MenuTile("Graphics drivers", null, k, Modifier.weight(1f), onClick = onDrivers)
+                MenuTile("Audio", null, k, Modifier.weight(1f), onClick = onAudio)
+            }
+            Spacer(Modifier.height(6.dp * k))
+            Row(horizontalArrangement = tileGap, modifier = Modifier.fillMaxWidth()) {
+                MenuTile("Performance", null, k, Modifier.weight(1f), onClick = onPerformance)
+                // The folder's own name is the value; the whole path is in the dialog.
+                MenuTile(
+                    "ROMs folder", state.romsDir?.substringAfterLast('/')?.ifEmpty { state.romsDir } ?: "not chosen",
+                    k, Modifier.weight(1f), onClick = onRoms,
+                )
+            }
+            Spacer(Modifier.height(6.dp * k))
+            Row(horizontalArrangement = tileGap, modifier = Modifier.fillMaxWidth()) {
+                // Offline is read while the client starts, so it is decided here rather than in the
+                // session's drawer, and it needs credentials from an earlier sign-in to be possible.
+                MenuTile(
+                    "Start offline",
+                    when {
+                        state.offlineAccount == null -> "sign in once first"
+                        state.offline -> "on · ${state.offlineAccount}"
+                        else -> "off"
+                    },
+                    k, Modifier.weight(1f), enabled = state.offlineAccount != null, onClick = onOffline,
+                )
+                MenuTile(
+                    "Session logs", if (state.logsEnabled) "on · Download/SteamDeck" else "off",
+                    k, Modifier.weight(1f), onClick = onLogs,
+                )
+            }
             Spacer(Modifier.height(10.dp * k))
             Text(
                 "by The412Banner and maxjivi05 · credits",
                 fontSize = 11.sp * k, color = colors.onSurfaceVariant,
                 modifier = Modifier.clickable(onClick = onCredits).padding(4.dp),
             )
+        }
+    }
+}
+
+/** One tile of the two-column menu: what it is, and under it what it is set to. */
+@Composable
+private fun MenuTile(
+    title: String,
+    value: String?,
+    k: Float,
+    modifier: Modifier,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    OutlinedButton(
+        onClick = onClick, enabled = enabled,
+        modifier = modifier.height(if (value != null) 52.dp * k else 44.dp * k),
+        contentPadding = PaddingValues(horizontal = 8.dp * k, vertical = 4.dp * k),
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(title, fontSize = 12.sp * k, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+            if (value != null) {
+                Text(
+                    value, fontSize = 10.sp * k, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }

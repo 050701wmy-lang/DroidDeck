@@ -57,6 +57,9 @@ ledger rather than a feature list — where something has not been run on hardwa
 | Foldable, opened and closed mid-session | ✅ proven |
 | Background / foreground, wake locks | ✅ proven |
 | The session log folder | ✅ proven — all of it written, including this app's own log |
+| Session folder finished after a crash or a kill | ⚠️ built: crash handler + next-start sweep; not yet forced on a device |
+| ROMs folder and Storage in the session's home | ⚠️ built; not yet opened from an emulator on a device |
+| The in-app file picker | ⚠️ built; not yet used on a device |
 | Stopping a competing Steam client | ⚠️ it is asked to stop and says so, but one that restarts itself from boot wins the race — uninstall it |
 | DirectAudio for games, and the microphone | ⚠️ wired and the modules load; voice not yet confirmed in Steam's tester |
 | Client and game core masks | ⚠️ applied and logged; no measured difference yet |
@@ -162,6 +165,23 @@ themselves through Vulkan and Turnip — it is the desktop's own compositing tha
 
 Programs whose child processes sandbox themselves with seccomp and namespaces cannot set those up
 under proot; Firefox's are turned off in the session's environment, without which its tabs crash.
+
+### The device's files, and the ROMs folder
+
+Inside a session the phone's storage is at `/storage/emulated/0`, as it is outside - but no
+program's file dialog will show it: they list "Computer" from `/proc/mounts`, where a proot bind
+never appears, and open in the home folder, where nothing pointed at the phone. So the home
+folder now carries two entries every session:
+
+- **`Storage`** - all of internal storage.
+- **`ROMs`** - the folder chosen with **ROMs folder** on the main screen, wherever it is on the
+  device, an SD card included (it is a bind, not a link). Point any emulator's game directory at
+  `/root/ROMs` once and it is the same folder in every session after.
+
+Both are the live folders, not copies: a save an emulator writes next to its ROM lands on the
+phone. Choosing is done in the app's own file picker, the one Bannerlator's File Manager offers
+in pick mode - every mounted card in a drive menu, folders first, an up-arrow that stops at the
+card's root - and the same picker is what imports a graphics driver.
 
 ## Pointer
 
@@ -294,6 +314,10 @@ Contents screen makes:
   imported AdrenoTools zip can be chosen instead. The compositor loads its driver once per app
   process, so this one applies after the app is fully closed and started again.
 
+Both imports open the app's own file picker rather than Android's document picker: an SD card is a
+card in its drive menu, the folder last picked from is where it opens next time, and it hands back
+a plain path.
+
 ## Frame generation
 
 Extra frames are generated between the real ones on the way to the screen — inside the app's
@@ -341,6 +365,7 @@ Download/SteamDeck/session-20260921-161256/
     wayland.log    the app's compositor - what it presented, at what size, and how fast
     app.log        what the app itself decided and reported
     crash.log      Android's crash buffer, as it stood when the session ended
+    crash-app.txt  the stack trace, if the app itself crashed
     audio.log      the PulseAudio daemon and the DirectAudio relay helper
     network.txt    the link, the DNS the runtime was given, and what it means
     steam.log      the Steam client's log, scrubbed        (Steam mode)
@@ -356,6 +381,20 @@ there and nowhere else. `audio.log` is the PulseAudio daemon's own output plus t
 so a module that refuses to load is visible instead of being a silent absence of sound.
 `network.txt` records the transport, whether the link validated, the address families and the DNS
 servers the runtime was actually given - **never the network's name**.
+
+A folder is finished **however the session ends**, not only at a clean stop. Everything written
+*during* a session is on disk as it happens; only the ending - the compositor's log, Steam's
+scrubbed logs, the crash buffer - is gathered afterwards, and three things gather it: the ordinary
+stop; the app's own crash handler, which writes `crash-app.txt` with the stack trace and finishes
+the folder before the process dies; and a sweep at the next app start, for a folder whose process
+was killed outright (Android's phantom-process killer, a native crash in the compositor, a dead
+battery) - that folder gets `ended-without-teardown.txt` saying so, and `crash.log` as the buffer
+stands then, which still holds the entry unless the device rebooted. A finished folder carries a
+`.complete` marker; one without it is what the sweep looks for.
+
+**Session logs** on the main screen turns the folder off. The session still writes its logs - the
+scripts and the compositor need somewhere to - but into the app's cache, and they are deleted
+when the session ends, so nothing accumulates in Downloads.
 
 `device.txt` is written before the session starts, so a session that dies in its first second
 still says what it ran on: model, SoC, Android and kernel, cores and their ceilings, RAM, the GPU

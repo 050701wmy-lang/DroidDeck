@@ -30,15 +30,21 @@ object SessionPaths {
     @Volatile
     private var dir: File? = null
 
-    /** The folder for the session now starting, or the one already in progress. */
+    /**
+     * The folder for the session now starting, or the one already in progress. With logs turned
+     * off on the main screen the folder lives in the app's cache instead of Downloads - the
+     * scripts and the compositor still need somewhere to write - and [release] deletes it.
+     */
     @Synchronized
     fun beginOrCurrent(context: Context): File {
         dir?.let { if (it.isDirectory) return it }
         val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
-        val made = File(SessionFiles.logDirectory(context), "session-$stamp")
+        val parent = if (SessionPrefs.logsEnabled(context)) SessionFiles.logDirectory(context)
+            else File(context.cacheDir, "session-logs")
+        val made = File(parent, "session-$stamp")
         if (!made.isDirectory && !made.mkdirs()) Log.e(TAG, "could not create $made")
         dir = made
-        Log.i(TAG, "session logs: $made")
+        Log.i(TAG, "session logs: $made" + if (SessionPrefs.logsEnabled(context)) "" else " (logs off: discarded at the end)")
         return made
     }
 
@@ -50,7 +56,12 @@ object SessionPaths {
 
     /** Let the next session claim a new folder. Called when a session ends. */
     @Synchronized
-    fun release() {
+    fun release(context: Context) {
+        val ended = dir
         dir = null
+        // A folder kept in the cache was never meant to outlive its session.
+        if (ended != null && ended.path.startsWith(context.cacheDir.path)) {
+            com.steamdeck.launcher.core.FileUtils.delete(ended)
+        }
     }
 }

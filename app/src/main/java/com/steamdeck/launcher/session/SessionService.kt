@@ -24,7 +24,6 @@ import com.steamdeck.launcher.audio.PulseAudioComponent
 import com.steamdeck.launcher.core.CpuCores
 import com.steamdeck.launcher.core.DeviceReport
 import com.steamdeck.launcher.core.EnvVars
-import com.steamdeck.launcher.core.LogRedactor
 import com.steamdeck.launcher.core.SessionLogCapture
 import com.steamdeck.launcher.core.NetworkReport
 import com.steamdeck.launcher.core.EnvironmentComponent
@@ -33,7 +32,6 @@ import com.steamdeck.launcher.core.ProcessHelper
 import com.steamdeck.launcher.input.FakeInputWriter
 import com.steamdeck.launcher.runtime.LinuxNetworkLinkComponent
 import com.steamdeck.launcher.runtime.LinuxRuntime
-import com.steamdeck.launcher.wayland.WaylandCompositor
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -81,44 +79,19 @@ class SessionService : Service() {
     }
 
     /**
-     * Pull everything a report needs into the session's folder, after the session has stopped: the
-     * compositor's log (it writes for as long as the compositor lives, which outlasts one session)
-     * and the Steam client's own logs, scrubbed line by line. The guest script copies Steam's logs
-     * too, at a clean exit; this one runs whatever killed the session, which is when they matter.
+     * Finish the session's folder after the session has stopped, then let go of it. The guest
+     * script copies Steam's logs too, at a clean exit; this runs whatever killed the session,
+     * which is when they matter. The collecting itself is [SessionArtifacts], shared with the
+     * crash handler and the next-start sweep so a folder is finished whichever way it ends.
      */
     private fun collectSessionArtifacts() {
         val dir = SessionPaths.current() ?: return
         try {
-            // The compositor's own file, wherever it opened it.
-            val wayland = File(dir, "wayland.log")
-            if (!wayland.exists()) {
-                WaylandCompositor.currentLogFile()?.takeIf { it.isFile }?.let { src ->
-                    src.copyTo(wayland, overwrite = true)
-                }
-            }
-            // Steam's logs: redacted into steam/, never copied verbatim.
-            val logs = File(LinuxRuntime.rootDir(this), "root/.local/share/Steam/logs")
-            if (logs.isDirectory) {
-                val out = File(dir, "steam").apply { mkdirs() }
-                logs.listFiles { f -> f.isFile && f.length() < 8L * 1024 * 1024 }?.forEach { src ->
-                    try {
-                        File(out, src.name).bufferedWriter().use { w ->
-                            src.forEachLine { line -> w.write(LogRedactor.redact(line)); w.newLine() }
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "could not scrub ${src.name}", e)
-                    }
-                }
-                Log.i(TAG, "collected ${out.listFiles()?.size ?: 0} Steam log(s), scrubbed, into $out")
-            }
-            // A session the system killed leaves its trace here and nowhere else.
-            SessionLogCapture.dumpCrashBuffer(File(dir, "crash.log"))
-        } catch (e: Exception) {
-            Log.w(TAG, "collecting session artifacts", e)
+            SessionArtifacts.collect(this, dir, "session stopped")
         } finally {
             // Last, so everything above is in the file it is about.
             SessionLogCapture.stop()
-            SessionPaths.release()
+            SessionPaths.release(this)
         }
     }
 
@@ -310,6 +283,23 @@ class SessionService : Service() {
 
         val binds = ArrayList<String>()
         if (controllersOn) binds.add(fakeInputDir.path + ":/dev/input")
+        // Where the device's files appear inside the session. Internal storage is bound at its own
+        // path already, and every program's file dialog opens at home and lists "Computer" from
+        // /proc/mounts, where a proot bind never shows - so a user saw only the runtime's own
+        // tree and could not find the phone at all. The same storage is placed under home as
+        // well, and the ROMs folder chosen on the main screen beside it; a bind rather than a
+        // link, so a folder on an SD card works the same.
+        val home = File(LinuxRuntime.rootDir(this), "root")
+        File(home, "Storage").mkdirs()
+        binds.add(Environment.getExternalStorageDirectory().path + ":/root/Storage")
+        val roms = SessionPrefs.romsDir(this).takeIf { it.isNotEmpty() }?.let { File(it) }
+        if (roms != null && roms.isDirectory && roms.canRead()) {
+            File(home, "ROMs").mkdirs()
+            binds.add(roms.path + ":/root/ROMs")
+            Log.i(TAG, "roms: $roms -> /root/ROMs")
+        } else if (roms != null) {
+            Log.w(TAG, "roms: $roms is not a readable folder; /root/ROMs not offered this session")
+        }
 
         val command = LinuxRuntime.command(
             this, sessionRoot, runtimeDir, Environment.getExternalStorageDirectory(), binds, guest,
