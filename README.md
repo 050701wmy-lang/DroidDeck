@@ -9,6 +9,10 @@ launches go through Valve's own ARM64 Proton build, which is where FEX comes in.
 One screen, one button: install the runtime, press Play, Big Picture comes up. Or start the
 **desktop** instead — LXQt, a browser and a shelf of emulators, in the same session.
 
+Around that: the Vulkan driver each half of the session draws with is yours to import and change,
+audio can bypass PulseAudio and carry a microphone, the cores the client and a game get are
+separate, and every session writes a folder of logs meant to be attached to a report as it is.
+
 ## Requirements
 
 - An **arm64 Android device with an Adreno GPU that Turnip supports** — in practice Adreno **730 or
@@ -31,14 +35,20 @@ One screen, one button: install the runtime, press Play, Big Picture comes up. O
 For a desktop, open **Desktop & apps**, install the *Desktop* package, then press **Desktop** on
 the main screen.
 
+**Do this once per device if the client dies with nothing in its log**: Android 12 and later kill
+the extra processes an app starts for itself, and a session is made of dozens of them. Some phones
+have a **"restrict child processes"** switch in Developer options — turn it off. See
+[If Steam dies with nothing in the log](#if-steam-dies-with-nothing-in-the-log).
+
 ## What works today
 
-This is version 0.1, and most of it has been exercised on one or two devices only. An honest
-ledger rather than a feature list:
+This is version 0.1.2, and most of it has been exercised on one or two devices only. An honest
+ledger rather than a feature list — where something has not been run on hardware, it says so:
 
 | | State |
 |---|---|
 | Steam sign-in, store, install, launch | ✅ proven — *FlatOut* at 144 Hz through ARM64 Proton |
+| Importing and choosing a driver | ✅ proven — an imported Mesa 26.3.0 glibc Turnip drew a whole session, and an imported AdrenoTools build ran the compositor |
 | Frame generation (LSFG 2×) | ✅ proven — 30 → 61, 60 → 118, 61 → 123 fps |
 | Performance HUD | ✅ proven |
 | Desktop, panel, file manager | ✅ proven at the panel's native resolution |
@@ -46,10 +56,16 @@ ledger rather than a feature list:
 | Controller as an Xbox 360 pad | ✅ proven |
 | Foldable, opened and closed mid-session | ✅ proven |
 | Background / foreground, wake locks | ✅ proven |
+| The session log folder | ✅ proven — all of it written, including this app's own log |
+| Stopping a competing Steam client | ⚠️ it is asked to stop and says so, but one that restarts itself from boot wins the race — uninstall it |
+| DirectAudio for games, and the microphone | ⚠️ wired and the modules load; voice not yet confirmed in Steam's tester |
+| Client and game core masks | ⚠️ applied and logged; no measured difference yet |
+| The four session fixes (xalia, proot seccomp, sysmem, Zink) | ⚠️ they set what they say; each is a hypothesis for a device that misbehaves |
+| GE-Proton / proton-cachyos | ⚠️ adopted and registered on device; no game launched through one yet |
 | The emulators | ⚠️ they build, publish and install — none has been run with a game |
 | Starting Steam offline | ⚠️ built, not yet tested |
 | The soft keyboard | ⚠️ built, not yet tested |
-| GE-Proton / proton-cachyos | ⚠️ built, not yet tested in this app |
+| Adreno 710 / 720 / 722 | ⚠️ a path exists through imported drivers; **nobody has run this on one yet** |
 
 ## Known limits
 
@@ -70,13 +86,22 @@ ledger rather than a feature list:
 
 ```
  Android app (this repo)
- ├── libbannerwayland.so      Wayland compositor, presents into the activity's Surface (Vulkan/Turnip)
+ ├── libbannerwayland.so      Wayland compositor, presents into the activity's Surface
+ │                            on a bionic Turnip: bundled, or one you imported
  ├── PulseAudio 13 + AAudio   the guest's audio server, on a socket bound into the session
+ ├── directaudio relay        owns AAudio out and the mic for the games that ask for it
  ├── fake-evdev rings         a physical pad, republished as /dev/input/eventN for the client
+ ├── frame generation         Win-FG or LSFG, on gamescope's finished output
  └── proot ── linuxfs (~790 MB, downloaded once)
               ├── gamescope ── Xwayland ── Zink
+              │                drawing on a glibc Turnip: the runtime's, or one you imported
               └── Steam (steamrtarm64, fetched from Valve on first run) ── Proton ARM64 ── FEX
+                           └── a game's audio: Proton's own, or DirectAudio straight to Android
 ```
+
+The two Turnips are separate copies of the same driver and cannot be swapped: the compositor's is
+built against Android's C library, the runtime's against glibc. That is why there are two import
+lists rather than one.
 
 The runtime image is the one published for Bannerlator (`linuxfs.json` in
 `The412Banner/winlator-contents`); this app installs and updates it from that catalog. **No Valve
@@ -287,14 +312,16 @@ Files in `/sdcard/Download`, for a device that cannot be reached with a debugger
 | `steamdeck-env` | `KEY=VALUE` lines added to the session's environment as written, after the app's own — Zink and Turnip tunables (`ZINK_DESCRIPTORS=lazy`, `MESA_*`), gamescope's, the client's; `#` comments allowed |
 | `steamdeck-tu-debug` | Turnip's `TU_DEBUG` for the runtime's driver, verbatim (`sysmem`, `sysmem,deck_emu`). Without it, an imported A710/A720/A722 driver gets `sysmem` on its own |
 
-Session logs land in `/sdcard/Download/SteamDeck/`, **one folder per session**, and are the first
-thing to look at when something does not start:
+## Session logs
+
+Every session writes a folder under `/sdcard/Download/SteamDeck/`, and it is the first thing to
+look at when something does not start:
 
 ```
 Download/SteamDeck/session-20260921-161256/
     device.txt     what this device is, and every setting the session ran with
     session.log    the guest session: proot, gamescope, the client's own output
-    wayland.log    the app's compositor - what it presented, and how fast
+    wayland.log    the app's compositor - what it presented, at what size, and how fast
     app.log        what the app itself decided and reported
     crash.log      Android's crash buffer, as it stood when the session ended
     audio.log      the PulseAudio daemon and the DirectAudio relay helper
@@ -323,6 +350,11 @@ addresses are replaced, and a SteamID is masked to its last four digits so lines
 correlated. `loginusers.vdf`, `config.vdf` and the `ssfn` files are never copied at all. A session
 folder is meant to be attachable to a bug report exactly as it is.
 
+For more from the desktop than it normally says, create `~/.steamdeck-desktop-debug` inside the
+runtime: labwc then logs at debug level, each program's window-protocol traffic is recorded, and the
+session does a name lookup plus an IPv4 and an IPv6 fetch of its own — which is how to tell a broken
+network apart from a program that only believes it has one.
+
 ### If Steam dies with nothing in the log
 
 That is usually not Steam. **Android 12 and later kill the extra processes an app starts for
@@ -336,10 +368,7 @@ adb shell settings put global settings_enable_monitor_phantom_procs false
 ```
 
 `device.txt` records what this phone reports, and the Performance dialog says so when it is not
-disabled. Creating `~/.steamdeck-desktop-debug` inside the
-runtime additionally makes the desktop log labwc at debug level, each program's window-protocol
-traffic, and a name lookup plus an IPv4 and IPv6 fetch from inside the session — which is how to
-tell a broken network apart from a program that only believes it has one.
+disabled.
 
 ## Authors
 
