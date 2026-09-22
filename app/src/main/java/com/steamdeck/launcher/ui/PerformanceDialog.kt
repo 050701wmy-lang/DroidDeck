@@ -97,7 +97,7 @@ fun PerformanceDialog(
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Turnip: sysmem rendering", style = MaterialTheme.typography.bodyMedium)
                         Text(
-                            "Renders without the GPU's tile memory (TU_DEBUG=sysmem). Banners-Turnip's own advice for an Adreno 8xx that looks glitchy or slow, and required on a 710/720/722 (set on its own there).",
+                            "Renders without the GPU's tile memory (TU_DEBUG=sysmem). A fix for an Adreno 8xx that shows corruption, and required on a 710/720/722 (set on its own there). Not a speed setting: on every other GPU it turns tiled rendering off and COSTS frames - leave it off unless the picture is wrong.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

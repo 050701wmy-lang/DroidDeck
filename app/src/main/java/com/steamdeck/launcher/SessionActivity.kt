@@ -435,15 +435,64 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     }
 
     private fun onSessionEnded(status: Int) {
-        runOnUiThread {
-            if (isFinishing || isDestroyed) return@runOnUiThread
+        if (status == 0) {
+            runOnUiThread { if (!isFinishing && !isDestroyed) finish() }
+            return
+        }
+        // What the log says about why, read off the main thread (notifyEnded arrives on it).
+        Thread({
+            val hint = sessionEndHint(SessionState.logFile)
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                showEnded(status, hint)
+            }
+        }, "session-end-hint").start()
+    }
+
+    private fun showEnded(status: Int, hint: String?) {
+        run {
             if (status != 0) {
-                loading.showEnded("The session ended ($status)\n${SessionState.logFile?.path ?: "-"}")
-                // A moment on screen, so a failure is readable rather than a flash of black.
-                Handler(Looper.getMainLooper()).postDelayed({ finish() }, 4000)
+                loading.showEnded(
+                    "The session ended ($status)\n${SessionState.logFile?.path ?: "-"}" +
+                        (if (hint != null) "\n\n$hint" else "")
+                )
+                // A moment on screen, so a failure is readable rather than a flash of black;
+                // longer when there is advice to read.
+                Handler(Looper.getMainLooper()).postDelayed({ finish() }, if (hint != null) 9000 else 4000)
             } else {
                 finish()
             }
+        }
+    }
+
+    /**
+     * One line of advice for a failure the log identifies, or null. The one this recognises: the
+     * ENOSYS storm - dozens of `socket(): Function not implemented` / `shared memfd open() failed`
+     * lines - which is proot's seccomp acceleration failing an x86 helper (Steam's xalia under
+     * FEX) on some devices (a Fold 5, twice). The switch that answers it is in Performance, and a
+     * user who never opens the log would not know.
+     */
+    private fun sessionEndHint(log: File?): String? {
+        if (log == null || !log.isFile) return null
+        return try {
+            var enosys = 0
+            // The tail is where a dying session says why; 512 KB covers the storm without reading a 1 GB log.
+            val size = log.length()
+            java.io.RandomAccessFile(log, "r").use { f ->
+                val start = maxOf(0L, size - 512L * 1024)
+                f.seek(start)
+                val bytes = ByteArray((size - start).toInt())
+                f.readFully(bytes)
+                String(bytes, Charsets.ISO_8859_1).lineSequence().forEach { line ->
+                    if (line.contains("Function not implemented")) enosys++
+                }
+            }
+            if (enosys >= 8) {
+                "The log shows $enosys \"Function not implemented\" errors: proot's seccomp acceleration is failing a helper on this device. " +
+                    "Try Performance \u2192 \"Run proot without seccomp\" (or \"Skip Steam's xalia helper\") and start again."
+            } else null
+        } catch (e: Exception) {
+            null
         }
     }
 
