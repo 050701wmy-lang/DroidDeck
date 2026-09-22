@@ -223,4 +223,19 @@ object SessionPrefs {
      * fullscreen session like Steam's, so it takes Steam's display, driver and HDR choices.
      */
     fun prefMode(mode: String): String = if (mode == SessionService.MODE_RUN) SessionService.MODE_STEAM else mode
+
+    // ── Game storage ────────────────────────────────────────────────────────────────────────
+
+    /**
+     * A second Steam library on this device: the folder bound at /mnt/bannerlator-sd and
+     * registered with the client, which then asks where to install every game and shows both
+     * on its Storage page. "" = internal only (the client's own library, the default).
+     */
+    fun gameStorage(context: Context): String = prefs(context).getString("gameStorage", "") ?: ""
+
+    fun gameStorageLabel(context: Context): String = prefs(context).getString("gameStorageLabel", "SD Card") ?: "SD Card"
+
+    fun setGameStorage(context: Context, path: String, label: String) {
+        prefs(context).edit().putString("gameStorage", path).putString("gameStorageLabel", label).apply()
+    }
 }

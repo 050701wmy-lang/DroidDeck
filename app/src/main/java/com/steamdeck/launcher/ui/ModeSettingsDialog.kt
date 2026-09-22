@@ -61,6 +61,9 @@ class ModeSettings(
     val mic: Boolean?,
     /** Desktop only. */
     val renderer: String?,
+    /** Steam only: the second library's root ("" = internal only) and what this device offers. */
+    val gameStorage: String? = null,
+    val storageOptions: List<Pair<String, String>> = emptyList(),
 )
 
 class ModeSettingsActions(
@@ -78,6 +81,8 @@ class ModeSettingsActions(
     val onDirectAudio: (Boolean) -> Unit,
     val onMic: (Boolean) -> Unit,
     val onRenderer: (String) -> Unit,
+    val onGameStorage: (path: String, label: String) -> Unit = { _, _ -> },
+    val onPickGameStorageFolder: () -> Unit = {},
     val onDismiss: () -> Unit,
 )
 
@@ -102,6 +107,7 @@ fun ModeSettingsDialog(s: ModeSettings, a: ModeSettingsActions) {
             add(SettingsSection("panel", "Display driver"))
             add(SettingsSection("touch", if (steam) "Touch & controls" else "Touch"))
             if (steam) add(SettingsSection("audio", "Audio"))
+            if (steam) add(SettingsSection("storage", "Game storage"))
             if (!steam) add(SettingsSection("renderer", "Renderer"))
         }
     }
@@ -237,6 +243,32 @@ fun ModeSettingsDialog(s: ModeSettings, a: ModeSettingsActions) {
                                     "Microphone",
                                     "The device's microphone for voice chat, as the client's input device. Asks for the permission once.",
                                     s.mic, true, a.onMic,
+                                )
+                            }
+                            "storage" -> if (s.gameStorage != null) {
+                                Section(
+                                    "Game storage",
+                                    "Where Steam may install games. Internal is the client's own library and always there. A second " +
+                                        "place is registered with the client at the next session start: it then asks where to install " +
+                                        "every game, lists both on its Storage page, and can move a game between them itself.",
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                Choice("Internal only — the default", s.gameStorage.isEmpty()) { a.onGameStorage("", "") }
+                                for ((label, path) in s.storageOptions) {
+                                    Choice(label, s.gameStorage == path) { a.onGameStorage(path, label.substringBefore(" ·")) }
+                                }
+                                val custom = s.gameStorage.isNotEmpty() && s.storageOptions.none { it.second == s.gameStorage }
+                                if (custom) Choice("Folder: ${s.gameStorage}", true) {}
+                                OutlinedButton(onClick = a.onPickGameStorageFolder, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                                    Text("Choose a folder…")
+                                }
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    "Slow for streaming: an SD card and the phone's shared storage go through Android's file layer, " +
+                                        "and a game that streams video or big assets from there can stall. Keep such games internal; " +
+                                        "use the second place for size. On a card, the app may write only inside its own folder, which " +
+                                        "is the one offered.",
+                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                             "renderer" -> if (s.renderer != null) {

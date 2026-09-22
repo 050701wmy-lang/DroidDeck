@@ -147,6 +147,7 @@ object DeviceReport {
         k("On-screen controls", SessionPrefs.oscMode(context))
         k("Touch mode", SessionPrefs.touchMode(context))
         k("Performance HUD", SessionPrefs.hudEnabled(context))
+        k("Game storage", SessionPrefs.gameStorage(context).ifEmpty { "internal only" })
 
         h("Android process limits")
         // Android 12 kills "phantom" processes - the children an app forks itself rather than

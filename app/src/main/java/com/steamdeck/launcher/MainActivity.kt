@@ -50,6 +50,7 @@ import com.steamdeck.launcher.ui.RomsDialog
 import com.steamdeck.launcher.files.InAppFilePicker
 import com.steamdeck.launcher.session.SessionArtifacts
 import com.steamdeck.launcher.session.SessionState
+import com.steamdeck.launcher.session.GameStorage
 
 /**
  * The whole app outside a session: is the runtime installed, is there a newer one, frame
@@ -121,6 +122,11 @@ class MainActivity : ComponentActivity() {
     private var touchMode by mutableStateOf(SessionPrefs.TOUCH_AUTO)
     private var oscMode by mutableStateOf(SessionPrefs.OSC_AUTO)
     private var renderer by mutableStateOf("pixman")
+    private var gameStorage by mutableStateOf("")
+    private var storageOptions by mutableStateOf<List<Pair<String, String>>>(emptyList())
+    private val pickGameStorage = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        if (r.resultCode == RESULT_OK) InAppFilePicker.pickedPath(r.data)?.let { path -> setGameStorage(path, GameStorage.labelFor(this, path)) }
+    }
     private var emulators by mutableStateOf<List<Pair<String, String>>>(emptyList())
     private var showEmulatorHelp by mutableStateOf(false)
     private var romsDir by mutableStateOf<String?>(null)
@@ -204,6 +210,8 @@ class MainActivity : ComponentActivity() {
                             directAudio = if (mode == SessionService.MODE_STEAM) directAudio else null,
                             mic = if (mode == SessionService.MODE_STEAM) mic else null,
                             renderer = if (mode == SessionService.MODE_DESKTOP) renderer else null,
+                            gameStorage = if (mode == SessionService.MODE_STEAM) gameStorage else null,
+                            storageOptions = storageOptions,
                         ),
                         ModeSettingsActions(
                             onResolution = { cap -> SessionPrefs.setResolutionCap(this, mode, cap); resolutionCap = cap },
@@ -228,6 +236,10 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             onRenderer = { r -> SessionPrefs.setDesktopRenderer(this, r); renderer = r },
+                            onGameStorage = { path, label -> setGameStorage(path, label) },
+                            onPickGameStorageFolder = {
+                                pickGameStorage.launch(InAppFilePicker.buildDirIntent(this, "Choose the game storage folder", gameStorage.ifEmpty { null }))
+                            },
                             onDismiss = { settingsMode = null },
                         ),
                     )
@@ -367,7 +379,22 @@ class MainActivity : ComponentActivity() {
         directAudio = SessionPrefs.directAudio(this)
         mic = SessionPrefs.micEnabled(this)
         renderer = SessionPrefs.desktopRenderer(this)
+        gameStorage = SessionPrefs.gameStorage(this)
+        storageOptions = GameStorage.options(this).map { it.label to it.path }
         settingsMode = mode
+    }
+
+    /** A second Steam library, proven writable first; "" = internal only. */
+    private fun setGameStorage(path: String, label: String) {
+        if (path.isNotEmpty()) {
+            val problem = GameStorage.prepare(path)
+            if (problem != null) {
+                android.widget.Toast.makeText(this, "Not usable: $problem", android.widget.Toast.LENGTH_LONG).show()
+                return
+            }
+        }
+        SessionPrefs.setGameStorage(this, path, label)
+        gameStorage = path
     }
 
     private fun refreshDrivers() {

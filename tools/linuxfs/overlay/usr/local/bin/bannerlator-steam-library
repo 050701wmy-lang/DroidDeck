@@ -11,7 +11,10 @@ import sys
 
 # The client's own library is internal storage (its steamapps/common is bound to the app's root);
 # the card is the one extra library folder.
-LIBRARIES = (("/mnt/bannerlator-sd", "SD Card"),)
+# The app binds the storage the user chose (Steam cog -> Game storage) at this path and names it
+# in BL_LIBRARY_LABEL; nothing bound = internal only, and the entry is removed so the client does
+# not keep offering a place that is not there.
+LIBRARIES = (("/mnt/bannerlator-sd", os.environ.get("BL_LIBRARY_LABEL", "SD Card")),)
 # The client calls its own library "Local Drive (/)", which says nothing about where that is.
 # It is the phone's internal storage, so say so.
 MAIN_LABEL = "Internal Storage"
@@ -151,8 +154,11 @@ def main():
         forget(steam_root, library)
     relabel(steam_root, steam_root, MAIN_LABEL)
     for library, label in LIBRARIES:
-        register(steam_root, library, label)
-        relabel(steam_root, library, label)
+        if os.path.isdir(os.path.join(library, "steamapps")):
+            register(steam_root, library, label)
+            relabel(steam_root, library, label)
+        else:
+            forget(steam_root, library)
 
 
 if __name__ == "__main__":

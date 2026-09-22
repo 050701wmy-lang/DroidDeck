@@ -65,6 +65,7 @@ ledger rather than a feature list — where something has not been run on hardwa
 | The drawer's "Steam menu" (Guide) | ⚠️ built; not yet tried |
 | Emulators launched under gamescope (▶ in Desktop & apps) | ⚠️ built; not yet seen with a game |
 | The device's volume keys during a session | ⚠️ fixed (they were swallowed); not yet re-tried |
+| Game storage: a second Steam library on a card or a folder | ⚠️ built; not yet seen installing to it |
 | Stopping a competing Steam client | ⚠️ it is asked to stop and says so, but one that restarts itself from boot wins the race — uninstall it |
 | DirectAudio for games, and the microphone | ⚠️ wired and the modules load; voice not yet confirmed in Steam's tester |
 | Client and game core masks | ⚠️ applied and logged; no measured difference yet |
@@ -170,6 +171,17 @@ themselves through Vulkan and Turnip — it is the desktop's own compositing tha
 
 Programs whose child processes sandbox themselves with seccomp and namespaces cannot set those up
 under proot; Firefox's are turned off in the session's environment, without which its tabs crash.
+
+### Game storage: internal, an SD card, or a folder
+
+The client's own library is internal storage and always there. **Game storage** in the Steam cog
+registers one more: an SD card (through the app's own folder on it, the one place a card lets
+this app write) or any folder chosen in the File Manager. The session binds it at
+`/mnt/bannerlator-sd` and `bannerlator-steam-library` registers it with the client under the name
+the app gives it; the client then asks where to install every game, lists both on its Storage
+page and moves games between them itself. Set to internal only, the entry is removed again. A
+card and shared storage are FUSE-backed and stream slowly - keep games that stream video or big
+assets internal. ⚠️ Built; not yet seen installing to a card.
 
 ### Running an emulator with the GPU
 
