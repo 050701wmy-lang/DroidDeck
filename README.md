@@ -63,7 +63,8 @@ ledger rather than a feature list — where something has not been run on hardwa
 | The cog beside Play / Desktop: resolution, shape, HDR, drivers, touch, audio, renderer | ⚠️ built; the resolution cap and HDR not yet seen on a device |
 | Leftover session processes swept at the next start | ⚠️ built; not yet forced on a device |
 | The drawer's "Steam menu" (Guide) | ⚠️ built; not yet tried |
-| Emulators launched under gamescope (▶ in Desktop & apps) | ⚠️ built; not yet seen with a game |
+| Emulators launched under gamescope (▶ on the rail) | ✅ proven — God of War II HD in RPCS3, ~40 fps on the FIT |
+| The front end (rail, games, focus outline, Running tile) | ⚠️ built and used on the FIT; the Running tile and Steam-game ▶ not yet exercised |
 | The device's volume keys during a session | ⚠️ fixed (they were swallowed); not yet re-tried |
 | Game storage: a second Steam library on a card or a folder | ⚠️ built; not yet seen installing to it |
 | The client's games in the desktop menu, launching Steam's desktop UI under gamescope | ⚠️ built; not yet tried |
@@ -172,6 +173,20 @@ themselves through Vulkan and Turnip — it is the desktop's own compositing tha
 
 Programs whose child processes sandbox themselves with seccomp and namespaces cannot set those up
 under proot; Firefox's are turned off in the session's environment, without which its tabs crash.
+
+### The front end
+
+The main screen is a launcher: a rail with **Steam** and its installed games (from the client's
+own manifests, with the library-cache art), **Desktop** and the installed emulators (their own
+icons) and each emulator's games from the ROMs folder (a system folder such as `ps3/` as a hint,
+by extension, one folder deep - a dump comes as a folder named for the game) plus what RPCS3 has
+installed on its own HDD; then Files, Desktop & apps, Compatibility tools, Frame generation,
+Performance, ROMs, Session logs, Start offline, the runtime and credits. The chosen thing sits on
+the right with its ▶. A Steam game launches its session with `steam://rungameid/…` directly; a
+ROM launches its emulator under gamescope with the game on the command line (RPCS3 `--no-gui`,
+Dolphin `-e`, Cemu `-g`, the rest plain). A session alive in the background is the first thing on
+the rail; tapping it goes back to it. The controller's focus draws a thin outline. ✅ God of War
+II HD booted in RPCS3 from the rail at ~40 fps on the Pocket FIT.
 
 ### Game storage: internal, an SD card, or a folder
 

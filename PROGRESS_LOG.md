@@ -6,7 +6,18 @@ the timeline, then lessons and backlog. Companion to the README (what the app *d
 
 ---
 
-## Current state (2026-09-22)
+## Current state (2026-09-22, evening)
+
+- **`main` @ the front end merge** (`feat/frontend` fast-forwarded): the launcher main screen -
+  Steam ▸ games, Desktop ▸ emulators ▸ games, Running tile, focus outline. ✅ First emulator game
+  proven from the app: God of War II HD in RPCS3 under gamescope at ~40 fps on the Pocket FIT.
+- Since 0.1.4 on main, unreleased: volume keys to Android; ▶ emulators under gamescope; ROMs chip
+  + ? explainer; sysmem copy + ENOSYS hint; automatic game storage (a card = a Steam library);
+  the client's games on the desktop with a `steam` shim; desktop→Steam hand-off (three causes
+  fixed from FIT logs: Surface detach race, the replaced session's exit ending the new one,
+  shared log folder); the front end. Next release = 0.1.5 once the hand-off is seen working.
+
+## State at 0.1.4 (2026-09-22)
 
 - **Latest release: 0.1.4** — private: https://github.com/The412Banner/SteamDeck/releases/tag/0.1.4
   · public: https://github.com/The412Banner/winlator-contents/releases/tag/SteamDeck-0.1.4
@@ -64,6 +75,11 @@ the timeline, then lessons and backlog. Companion to the README (what the app *d
   compositor log lines (frame-size change, window rename); README ledger.
 - **2026-09-22 — 0.1.3.** Max's NetworkManager stand-in ported (the client's network page); shim
   audit vs WinNative = zero functional drift.
+- **2026-09-22 (later) — after 0.1.4, on main.** Volume keys; ▶ emulators under gamescope (the
+  desktop cannot: labwc on pixman offers no dma-buf); ROMs chip; sysmem warning + ENOSYS hint;
+  automatic game storage; the client's games on the desktop (`steam` shim hands off to a
+  gamescope session); the hand-off's three faults found in FIT logs and fixed; the front end
+  merged (branch `feat/frontend`, r1–r6); God of War II HD booted in RPCS3 from the rail.
 - **2026-09-22 — 0.1.4.** ROMs folder + Storage in the session's home; Bannerlator's File Manager
   ported whole; a cog per mode (railed settings window) with resolution cap, shape, HDR10 gated on
   the panel, drivers, touch, OSC/audio/renderer; two-column main menu; crash-safe log folders +
