@@ -194,6 +194,13 @@ object SessionPrefs {
      */
     fun resolutionCap(context: Context, mode: String): Int = prefs(context).getInt("resolutionCap.$mode", defaultResolutionCap(mode))
 
+    /** The FEXCore preset for the games the client launches (core/FexPreset ids); "" = FEX's defaults. */
+    fun fexPreset(context: Context): String = prefs(context).getString("fexPreset", "") ?: ""
+
+    fun setFexPreset(context: Context, id: String) {
+        prefs(context).edit().putString("fexPreset", id).apply()
+    }
+
     /** What a mode gets when nothing was chosen. */
     @Suppress("UNUSED_PARAMETER")
     fun defaultResolutionCap(mode: String): Int = 720

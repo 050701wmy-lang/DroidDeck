@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.steamdeck.launcher.core.FexPreset
 import com.steamdeck.launcher.session.SessionPrefs
 import com.steamdeck.launcher.session.SessionService
 
@@ -39,6 +40,8 @@ class ModeSettings(
     /** Steam only: the second library's root ("" = internal only) and what this device offers. */
     val gameStorage: String? = null,
     val storageOptions: List<Pair<String, String>> = emptyList(),
+    /** Steam only: the FEXCore preset for the games the client launches. */
+    val fexPreset: String? = null,
 )
 
 class ModeSettingsActions(
@@ -58,6 +61,7 @@ class ModeSettingsActions(
     val onRenderer: (String) -> Unit,
     val onGameStorage: (path: String, label: String) -> Unit = { _, _ -> },
     val onPickGameStorageFolder: () -> Unit = {},
+    val onFexPreset: (String) -> Unit = {},
     val onDismiss: () -> Unit,
 )
 
@@ -126,6 +130,13 @@ fun ModeSettingsPage(s: ModeSettings, a: ModeSettingsActions) {
                 host, "osc", "On-screen controls", "The virtual pad drawn over a game.",
                 listOf("auto" to "Auto", "always" to "Always", "never" to "Never"), s.oscMode,
                 note = "Auto shows it when no controller is attached.", onPick = a.onOsc,
+            )
+        }
+        if (steam && s.fexPreset != null) SettingsGroup("Games") {
+            ChoiceRow(
+                host, "fex", "FEX preset", "How FEX translates the x86 games the client launches. Applies to the next game launch. Also in the session's drawer.",
+                FexPreset.all.map { it.id to it.label }, s.fexPreset,
+                note = FexPreset.byId(s.fexPreset).detail, onPick = a.onFexPreset,
             )
         }
         if (steam && s.directAudio != null && s.mic != null) SettingsGroup("Audio") {

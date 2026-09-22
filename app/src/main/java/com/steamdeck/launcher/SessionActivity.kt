@@ -44,7 +44,6 @@ import com.steamdeck.launcher.session.SessionService
 import com.steamdeck.launcher.session.SessionState
 import com.steamdeck.launcher.ui.CursorOverlay
 import com.steamdeck.launcher.ui.DrawerActions
-import com.steamdeck.launcher.ui.FrameGenDialog
 import com.steamdeck.launcher.ui.HudText
 import com.steamdeck.launcher.ui.LoadingOverlay
 import com.steamdeck.launcher.ui.ProtonDialog
@@ -84,11 +83,13 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
 
     // Compose reads these; the activity writes them.
     private var drawerOpen by mutableStateOf(false)
-    private var showFrameGen by mutableStateOf(false)
     private var showProtons by mutableStateOf(false)
     private var protonRows by mutableStateOf<List<ProtonRow>>(emptyList())
     private var hudOn by mutableStateOf(true)
     private var frameGenLabel by mutableStateOf("Off")
+    private var frameGenEngine by mutableStateOf(FrameGen.ENGINE_OFF)
+    private var frameGenMultiplier by mutableStateOf(2)
+    private var fexPreset by mutableStateOf("")
     private var oscMode by mutableStateOf(SessionPrefs.OSC_AUTO)
     private var shapeMode by mutableStateOf(SessionPrefs.SHAPE_AUTO)
 
@@ -157,15 +158,20 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                     CursorOverlay(cursorPos, cursorVisible, resources.displayMetrics.density)
                     if (hud.text.isNotEmpty()) HudText(hud.text)
                     if (loading.visible) LoadingOverlay(loading.step, loading.percent, loading.elapsed, loading.hint, loading.ended)
-                    if (drawerOpen) SessionDrawer(DrawerActions(
-                        hudOn = hudOn, frameGenLabel = frameGenLabel, oscMode = oscMode,
-                        touchMode = when (touchMode) {
-                            SessionPrefs.TOUCH_PAD -> "touchpad"; SessionPrefs.TOUCH_DIRECT -> "direct"
-                            else -> "auto (" + (if (usingTouchpad()) "touchpad" else "direct") + ")"
-                        },
-                        shapeMode = if (shapeMode == SessionPrefs.SHAPE_WIDE) "16:9" else "panel",
+                    SessionDrawer(drawerOpen, DrawerActions(
+                        steam = SessionState.mode == SessionService.MODE_STEAM,
+                        hudOn = hudOn,
+                        frameGenEngine = frameGenEngine, frameGenMultiplier = frameGenMultiplier,
+                        lsfgReady = LsfgNative.isInstalled(this@SessionActivity),
+                        oscMode = oscMode, touchMode = touchMode,
+                        touchAuto = if (usingTouchpad()) "touchpad" else "direct",
+                        shapeMode = shapeMode, fexPreset = fexPreset,
                         onHud = { on -> SessionPrefs.setHudEnabled(this@SessionActivity, on); hudOn = on; hud.refresh() },
-                        onFrameGen = { showFrameGen = true },
+                        onFrameGenPick = { engine, multiplier ->
+                            FrameGen.set(this@SessionActivity, engine, multiplier)
+                            readPrefs()
+                            applyFrameGen()
+                        },
                         onKeyboard = { drawerOpen = false; keyboard?.toggle() },
                         onSteamMenu = if (SessionState.mode == SessionService.MODE_STEAM) ({
                             // The Guide button, the way the on-screen ◉ sends it: a device with no
@@ -178,31 +184,10 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                             }, 90)
                         }) else null,
                         onProtons = { refreshProtons(); showProtons = true },
-                        onOsc = {
-                            val next = when (SessionPrefs.oscMode(this@SessionActivity)) {
-                                SessionPrefs.OSC_AUTO -> SessionPrefs.OSC_ALWAYS
-                                SessionPrefs.OSC_ALWAYS -> SessionPrefs.OSC_NEVER
-                                else -> SessionPrefs.OSC_AUTO
-                            }
-                            SessionPrefs.setOscMode(this@SessionActivity, next)
-                            readPrefs()
-                            updateOnScreenControls()
-                        },
-                        onTouch = {
-                            val next = when (SessionPrefs.touchMode(this@SessionActivity)) {
-                                SessionPrefs.TOUCH_AUTO -> SessionPrefs.TOUCH_PAD
-                                SessionPrefs.TOUCH_PAD -> SessionPrefs.TOUCH_DIRECT
-                                else -> SessionPrefs.TOUCH_AUTO
-                            }
-                            SessionPrefs.setTouchMode(this@SessionActivity, next)
-                            readPrefs()
-                        },
-                        onShape = {
-                            val next = if (SessionPrefs.shapeMode(this@SessionActivity) == SessionPrefs.SHAPE_WIDE)
-                                SessionPrefs.SHAPE_AUTO else SessionPrefs.SHAPE_WIDE
-                            SessionPrefs.setShapeMode(this@SessionActivity, next)
-                            readPrefs()
-                        },
+                        onOsc = { v -> SessionPrefs.setOscMode(this@SessionActivity, v); readPrefs(); updateOnScreenControls() },
+                        onTouch = { v -> SessionPrefs.setTouchMode(this@SessionActivity, v); readPrefs() },
+                        onShape = { v -> SessionPrefs.setShapeMode(this@SessionActivity, v); readPrefs() },
+                        onFexPreset = { v -> SessionPrefs.setFexPreset(this@SessionActivity, v); readPrefs() },
                         onBackground = { drawerOpen = false; moveTaskToBack(true) },
                         onStop = { drawerOpen = false; SessionService.stop(this@SessionActivity); finish() },
                         onClose = { drawerOpen = false },
@@ -213,18 +198,6 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                         onCancel = { id -> ProtonExtras.tools.first { it.id == id }.let { ProtonExtras.unqueue(this@SessionActivity, it) }; refreshProtons() },
                         onRemove = { id -> ProtonExtras.tools.first { it.id == id }.let { ProtonExtras.remove(this@SessionActivity, it) }; refreshProtons() },
                         onDismiss = { showProtons = false },
-                    )
-                    if (showFrameGen) FrameGenDialog(
-                        engine = FrameGen.engine(this@SessionActivity),
-                        multiplier = FrameGen.multiplier(this@SessionActivity),
-                        lsfgReady = LsfgNative.isInstalled(this@SessionActivity),
-                        onPick = { engine, multiplier ->
-                            FrameGen.set(this@SessionActivity, engine, multiplier)
-                            showFrameGen = false
-                            readPrefs()
-                            applyFrameGen()
-                        },
-                        onDismiss = { showFrameGen = false },
                     )
                 }
             }
@@ -265,6 +238,9 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         hudOn = SessionPrefs.hudEnabled(this)
         touchMode = SessionPrefs.touchMode(this)
         frameGenLabel = FrameGen.label(this)
+        frameGenEngine = FrameGen.engine(this)
+        frameGenMultiplier = FrameGen.multiplier(this)
+        fexPreset = SessionPrefs.fexPreset(this)
         oscMode = SessionPrefs.oscMode(this)
         shapeMode = SessionPrefs.shapeMode(this)
     }

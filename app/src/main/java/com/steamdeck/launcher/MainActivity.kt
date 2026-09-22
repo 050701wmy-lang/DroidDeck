@@ -118,6 +118,7 @@ class MainActivity : ComponentActivity() {
     // The mode whose settings dialog is open, with what it shows; refreshed by openModeSettings().
     private var settingsMode by mutableStateOf<String?>(null)
     private var resolutionCap by mutableStateOf(1080)
+    private var fexPreset by mutableStateOf("")
     private var shapeMode by mutableStateOf(SessionPrefs.SHAPE_AUTO)
     private var hdrOn by mutableStateOf(false)
     private var hdrReason by mutableStateOf<String?>(null)
@@ -350,6 +351,7 @@ class MainActivity : ComponentActivity() {
                 renderer = if (mode == SessionService.MODE_DESKTOP) renderer else null,
                 gameStorage = if (mode == SessionService.MODE_STEAM) gameStorage else null,
                 storageOptions = storageOptions,
+                fexPreset = if (mode == SessionService.MODE_STEAM) fexPreset else null,
             ),
             ModeSettingsActions(
                 onResolution = { cap -> SessionPrefs.setResolutionCap(this, mode, cap); resolutionCap = cap },
@@ -378,6 +380,7 @@ class MainActivity : ComponentActivity() {
                 onPickGameStorageFolder = {
                     pickGameStorage.launch(InAppFilePicker.buildDirIntent(this, "Choose the game storage folder", gameStorage.ifEmpty { null }))
                 },
+                onFexPreset = { id -> SessionPrefs.setFexPreset(this, id); fexPreset = id },
                 onDismiss = { settingsMode = null },
             ),
         )
@@ -411,6 +414,7 @@ class MainActivity : ComponentActivity() {
     private fun openModeSettings(mode: String) {
         refreshDrivers()
         resolutionCap = SessionPrefs.resolutionCap(this, mode)
+        fexPreset = SessionPrefs.fexPreset(this)
         shapeMode = SessionPrefs.shapeMode(this)
         hdrOn = SessionPrefs.hdr(this, mode)
         hdrReason = com.steamdeck.launcher.wayland.HdrSupport.probe(this).reason

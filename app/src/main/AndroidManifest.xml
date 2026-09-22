@@ -67,11 +67,13 @@
         <activity
             android:name=".files.FileManagerActivity"
             android:exported="false"
+            android:screenOrientation="sensorLandscape"
             android:theme="@style/AppTheme" />
 
         <activity
             android:name=".files.FilePickerActivity"
             android:exported="false"
+            android:screenOrientation="sensorLandscape"
             android:theme="@style/AppTheme" />
 
         <activity
