@@ -81,7 +81,9 @@ if [ ! -f /var/cache/fontconfig/.steamdeck-built ] && command -v fc-cache >/dev/
 fi
 # The menu's "Steam" / "Steam Big Picture" entries and one entry per installed game: all of them
 # hand off to the app (bannerlator-steam-launch), since the client cannot draw on this desktop.
+export BL_DESKTOP=1
 ln -sf /usr/local/bin/bannerlator-steam-launch /usr/local/bin/steamdeck-steam 2>/dev/null
+ln -sf /usr/local/bin/bannerlator-steam-shim /usr/local/bin/steam 2>/dev/null
 python3 /usr/local/bin/bannerlator-desktop-games 2>&1 | sed 's/^/[games] /'
 
 echo "== steamdeck-desktop: labwc ($WLR_RENDERER) on $WAYLAND_DISPLAY"

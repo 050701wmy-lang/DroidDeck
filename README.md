@@ -188,12 +188,12 @@ assets internal. ⚠️ Built; not yet seen installing to a card.
 
 ### The client's games on the desktop
 
-The desktop's menu lists every game the Steam client has installed (Games category, the game's
-own artwork), and the home folder has **Steam Games** and **SD Games** links to their files. A
-game entry - and the menu's **Steam** / **Steam Big Picture** entries - cannot run the client on
-the desktop, where nothing can draw with Vulkan; they hand off to the app
-(`bannerlator-steam-launch`), which ends the desktop session and starts a Steam session in its
-place: the client's **desktop UI** under gamescope, and the game straight away when one was
+The Steam client writes a menu entry for every game it installs (Games category, the game's
+icon), and the home folder has **Steam Games** and **SD Games** links to their files. Those
+entries run `steam steam://rungameid/…`; on this desktop `steam` is a shim, because the client
+cannot run where nothing can draw with Vulkan. It - and the menu's **Steam** / **Steam Big
+Picture** entries - hand off to the app (`bannerlator-steam-launch`), which ends the desktop
+session and starts a Steam session in its place: the client's **desktop UI** under gamescope, and the game straight away when one was
 chosen. Back opens the drawer as in any session; Stop session returns to the app. The list is
 rebuilt at every desktop start. ⚠️ Built; not yet tried on a device.
 

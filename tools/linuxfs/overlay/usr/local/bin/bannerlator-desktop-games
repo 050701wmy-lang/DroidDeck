@@ -1,7 +1,8 @@
 #!/usr/bin/python3
-# The client's installed games, on the desktop: one menu entry per game (Games category), which
-# starts it through bannerlator-steam-launch in Steam's desktop UI under gamescope, and two links
-# in the home folder to the game files themselves. Run at every desktop start; stale entries go.
+# The client's installed games, on the desktop. The client writes a menu entry per game itself
+# (`steam steam://rungameid/<id>`, with the game's icon), which the desktop's `steam` shim hands to
+# the app - so an entry of ours exists only for a game the client wrote none for. Plus two links in
+# the home folder to the game files. Run at every desktop start; stale entries go.
 #
 #   bannerlator-desktop-games [steam root]
 import os
@@ -54,12 +55,32 @@ def icon_for(appid):
     return "steam"
 
 
+def client_entries():
+    """App ids the client already wrote a menu entry for."""
+    found = set()
+    if not os.path.isdir(APPS_DIR):
+        return found
+    for entry in os.listdir(APPS_DIR):
+        if entry.startswith(PREFIX) or not entry.endswith(".desktop"):
+            continue
+        try:
+            with open(os.path.join(APPS_DIR, entry), encoding="utf-8", errors="replace") as f:
+                m = re.search(r"steam://rungameid/(\d+)", f.read())
+        except OSError:
+            continue
+        if m:
+            found.add(int(m.group(1)))
+    return found
+
+
 def write_entries():
     os.makedirs(APPS_DIR, exist_ok=True)
     wanted = {}
+    theirs = client_entries()
     for library, _ in LIBRARIES:
         for appid, name in games(library):
-            wanted.setdefault(appid, name)
+            if appid not in theirs:
+                wanted.setdefault(appid, name)
     for entry in os.listdir(APPS_DIR):
         if entry.startswith(PREFIX) and entry.endswith(".desktop"):
             appid = entry[len(PREFIX):-len(".desktop")]
@@ -102,7 +123,8 @@ def link_libraries():
 def main():
     wanted = write_entries()
     link_libraries()
-    print("bannerlator-desktop-games: %d game(s) on the desktop menu" % len(wanted))
+    print("bannerlator-desktop-games: %d entr%s of ours, %d the client's" % (
+        len(wanted), "y" if len(wanted) == 1 else "ies", len(client_entries())))
 
 
 if __name__ == "__main__":

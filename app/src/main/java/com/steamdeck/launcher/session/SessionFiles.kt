@@ -36,6 +36,7 @@ object SessionFiles {
             "usr/local/bin/bannerlator-netmanager" to "usr/local/bin/bannerlator-netmanager",
             "usr/local/bin/bannerlator-steam-launch" to "usr/local/bin/bannerlator-steam-launch",
             "usr/local/bin/bannerlator-desktop-games" to "usr/local/bin/bannerlator-desktop-games",
+            "usr/local/bin/bannerlator-steam-shim" to "usr/local/bin/bannerlator-steam-shim",
         )
         // The desktop's launcher and labwc defaults, only where the desktop package is installed:
         // staging them into a runtime without it would make the desktop look present when it is not.
