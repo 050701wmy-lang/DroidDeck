@@ -284,7 +284,7 @@ private fun Content(s: FrontEndState, selected: String, a: FrontEndActions, modi
                         Button(onClick = { a.onSteamGame(g) }, enabled = s.ready && !s.busy) { Text("▶ Launch") }
                         Cog(a.onSteamSettings)
                     }
-                    Art(g.art, g.name, Modifier.width(240.dp))
+                    Art(g.art, g.name, Modifier.width(96.dp))
                 }
             }
             selected == "desktop" -> {
@@ -354,7 +354,7 @@ private fun Art(art: java.io.File?, label: String, modifier: Modifier, wide: Boo
     val shape = RoundedCornerShape(8.dp)
     Box(modifier = modifier.aspectRatio(if (wide) 16f / 9f else 2f / 3f).clip(shape).background(Brush.linearGradient(listOf(colors.surfaceVariant, colors.surface)))) {
         if (art != null) AsyncImage(model = art, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-        else Text(label, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = colors.onBackground, modifier = Modifier.align(Alignment.BottomStart).padding(10.dp), maxLines = 3, overflow = TextOverflow.Ellipsis)
+        else Text(label, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = colors.onBackground, modifier = Modifier.align(Alignment.BottomStart).padding(5.dp), maxLines = 3, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -363,8 +363,9 @@ private fun ColumnScope.ArtGrid(tiles: List<Tile>, wide: Boolean = false) {
     val colors = MaterialTheme.colorScheme
     // The grid takes the rest of the column; each tile is the art with its name and one line under it.
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = if (wide) 180.dp else 132.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp),
+        // 40% of the first cut: the art is a thumbnail to recognise a game by, not a poster.
+        columns = GridCells.Adaptive(minSize = if (wide) 72.dp else 54.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp),
         contentPadding = PaddingValues(bottom = 12.dp),
         modifier = Modifier.fillMaxWidth().weight(1f),
     ) {
@@ -374,9 +375,9 @@ private fun ColumnScope.ArtGrid(tiles: List<Tile>, wide: Boolean = false) {
                     .clickable(onClick = t.onClick),
             ) {
                 Art(t.art, t.title, Modifier.fillMaxWidth(), wide)
-                Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
-                    Text(t.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = colors.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(t.sub, fontSize = 11.sp, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Column(modifier = Modifier.padding(horizontal = 5.dp, vertical = 4.dp)) {
+                    Text(t.title, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = colors.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(t.sub, fontSize = 8.sp, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
