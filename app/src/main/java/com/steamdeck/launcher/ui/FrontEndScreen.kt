@@ -321,7 +321,7 @@ private fun Content(s: FrontEndState, selected: String, a: FrontEndActions, modi
                         else if (e.id == "retroarch") "RetroArch loads its games itself: open it and browse to root › ROMs."
                         else "Put ${e.system} games in ROMs/${e.system.substringBefore(' ')} (or the ROMs folder itself); the list rebuilds when this screen opens.",
                     )
-                    else ArtGrid(e.games.map { g -> Tile(g.name, g.hostPath.extension.uppercase(), null, "rom:${g.hostPath}", e.iconRes) { a.onRom(g) } }, wide = true)
+                    else ArtGrid(e.games.map { g -> Tile(g.name, if (g.art != null) "installed" else g.hostPath.extension.uppercase().ifEmpty { "folder" }, g.art, "rom:${g.hostPath}", e.iconRes) { a.onRom(g) } }, wide = e.games.none { it.art != null })
                 }
             }
             selected.startsWith("rom:") -> {

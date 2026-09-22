@@ -14,7 +14,7 @@ import java.io.File
  */
 object Library {
     class SteamGame(val appId: Int, val name: String, val art: File?, val library: String)
-    class Rom(val name: String, val hostPath: File, val guestPath: String, val emulatorId: String)
+    class Rom(val name: String, val hostPath: File, val guestPath: String, val emulatorId: String, val art: File? = null)
     class Emulator(val id: String, val name: String, val system: String, val program: String, val installed: Boolean, val games: List<Rom>) {
         /** The emulator's own icon, bundled (the runtime keeps them as theme SVGs the app cannot draw). */
         val iconRes: Int get() = when (id) {
@@ -80,21 +80,85 @@ object Library {
             val games = ArrayList<Rom>()
             if (romsRoot != null && spec.exts.isNotEmpty()) {
                 // The system's folder(s), matched without regard to case, then the root itself for
-                // a file left loose there.
-                val dirs = romsRoot.listFiles { f -> f.isDirectory && f.name.lowercase() in spec.folders }.orEmpty().toList() + romsRoot
+                // a file left loose there - and one folder deeper, since a dump usually comes as a
+                // folder named for the game with the image inside it.
+                val systemDirs = romsRoot.listFiles { f -> f.isDirectory && f.name.lowercase() in spec.folders }.orEmpty().toList()
+                val dirs = LinkedHashSet<File>()
+                for (top in systemDirs + romsRoot) {
+                    dirs.add(top)
+                    top.listFiles { f -> f.isDirectory }?.forEach { dirs.add(it) }
+                }
                 for (dir in dirs) {
+                    // A PS3 disc dump is a folder with PS3_GAME in it; RPCS3 boots the folder.
+                    if (spec.id == "rpcs3" && File(dir, "PS3_GAME").isDirectory) {
+                        val rel = dir.relativeTo(romsRoot).path
+                        games.add(Rom(dir.name, dir, "/root/ROMs/$rel", spec.id))
+                        continue
+                    }
                     dir.listFiles()?.sortedBy { it.name.lowercase() }?.forEach { f ->
                         val ext = f.extension.lowercase()
                         // A .bin beside a .cue is a track, not a game.
                         if (f.isFile && ext in spec.exts && !(ext == "bin" && File(dir, f.nameWithoutExtension + ".cue").isFile)) {
                             val rel = f.relativeTo(romsRoot).path
-                            games.add(Rom(f.nameWithoutExtension, f, "/root/ROMs/$rel", spec.id))
+                            games.add(Rom(f.nameWithoutExtension.removeSuffix(".dec"), f, "/root/ROMs/$rel", spec.id))
                         }
                     }
                 }
             }
+            if (spec.id == "rpcs3") games.addAll(rpcs3Installed(context))
             Emulator(spec.id, spec.name, spec.system, spec.program, installedPackage(installedIds.getValue(spec.id)), games)
         }
+    }
+
+    /**
+     * What RPCS3 has installed on its own HDD - packages (PSN games) land in dev_hdd0/game/<ID>
+     * with a PARAM.SFO for the title and an EBOOT to boot - as RPCS3's own file list would show
+     * them. Not in the ROMs folder, so listed from RPCS3's home in the runtime.
+     */
+    private fun rpcs3Installed(context: Context): List<Rom> {
+        val hdd = File(LinuxRuntime.rootDir(context), "root/.config/rpcs3/dev_hdd0/game")
+        return hdd.listFiles { f -> f.isDirectory }?.sortedBy { it.name }?.mapNotNull { dir ->
+            val eboot = File(dir, "USRDIR/EBOOT.BIN")
+            val sfo = File(dir, "PARAM.SFO")
+            if (!eboot.isFile || !sfo.isFile) return@mapNotNull null
+            val fields = readSfo(sfo)
+            // Only games: patches, DLC and save data live here too, with their own categories.
+            if (fields["CATEGORY"]?.let { it == "HG" || it == "DG" || it == "GD" } == false) return@mapNotNull null
+            val title = fields["TITLE"]?.trim()?.takeIf { it.isNotEmpty() } ?: dir.name
+            Rom(title, eboot, "/root/.config/rpcs3/dev_hdd0/game/${dir.name}/USRDIR/EBOOT.BIN", "rpcs3",
+                art = File(dir, "ICON0.PNG").takeIf { it.isFile })
+        } ?: emptyList()
+    }
+
+    /** The string fields of a PARAM.SFO (the PSP/PS3 metadata file): a small binary table. */
+    private fun readSfo(file: File): Map<String, String> {
+        val out = HashMap<String, String>()
+        try {
+            val b = file.readBytes()
+            if (b.size < 20 || b[0] != 0.toByte() || b[1] != 'P'.code.toByte()) return out
+            fun u32(at: Int) = (b[at].toInt() and 0xff) or ((b[at + 1].toInt() and 0xff) shl 8) or ((b[at + 2].toInt() and 0xff) shl 16) or ((b[at + 3].toInt() and 0xff) shl 24)
+            fun u16(at: Int) = (b[at].toInt() and 0xff) or ((b[at + 1].toInt() and 0xff) shl 8)
+            val keys = u32(8); val data = u32(12); val count = u32(16)
+            for (i in 0 until count) {
+                val e = 20 + i * 16
+                if (e + 16 > b.size) break
+                val keyOff = u16(e); val fmt = u16(e + 2); val len = u32(e + 4); val dataOff = u32(e + 12)
+                val keyStart = keys + keyOff
+                var keyEnd = keyStart
+                while (keyEnd < b.size && b[keyEnd] != 0.toByte()) keyEnd++
+                val key = String(b, keyStart, keyEnd - keyStart, Charsets.US_ASCII)
+                if (fmt == 0x0204 || fmt == 0x0004) {   // utf8 string (null-terminated or not)
+                    val start = data + dataOff
+                    val end = minOf(b.size, start + len)
+                    var stop = start
+                    while (stop < end && b[stop] != 0.toByte()) stop++
+                    out[key] = String(b, start, stop - start, Charsets.UTF_8)
+                }
+            }
+        } catch (e: Exception) {
+            // unreadable metadata: the folder name stands in
+        }
+        return out
     }
 
     /** How the emulator is told which game to boot, on its command line. */
