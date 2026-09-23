@@ -72,6 +72,10 @@ class MainActivity : ComponentActivity() {
     private var failed by mutableStateOf(false)
     private var frameGenLabel by mutableStateOf("Off")
     private var showRemove by mutableStateOf(false)
+    private var showNonAdreno by mutableStateOf<LinuxRuntimeInstaller.Release?>(null)
+    private var glThread by mutableStateOf(true)
+    private var noGlError by mutableStateOf(true)
+    private var steamDeckMode by mutableStateOf(false)
     private var showFrameGen by mutableStateOf(false)
     private var showCredits by mutableStateOf(false)
     private var showProtons by mutableStateOf(false)
@@ -240,6 +244,15 @@ class MainActivity : ComponentActivity() {
                     onRemove = { id -> ProtonExtras.tools.first { it.id == id }.let { ProtonExtras.remove(this, it) }; refreshProtons() },
                     onDismiss = { showProtons = false },
                 )
+                showNonAdreno?.let { release ->
+                    ConfirmDialog(
+                        title = "Not an Adreno GPU",
+                        text = "The runtime draws with Turnip, an Adreno driver. On ${com.steamdeck.launcher.core.DeviceSupport.gpuName()} the compositor gets no usable Vulkan device and a session comes up as sound over a black screen. The download is ${"%.0f".format(release.size / 1e6)} MB.",
+                        confirm = "Install anyway",
+                        onConfirm = { showNonAdreno = null; install(release) },
+                        onDismiss = { showNonAdreno = null },
+                    )
+                }
                 if (showRemove) ConfirmDialog(
                     title = "Remove Linux runtime",
                     text = "This deletes the runtime, the Steam client inside it, and every game installed there.",
@@ -392,11 +405,14 @@ class MainActivity : ComponentActivity() {
         PerformancePage(
             cores = CpuCores.all.map { c -> CoreRow(c, "cpu$c" + (CpuCores.maxGhz(c)?.let { String.format(java.util.Locale.US, " · %.1f GHz", it) } ?: "")) },
             clientOverride = clientOverride, clientCores = clientCores, gameCores = gameCores,
-            tuSysmem = tuSysmem, zinkLazy = zinkLazy, noXalia = noXalia,
+            tuSysmem = tuSysmem, zinkLazy = zinkLazy, glThread = glThread, noGlError = noGlError, steamDeckMode = steamDeckMode, noXalia = noXalia,
             prootNoSeccomp = prootNoSeccomp, phantomWarning = phantomWarning,
             onClientOverride = { on -> SessionPrefs.setClientCpusOverride(this, on); clientOverride = on },
             onTuSysmem = { on -> SessionPrefs.setTuSysmem(this, on); tuSysmem = on },
             onZinkLazy = { on -> SessionPrefs.setZinkLazy(this, on); zinkLazy = on },
+            onGlThread = { on -> SessionPrefs.setGlThread(this, on); glThread = on },
+            onNoGlError = { on -> SessionPrefs.setNoGlError(this, on); noGlError = on },
+            onSteamDeckMode = { on -> SessionPrefs.setSteamDeckMode(this, on); steamDeckMode = on },
             onNoXalia = { on -> SessionPrefs.setNoXalia(this, on); noXalia = on },
             onProotNoSeccomp = { on -> SessionPrefs.setProotNoSeccomp(this, on); prootNoSeccomp = on },
             onClientCore = { core, on ->
@@ -507,6 +523,9 @@ class MainActivity : ComponentActivity() {
     /** The two masks as the dialog shows them; an empty stored list shows as every core ticked. */
     private fun refreshCores() {
         clientOverride = SessionPrefs.clientCpusOverride(this)
+        glThread = SessionPrefs.glThread(this)
+        noGlError = SessionPrefs.noGlError(this)
+        steamDeckMode = SessionPrefs.steamDeckMode(this)
         clientCores = CpuCores.parse(SessionPrefs.clientCpus(this)).ifEmpty { CpuCores.all.toSet() }
         gameCores = CpuCores.parse(SessionPrefs.gameCpus(this)).ifEmpty { CpuCores.all.toSet() }
         tuSysmem = SessionPrefs.tuSysmem(this)
@@ -565,6 +584,10 @@ class MainActivity : ComponentActivity() {
             Thread({ checkCatalog() }, "catalog").start()
             return
         }
+        // The runtime draws with Turnip, an Adreno driver: on Mali, Xclipse or PowerVR the
+        // compositor gets no usable Vulkan device and a session is sound over a black screen.
+        // Said before the download, not after it; the user may still go ahead.
+        if (installed == null && !com.steamdeck.launcher.core.DeviceSupport.adreno()) { showNonAdreno = release; return }
         install(release)
     }
 

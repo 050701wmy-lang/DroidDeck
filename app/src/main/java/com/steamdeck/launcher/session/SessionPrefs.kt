@@ -141,8 +141,26 @@ object SessionPrefs {
         prefs(context).edit().putBoolean("tuSysmem", on).apply()
     }
 
-    /** Zink's lazy descriptor mode (ZINK_DESCRIPTORS=lazy) for the client's GL-on-Vulkan UI. */
-    fun zinkLazy(context: Context): Boolean = prefs(context).getBoolean("zinkLazy", false)
+    /*
+     * The client's interface is drawn Chromium -> ANGLE -> Zink -> Turnip, and that chain is what
+     * limits its menus (~14 fps on an Adreno 840 while a game ran 89). These make the chain
+     * cheaper rather than asking for more; the three environment switches are on by default,
+     * Deck mode off. Bannerlator's LinuxTuning, carried over; none device-proven here yet.
+     */
+    /** mesa_glthread=true: GL marshalled off the calling thread. */
+    fun glThread(context: Context): Boolean = prefs(context).getBoolean("glThread", true)
+    fun setGlThread(context: Context, on: Boolean) { prefs(context).edit().putBoolean("glThread", on).apply() }
+
+    /** MESA_NO_ERROR=1: no GL error checking. */
+    fun noGlError(context: Context): Boolean = prefs(context).getBoolean("noGlError", true)
+    fun setNoGlError(context: Context, on: Boolean) { prefs(context).edit().putBoolean("noGlError", on).apply() }
+
+    /** `steam -steamdeck -steamos3`: the client as SteamOS runs it. Expects Deck hardware; untested. */
+    fun steamDeckMode(context: Context): Boolean = prefs(context).getBoolean("steamDeckMode", false)
+    fun setSteamDeckMode(context: Context, on: Boolean) { prefs(context).edit().putBoolean("steamDeckMode", on).apply() }
+
+    /** Zink's lazy descriptor mode (ZINK_DESCRIPTORS=lazy) for the client's GL-on-Vulkan UI. On by default. */
+    fun zinkLazy(context: Context): Boolean = prefs(context).getBoolean("zinkLazy", true)
 
     fun setZinkLazy(context: Context, on: Boolean) {
         prefs(context).edit().putBoolean("zinkLazy", on).apply()

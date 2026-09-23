@@ -195,6 +195,12 @@ class SessionService : Service() {
         // the mode Zink recommends where the driver has no descriptor buffer, and what Ludashi ships
         // by default for its Zink path; a switch here because on one Fold the menus run at 14 fps.
         if (SessionPrefs.zinkLazy(this)) guest.add("ZINK_DESCRIPTORS=lazy")
+        // The rest of the client-interface switches (SessionPrefs): GL marshalled off the calling
+        // thread, no GL error checks, and the client run as SteamOS runs it (the script reads
+        // BL_STEAMDECK; it is the one that builds the command line).
+        if (SessionPrefs.glThread(this)) guest.add("mesa_glthread=true")
+        if (SessionPrefs.noGlError(this)) guest.add("MESA_NO_ERROR=1")
+        if (SessionState.mode == MODE_STEAM) guest.add("BL_STEAMDECK=" + (if (SessionPrefs.steamDeckMode(this)) "1" else "0"))
         // Proton's own gate for its xalia helper (its `proton` script reads this, and sets
         // XALIA_SUPPORTED_ONLY itself otherwise). Off by default: xalia is Valve's, and on a device
         // whose seccomp answers its syscalls normally there is no reason to take it away.

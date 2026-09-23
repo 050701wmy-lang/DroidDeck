@@ -34,12 +34,18 @@ fun PerformancePage(
     gameCores: Set<Int>,
     tuSysmem: Boolean,
     zinkLazy: Boolean,
+    glThread: Boolean,
+    noGlError: Boolean,
+    steamDeckMode: Boolean,
     noXalia: Boolean,
     prootNoSeccomp: Boolean,
     phantomWarning: String?,
     onClientOverride: (Boolean) -> Unit,
     onTuSysmem: (Boolean) -> Unit,
     onZinkLazy: (Boolean) -> Unit,
+    onGlThread: (Boolean) -> Unit,
+    onNoGlError: (Boolean) -> Unit,
+    onSteamDeckMode: (Boolean) -> Unit,
     onNoXalia: (Boolean) -> Unit,
     onProotNoSeccomp: (Boolean) -> Unit,
     onClientCore: (Int, Boolean) -> Unit,
@@ -72,16 +78,33 @@ fun PerformancePage(
                 coreItems, gameCores, note = "Tick or untick as many as you like; the menu stays open.", onToggle = onGameCore,
             )
         }
+        SettingsGroup("Client interface") {
+            ToggleRow(
+                host, "glthread", "Threaded GL",
+                "The client's menus are drawn Chromium → ANGLE → Zink → Turnip, and that chain is what limits them. mesa_glthread marshals GL off the calling thread, the shape of this bottleneck. On by default; none of these four is device-proven yet.",
+                glThread, onChange = onGlThread,
+            )
+            ToggleRow(
+                host, "zink", "Zink: lazy descriptors",
+                "Lazy descriptor updates is the mode Zink recommends on drivers without descriptor buffers. On by default.",
+                zinkLazy, onChange = onZinkLazy,
+            )
+            ToggleRow(
+                host, "noglerror", "Skip GL error checks",
+                "MESA_NO_ERROR: the driver stops validating every GL call. On by default.",
+                noGlError, onChange = onNoGlError,
+            )
+            ToggleRow(
+                host, "deck", "Steam Deck mode",
+                "Runs the client as SteamOS runs its own session (-steamdeck -steamos3), the shape Valve tunes Big Picture for. Off by default: the client then expects Deck hardware that is not here, and that cost is untested.",
+                steamDeckMode, onChange = onSteamDeckMode,
+            )
+        }
         SettingsGroup("Session fixes") {
             ToggleRow(
                 host, "sysmem", "Turnip: sysmem rendering",
                 "Renders without the GPU's tile memory (TU_DEBUG=sysmem). A fix for an Adreno 8xx that shows corruption, and required on a 710/720/722 (set on its own there). Not a speed setting: elsewhere it COSTS frames — leave it off unless the picture is wrong.",
                 tuSysmem, onChange = onTuSysmem,
-            )
-            ToggleRow(
-                host, "zink", "Zink: lazy descriptors",
-                "The client's menus are drawn through Zink (GL on Vulkan). Lazy descriptor updates is the mode Zink recommends on drivers without descriptor buffers, and the first thing to try when the menus are slow while games are fast.",
-                zinkLazy, onChange = onZinkLazy,
             )
             ToggleRow(
                 host, "xalia", "Skip Steam's xalia helper",
