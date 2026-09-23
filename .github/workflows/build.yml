@@ -18,6 +18,17 @@ on:
       - '**/*.md'
       - 'LICENSE'
       - '.gitignore'
+  # A pull request against main builds by itself: the contributor's branch, as it would be once
+  # merged onto main, comes back as an apk on the run without anyone here pressing a button.
+  # Every push to the pull request rebuilds it and cancels the build it replaces; a draft waits
+  # until it is marked ready. Same as Bannerlator's PR check.
+  pull_request:
+    branches: [ main ]
+    types: [ opened, synchronize, reopened, ready_for_review ]
+    paths-ignore:
+      - '**/*.md'
+      - 'LICENSE'
+      - '.gitignore'
   workflow_dispatch:
 
 permissions:
@@ -34,6 +45,7 @@ env:
 
 jobs:
   build:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
