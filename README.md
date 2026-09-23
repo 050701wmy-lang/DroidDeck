@@ -13,6 +13,24 @@ Around that: the Vulkan driver each half of the session draws with is yours to i
 audio can bypass PulseAudio and carry a microphone, the cores the client and a game get are
 separate, and every session writes a folder of logs meant to be attached to a report as it is.
 
+## Contributors
+
+Building this alongside the owner. A pull request from either of them builds by itself and gets
+a comment saying whether it merges, what conflicts, or what failed to compile.
+
+- **MaxsTechReview** — [@maxjivi05](https://github.com/maxjivi05)
+- **Kurt Himebauch** — [@xXJSONDeruloXx](https://github.com/xXJSONDeruloXx)
+
+<!-- contributions:start -->
+_From the repository's pull requests; rewritten when one is opened, merged or closed._
+
+| Contributor | Pull request | Opened | State |
+|---|---|---|---|
+| [@xXJSONDeruloXx](https://github.com/xXJSONDeruloXx) | [#1](https://github.com/The412Banner/SteamDeck/pull/1) initial decky installer stuff | 2026-09-23 | draft |
+
+- **@xXJSONDeruloXx**: 1 submitted, 0 merged
+<!-- contributions:end -->
+
 ## Requirements
 
 - An **arm64 Android device with an Adreno GPU that Turnip supports** — in practice Adreno **730 or

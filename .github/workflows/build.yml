@@ -21,8 +21,10 @@ on:
   # A pull request against main builds by itself: the contributor's branch, as it would be once
   # merged onto main, comes back as an apk on the run without anyone here pressing a button.
   # Every push to the pull request rebuilds it and cancels the build it replaces; a draft waits
-  # until it is marked ready. Same as Bannerlator's PR check.
-  pull_request:
+  # until it is marked ready. pull_request_target rather than pull_request: GitHub does not run
+  # the latter at all while a pull request conflicts with main, and saying what conflicts is the
+  # point. The workflow file is always main's; the pull request's own code is checked out below.
+  pull_request_target:
     branches: [ main ]
     types: [ opened, synchronize, reopened, ready_for_review ]
     paths-ignore:
@@ -38,7 +40,7 @@ permissions:
 
 # A newer push makes the running build pointless; stop paying for it.
 concurrency:
-  group: build-${{ github.ref }}
+  group: build-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -47,7 +49,7 @@ env:
 
 jobs:
   build:
-    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    if: ${{ github.event_name != 'pull_request_target' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -56,14 +58,14 @@ jobs:
       # the next step is to say so and show where.
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: ${{ github.event_name == 'pull_request' && 0 || 1 }}
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: ${{ github.event_name == 'pull_request_target' && 0 || 1 }}
 
       # The pull request as it would be once merged onto main is what gets built. When it cannot
       # be merged, the conflicting files and the conflicting hunks go into the run summary and the
       # pull-request comment, and the job stops here: there is nothing coherent to build.
       - name: Merge onto main, or say what conflicts
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request_target'
         run: |
           set -uo pipefail
           git config user.name "ci"
@@ -295,7 +297,7 @@ jobs:
       # build failed, the compiler's own errors with paths made short. Fork pull requests carry a
       # read-only token and cannot comment; the same text is in the run summary either way.
       - name: Report on the pull request
-        if: always() && github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request_target'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
