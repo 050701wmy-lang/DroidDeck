@@ -1,5 +1,7 @@
 package com.droiddeck.launcher.files
 
+import com.droiddeck.launcher.R
+
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
@@ -261,11 +263,11 @@ fun FileManagerScreen(
     fun performDelete(file: File) {
         scope.launch {
             isOperationRunning = true
-            operationLabel = "Deleting..."
+            operationLabel = context.getString(R.string.fm_deleting)
             val ok = withContext(Dispatchers.IO) { FileOps.delete(file) }
             isOperationRunning = false
             loadDirectory(currentDir, resetScroll = false)
-            if (!ok) Toast.makeText(context, "Delete failed", Toast.LENGTH_SHORT).show()
+            if (!ok) Toast.makeText(context, context.getString(R.string.fm_delete_failed), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -288,7 +290,7 @@ fun FileManagerScreen(
         operationJob = scope.launch {
             operationProgress = 0f
             operationDeterminate = true
-            operationLabel = if (cut) "Moving..." else "Copying..."
+            operationLabel = if (cut) context.getString(R.string.fm_moving) else context.getString(R.string.fm_copying)
             isOperationRunning = true
 
             var applyToAll: ConflictChoice? = null
@@ -325,7 +327,7 @@ fun FileManagerScreen(
 
                 // Progress is per item; with a batch the label carries the overall position.
                 operationLabel = buildString {
-                    append(if (cut) "Moving" else "Copying")
+                    append(if (cut) context.getString(R.string.fm_move) else context.getString(R.string.fm_copy_progress))
                     if (sources.size > 1) append(" ${done + 1}/${sources.size}")
                     append(" - ").append(src.name)
                 }
@@ -355,9 +357,9 @@ fun FileManagerScreen(
             loadDirectory(currentDir, resetScroll = false)
 
             val message = when {
-                failed > 0 -> "$done done, $failed failed"
-                skipped > 0 -> "$done done, $skipped skipped"
-                sources.size > 1 -> "$done items ${if (cut) "moved" else "copied"}"
+                failed > 0 -> context.getString(R.string.fm_done_failed, done, failed)
+                skipped > 0 -> context.getString(R.string.fm_done_skipped, done, skipped)
+                sources.size > 1 -> context.getString(if (cut) R.string.fm_moved_count else R.string.fm_copied_count, done)
                 else -> null
             }
             if (message != null) Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
@@ -372,11 +374,11 @@ fun FileManagerScreen(
         }
         scope.launch {
             isOperationRunning = true
-            operationLabel = "Renaming..."
+            operationLabel = context.getString(R.string.fm_renaming)
             val ok = withContext(Dispatchers.IO) { file.renameTo(target) }
             isOperationRunning = false
             loadDirectory(currentDir, resetScroll = false)
-            if (!ok) Toast.makeText(context, "Rename failed", Toast.LENGTH_SHORT).show()
+            if (!ok) Toast.makeText(context, context.getString(R.string.fm_rename_failed), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -388,11 +390,11 @@ fun FileManagerScreen(
         }
         scope.launch {
             isOperationRunning = true
-            operationLabel = "Creating folder..."
+            operationLabel = context.getString(R.string.fm_creating_folder)
             val ok = withContext(Dispatchers.IO) { target.mkdirs() }
             isOperationRunning = false
             loadDirectory(currentDir, resetScroll = false)
-            if (!ok) Toast.makeText(context, "Could not create folder", Toast.LENGTH_SHORT).show()
+            if (!ok) Toast.makeText(context, context.getString(R.string.fm_create_failed), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -416,12 +418,12 @@ fun FileManagerScreen(
         var folderName by remember { mutableStateOf("") }
         OutlinedAlertDialog(
             onDismissRequest = { showNewFolderDialog = false },
-            title = { Text("New Folder") },
+            title = { Text(context.getString(R.string.fm_new_folder)) },
             text = {
                 OutlinedTextField(
                     value = folderName,
                     onValueChange = { folderName = it },
-                    label = { Text("Folder name") },
+                    label = { Text(context.getString(R.string.fm_folder_name)) },
                     singleLine = true,
                 )
             },
@@ -429,9 +431,9 @@ fun FileManagerScreen(
                 TextButton(onClick = {
                     showNewFolderDialog = false
                     if (folderName.isNotBlank()) createFolder(currentDir, folderName)
-                }) { Text("Create") }
+                }) { Text(context.getString(R.string.fm_create)) }
             },
-            dismissButton = { TextButton(onClick = { showNewFolderDialog = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { showNewFolderDialog = false }) { Text(context.getString(R.string.fm_cancel)) } },
         )
     }
 
@@ -439,12 +441,12 @@ fun FileManagerScreen(
         var newName by remember(renameTarget) { mutableStateOf(renameTarget?.name ?: "") }
         OutlinedAlertDialog(
             onDismissRequest = { renameTarget = null },
-            title = { Text("Rename") },
+            title = { Text(context.getString(R.string.fm_rename)) },
             text = {
                 OutlinedTextField(
                     value = newName,
                     onValueChange = { newName = it },
-                    label = { Text("New name") },
+                    label = { Text(context.getString(R.string.fm_new_name)) },
                     singleLine = true,
                 )
             },
@@ -453,9 +455,9 @@ fun FileManagerScreen(
                     val file = renameTarget
                     renameTarget = null
                     if (file != null && newName.isNotBlank()) performRename(file, newName)
-                }) { Text("Rename") }
+                }) { Text(context.getString(R.string.fm_rename)) }
             },
-            dismissButton = { TextButton(onClick = { renameTarget = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { renameTarget = null }) { Text(context.getString(R.string.fm_cancel)) } },
         )
     }
 
@@ -473,15 +475,15 @@ fun FileManagerScreen(
         val file = selectedEntry ?: return
         OutlinedAlertDialog(
             onDismissRequest = { selectedEntry = null },
-            title = { Text("Delete?") },
-            text = { Text("Delete \"${file.name}\" permanently?") },
+            title = { Text(context.getString(R.string.fm_delete_title)) },
+            text = { Text(context.getString(R.string.fm_delete_file, file.name)) },
             confirmButton = {
                 TextButton(onClick = {
                     selectedEntry = null
                     performDelete(file)
-                }) { Text("Delete") }
+                }) { Text(context.getString(R.string.fm_delete)) }
             },
-            dismissButton = { TextButton(onClick = { selectedEntry = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { selectedEntry = null }) { Text(context.getString(R.string.fm_cancel)) } },
         )
     }
 
@@ -489,10 +491,10 @@ fun FileManagerScreen(
         val victims = pendingBulkDelete
         OutlinedAlertDialog(
             onDismissRequest = { pendingBulkDelete = emptyList() },
-            title = { Text("Delete ${victims.size} item${if (victims.size == 1) "" else "s"}?") },
+            title = { Text(context.getString(R.string.fm_delete_count, victims.size)) },
             text = {
                 Column {
-                    Text("This can't be undone.")
+                    Text(context.getString(R.string.fm_delete_irreversible))
                     Spacer(Modifier.height(6.dp))
                     // Name a few so an accidental Select-All is obvious before it's too late.
                     victims.take(5).forEach {
@@ -516,7 +518,7 @@ fun FileManagerScreen(
                         isOperationRunning = true
                         var failed = 0
                         victims.forEachIndexed { i, f ->
-                            operationLabel = "Deleting ${i + 1}/${victims.size} - ${f.name}"
+                            operationLabel = context.getString(R.string.fm_deleting_item, i + 1, victims.size, f.name)
                             if (!withContext(Dispatchers.IO) { FileOps.delete(f) }) failed++
                         }
                         isOperationRunning = false
@@ -526,9 +528,9 @@ fun FileManagerScreen(
                             Toast.makeText(context, "$failed couldn't be deleted", Toast.LENGTH_SHORT).show()
                         }
                     }
-                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                }) { Text(context.getString(R.string.fm_delete), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { pendingBulkDelete = emptyList() }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { pendingBulkDelete = emptyList() }) { Text(context.getString(R.string.fm_cancel)) } },
         )
     }
 
@@ -537,12 +539,12 @@ fun FileManagerScreen(
         val isDir = conflict.isDirectory
         OutlinedAlertDialog(
             onDismissRequest = { pendingConflict = null },
-            title = { Text("\"${conflict.name}\" already exists") },
+            title = { Text(context.getString(R.string.fm_exists, conflict.name)) },
             text = {
                 Column {
                     Text(
-                        if (isDir) "Merge adds and replaces files inside the existing folder."
-                        else "Overwrite replaces the existing file.",
+                        if (isDir) context.getString(R.string.fm_merge_hint)
+                        else context.getString(R.string.fm_overwrite_hint),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp,
                     )
@@ -553,15 +555,15 @@ fun FileManagerScreen(
                                 checked = conflictApplyToAll,
                                 onCheckedChange = { conflictApplyToAll = it },
                             )
-                            Text("Apply to all conflicts", fontSize = 12.sp)
+                            Text(context.getString(R.string.fm_conflicts_all), fontSize = 12.sp)
                         }
                     }
                     Spacer(Modifier.height(4.dp))
                     listOf(
                         (if (isDir) ConflictChoice.MERGE else ConflictChoice.OVERWRITE) to
-                            (if (isDir) "Merge" else "Overwrite"),
-                        ConflictChoice.KEEP_BOTH to "Keep both",
-                        ConflictChoice.SKIP to "Skip",
+                            (if (isDir) context.getString(R.string.fm_merge) else context.getString(R.string.fm_overwrite)),
+                        ConflictChoice.KEEP_BOTH to context.getString(R.string.fm_keep_both),
+                        ConflictChoice.SKIP to context.getString(R.string.fm_skip),
                     ).forEach { (choice, label) ->
                         TextButton(
                             modifier = Modifier.fillMaxWidth(),
@@ -573,7 +575,7 @@ fun FileManagerScreen(
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { conflictChoice = ConflictChoice.SKIP; pendingConflict = null }) {
-                    Text("Cancel")
+                    Text(context.getString(R.string.fm_cancel))
                 }
             },
         )
@@ -603,7 +605,7 @@ fun FileManagerScreen(
             ) {
                 Icon(Icons.Filled.Folder, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Select this folder")
+                Text(context.getString(R.string.fm_select_folder))
             }
         }
         // ── Path bar ──
@@ -619,7 +621,7 @@ fun FileManagerScreen(
                 // Don't climb above the current drive's root.
                 if (currentDir != currentRoot && parent != null && parent.exists()) loadDirectory(parent)
             }, enabled = currentDir != currentRoot) {
-                Icon(Icons.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Filled.ArrowBack, context.getString(R.string.fm_back), tint = MaterialTheme.colorScheme.primary)
             }
 
             val currentDriveLabel = describeLocation(currentDir).driveLabel
@@ -666,7 +668,7 @@ fun FileManagerScreen(
                                 } else {
                                     Toast.makeText(
                                         context,
-                                        "${drive.label} is mounted but not readable right now",
+                                        context.getString(R.string.fm_drive_unreadable, drive.label),
                                         Toast.LENGTH_SHORT,
                                     ).show()
                                 }
@@ -680,7 +682,7 @@ fun FileManagerScreen(
 
             if (showFavorites) {
                 Text(
-                    text = "Favorites",
+                    text = context.getString(R.string.fm_favorites),
                     color = MaterialTheme.colorScheme.primary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -718,7 +720,7 @@ fun FileManagerScreen(
                     ) {
                         Icon(Icons.Filled.CreateNewFolder, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(5.dp))
-                        Text("New Folder", color = MaterialTheme.colorScheme.onBackground, fontSize = 12.sp)
+                        Text(context.getString(R.string.fm_new_folder), color = MaterialTheme.colorScheme.onBackground, fontSize = 12.sp)
                     }
                 }
                 IconButton(onClick = {
@@ -727,19 +729,19 @@ fun FileManagerScreen(
                 }) {
                     Icon(
                         if (gridView) Icons.Filled.ViewList else Icons.Filled.GridView,
-                        if (gridView) "List view" else "Grid view",
+                        if (gridView) context.getString(R.string.fm_list_view) else context.getString(R.string.fm_grid_view),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 IconButton(onClick = { showSearch = !showSearch; if (!showSearch) searchQuery = "" }) {
-                    Icon(Icons.Filled.Search, "Search", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Filled.Search, context.getString(R.string.fm_search), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Box {
                     IconButton(onClick = { showSortMenu = true }) {
-                        Icon(Icons.Filled.Sort, "Sort", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(Icons.Filled.Sort, context.getString(R.string.fm_sort), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
-                        listOf("name" to "Name", "date" to "Date modified", "size" to "Size")
+                        listOf("name" to context.getString(R.string.fm_name), "date" to context.getString(R.string.fm_date_modified), "size" to context.getString(R.string.fm_size))
                             .forEach { (key, label) ->
                                 DropdownMenuItem(
                                     text = {
@@ -758,7 +760,7 @@ fun FileManagerScreen(
                             }
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                         DropdownMenuItem(
-                            text = { Text(if (compactRows) "Comfortable rows" else "Compact rows") },
+                            text = { Text(if (compactRows) context.getString(R.string.fm_comfortable) else context.getString(R.string.fm_compact)) },
                             onClick = {
                                 compactRows = !compactRows
                                 browsePrefs.edit().putBoolean("fmCompactRows", compactRows).apply()
@@ -766,7 +768,7 @@ fun FileManagerScreen(
                             },
                         )
                         DropdownMenuItem(
-                            text = { Text(if (showHidden) "Hide hidden files" else "Show hidden files") },
+                            text = { Text(if (showHidden) context.getString(R.string.fm_hide_hidden) else context.getString(R.string.fm_show_hidden)) },
                             onClick = {
                                 showHidden = !showHidden
                                 browsePrefs.edit().putBoolean("fmShowHidden", showHidden).apply()
@@ -781,9 +783,9 @@ fun FileManagerScreen(
             // Star toggle: open/close the dedicated Favorites list.
             IconButton(onClick = { showFavorites = !showFavorites }) {
                 if (showFavorites) {
-                    Icon(Icons.Filled.Star, "Hide favorites", tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Filled.Star, context.getString(R.string.fm_hide_favorites), tint = MaterialTheme.colorScheme.primary)
                 } else {
-                    Icon(Icons.Filled.StarBorder, "Show favorites", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Filled.StarBorder, context.getString(R.string.fm_show_favorites), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -794,7 +796,7 @@ fun FileManagerScreen(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 singleLine = true,
-                placeholder = { Text("Filter this folder", fontSize = 13.sp) },
+                placeholder = { Text(context.getString(R.string.fm_filter), fontSize = 13.sp) },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
             )
         }
@@ -821,7 +823,7 @@ fun FileManagerScreen(
                 )
                 if (freeSpace > 0) {
                     Text(
-                        "${FileOps.formatBytes(freeSpace)} free",
+                        context.getString(R.string.fm_free, FileOps.formatBytes(freeSpace)),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp,
                         maxLines = 1,
@@ -842,7 +844,7 @@ fun FileManagerScreen(
                     .padding(horizontal = 12.dp, vertical = 6.dp),
             ) {
                 Text(
-                    "${selectedPaths.size} selected",
+                    context.getString(R.string.fm_selected, selectedPaths.size),
                     color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 13.sp,
                     modifier = Modifier.weight(1f),
@@ -855,7 +857,7 @@ fun FileManagerScreen(
                         else entries.map { it.absolutePath }.toSet()
                     },
                     contentPadding = selBarPadding,
-                ) { Text(if (selectedPaths.size == entries.size) "None" else "All", fontSize = 12.sp) }
+                ) { Text(if (selectedPaths.size == entries.size) context.getString(R.string.fm_none) else context.getString(R.string.fm_all), fontSize = 12.sp) }
                 Spacer(Modifier.width(4.dp))
                 OutlinedButton(
                     enabled = selectedPaths.isNotEmpty(),
@@ -866,7 +868,7 @@ fun FileManagerScreen(
                         selectedPaths = emptySet()
                     },
                     contentPadding = selBarPadding,
-                ) { Text("Copy", fontSize = 12.sp) }
+                ) { Text(context.getString(R.string.fm_copy), fontSize = 12.sp) }
                 Spacer(Modifier.width(4.dp))
                 OutlinedButton(
                     enabled = selectedPaths.isNotEmpty(),
@@ -877,19 +879,19 @@ fun FileManagerScreen(
                         selectedPaths = emptySet()
                     },
                     contentPadding = selBarPadding,
-                ) { Text("Cut", fontSize = 12.sp) }
+                ) { Text(context.getString(R.string.fm_cut), fontSize = 12.sp) }
                 Spacer(Modifier.width(4.dp))
                 OutlinedButton(
                     enabled = selectedPaths.isNotEmpty(),
                     onClick = { pendingBulkDelete = entries.filter { it.absolutePath in selectedPaths } },
                     contentPadding = selBarPadding,
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
-                ) { Text("Delete", color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
+                ) { Text(context.getString(R.string.fm_delete), color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
                 Spacer(Modifier.width(4.dp))
                 OutlinedButton(
                     onClick = { selectionMode = false; selectedPaths = emptySet() },
                     contentPadding = selBarPadding,
-                ) { Text("Done", fontSize = 12.sp) }
+                ) { Text(context.getString(R.string.fm_done), fontSize = 12.sp) }
             }
         }
 
@@ -903,16 +905,16 @@ fun FileManagerScreen(
                     .clickable { performPaste() }
                     .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
-                Icon(Icons.Filled.ContentPaste, "Paste", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                Icon(Icons.Filled.ContentPaste, context.getString(R.string.fm_paste), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 val what = if (clipboardFiles.size == 1) clipboardFiles.first().name
-                else "${clipboardFiles.size} items"
+                else context.getString(R.string.fm_items, clipboardFiles.size)
                 Text(
-                    "Paste $what${if (isCutOperation) " (move)" else ""} here",
+                    context.getString(if (isCutOperation) R.string.fm_paste_move else R.string.fm_paste_here, what),
                     color = MaterialTheme.colorScheme.onBackground, fontSize = 13.sp, modifier = Modifier.weight(1f),
                 )
                 TextButton(onClick = { clipboardFiles = emptyList(); isCutOperation = false }) {
-                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    Text(context.getString(R.string.fm_cancel), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                 }
             }
         }
@@ -944,7 +946,7 @@ fun FileManagerScreen(
                             isOperationRunning = false
                             operationDeterminate = false
                             loadDirectory(currentDir, resetScroll = false)
-                        }) { Text("Cancel", fontSize = 12.sp) }
+                        }) { Text(context.getString(R.string.fm_cancel), fontSize = 12.sp) }
                     }
                 }
                 Spacer(Modifier.height(4.dp))
@@ -975,7 +977,7 @@ fun FileManagerScreen(
                 showFavorites = false; openDrive(dir)
             }
         val storageItems = buildList {
-            add(locItem("Internal", Icons.Filled.Smartphone, File("/storage/emulated/0")))
+            add(locItem(context.getString(R.string.fm_internal), Icons.Filled.Smartphone, File("/storage/emulated/0")))
             drives.filter { it.removable }.forEach { d ->
                 add(RailItem(d.label, Icons.Filled.SdStorage, !showFavorites && currentRoot.absolutePath == d.dir.absolutePath) {
                     showFavorites = false; if (d.readable) openDrive(d.dir)
@@ -983,25 +985,25 @@ fun FileManagerScreen(
             }
         }
         val quickItems = buildList {
-            File("/storage/emulated/0/Download").takeIf { it.isDirectory }?.let { add(locItem("Downloads", Icons.Filled.Download, it)) }
+            File("/storage/emulated/0/Download").takeIf { it.isDirectory }?.let { add(locItem(context.getString(R.string.fm_downloads), Icons.Filled.Download, it)) }
             // The ROMs folder chosen on the main screen: what the session shows as /root/ROMs.
             SessionPrefs.romsDir(context).takeIf { it.isNotEmpty() }?.let(::File)?.takeIf { it.isDirectory }
                 ?.let { add(locItem("ROMs", Icons.Filled.SportsEsports, it)) }
-            File("/storage/emulated/0/Download/DroidDeck").takeIf { it.isDirectory }?.let { add(locItem("Session logs", Icons.Filled.Description, it)) }
-            File("/storage/emulated/0/Pictures").takeIf { it.isDirectory }?.let { add(locItem("Pictures", Icons.Filled.Image, it)) }
+            File("/storage/emulated/0/Download/DroidDeck").takeIf { it.isDirectory }?.let { add(locItem(context.getString(R.string.fm_session_logs), Icons.Filled.Description, it)) }
+            File("/storage/emulated/0/Pictures").takeIf { it.isDirectory }?.let { add(locItem(context.getString(R.string.fm_pictures), Icons.Filled.Image, it)) }
         }
         val favItems = remember(favTick) { FavoritesStore.list(context).map(::File).filter { it.exists() } }
             .map { d -> RailItem(d.name, Icons.Filled.Star, false) { showFavorites = false; openDrive(d) } }
         val locationSections = buildList {
-            add(RailSection("STORAGE", storageItems))
-            if (quickItems.isNotEmpty()) add(RailSection("QUICK", quickItems))
-            if (favItems.isNotEmpty()) add(RailSection("FAVORITES", favItems))
+            add(RailSection(context.getString(R.string.fm_storage), storageItems))
+            if (quickItems.isNotEmpty()) add(RailSection(context.getString(R.string.fm_quick), quickItems))
+            if (favItems.isNotEmpty()) add(RailSection(context.getString(R.string.fm_favorites_section), favItems))
         }
 
         Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
             // The slim picker keeps its layout: no rail.
             if (!pickMode) {
-                CollapsibleRail(state = fmRailState, title = "Files", sections = locationSections, outlinedItems = true)
+                CollapsibleRail(state = fmRailState, title = context.getString(R.string.fm_files), sections = locationSections, outlinedItems = true)
             }
             Box(modifier = Modifier.weight(1f).fillMaxSize()) {
         // ── Favorites list OR file list ──
@@ -1012,7 +1014,7 @@ fun FileManagerScreen(
                 onPinCurrent = {
                     FavoritesStore.add(context, currentDir.absolutePath)
                     favTick++
-                    Toast.makeText(context, "Added \"${currentDir.name}\" to Favorites", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.fm_favorite_added, currentDir.name), Toast.LENGTH_SHORT).show()
                 },
                 onJump = { dir ->
                     showFavorites = false
@@ -1021,7 +1023,7 @@ fun FileManagerScreen(
                 onUnpin = { dir ->
                     FavoritesStore.remove(context, dir.absolutePath)
                     favTick++
-                    Toast.makeText(context, "Removed \"${dir.name}\" from Favorites", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.fm_favorite_removed, dir.name), Toast.LENGTH_SHORT).show()
                 },
                 modifier = Modifier.fillMaxSize(),
             )
@@ -1095,8 +1097,8 @@ fun FileManagerScreen(
                                 showMenuFor = null
                                 Toast.makeText(
                                     context,
-                                    if (nowFav) "Added \"${file.name}\" to Favorites"
-                                    else "Removed \"${file.name}\" from Favorites",
+                                    if (nowFav) context.getString(R.string.fm_favorite_added, file.name)
+                                    else context.getString(R.string.fm_favorite_removed, file.name),
                                     Toast.LENGTH_SHORT,
                                 ).show()
                             },
@@ -1112,7 +1114,7 @@ fun FileManagerScreen(
                             modifier = Modifier.fillParentMaxSize(),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("Empty directory", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(context.getString(R.string.fm_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 } else {
@@ -1173,8 +1175,8 @@ fun FileManagerScreen(
                                 showMenuFor = null
                                 Toast.makeText(
                                     context,
-                                    if (nowFav) "Added \"${file.name}\" to Favorites"
-                                    else "Removed \"${file.name}\" from Favorites",
+                                    if (nowFav) context.getString(R.string.fm_favorite_added, file.name)
+                                    else context.getString(R.string.fm_favorite_removed, file.name),
                                     Toast.LENGTH_SHORT,
                                 ).show()
                             },

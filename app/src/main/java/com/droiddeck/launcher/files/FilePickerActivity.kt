@@ -26,6 +26,10 @@ import java.io.File
  *  - [EXTRA_PICKER_TITLE]      the header
  */
 class FilePickerActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.droiddeck.launcher.AppLanguage.wrap(newBase))
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

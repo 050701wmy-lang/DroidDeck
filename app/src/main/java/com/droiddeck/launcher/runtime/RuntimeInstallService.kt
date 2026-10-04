@@ -22,6 +22,10 @@ import com.droiddeck.launcher.R
  * two gets there first.
  */
 class RuntimeInstallService : Service() {
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.droiddeck.launcher.AppLanguage.wrap(newBase))
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

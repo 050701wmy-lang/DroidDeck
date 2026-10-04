@@ -1,0 +1,55 @@
+# 中文分支维护与上游同步
+
+上游：`https://github.com/Droid-Deck/DroidDeck.git`
+
+Fork：`https://github.com/050701wmy-lang/DroidDeck.git`
+
+## 分支约定
+
+`main` 保持与上游一致，`zh-CN` 保存中文补充。首次克隆 fork 时执行：
+
+```sh
+git clone https://github.com/050701wmy-lang/DroidDeck.git
+cd DroidDeck
+git remote add upstream https://github.com/Droid-Deck/DroidDeck.git
+git fetch origin
+git switch zh-CN
+```
+
+## 更新上游
+
+先提交或暂存本地工作，确保工作区干净，再执行：
+
+```sh
+git fetch upstream
+git switch main
+git pull --ff-only origin main
+git merge --ff-only upstream/main
+git push origin main
+git switch zh-CN
+git merge main
+python -m unittest tools.tests.test_localization
+git push origin zh-CN
+```
+
+`--ff-only` 在分支已分叉时会停止，避免覆盖已有提交。请检查意外进入 `main` 的改动，再决定如何保留。中文分支合并有冲突时，手动解决冲突，执行 `git add` 和 `git commit`，检查翻译、构建并在设备上验证后推送。无需强制推送。
+
+也可以在 GitHub 的 `main` 页面使用 **Sync fork → Update branch** 同步，然后在本地合并到 `zh-CN`。不要用会丢弃改动的同步选项处理中文分支。
+
+## 翻译约定与检查
+
+- 保留上游已有的 `values-zh/strings.xml`。新增遗漏提示先从 Kotlin 代码提取为英文默认资源，再在 `values-zh/strings_localization.xml` 添加中文译文。
+- Compose 中使用 `stringResource`，回调、服务等非 Compose 上下文使用 `Context.getString`。不要在代码中按语言判断或硬编码中文。
+- 本 fork 通过 `AppLanguage.wrap` 将应用、Activity 和 Service 的资源上下文设为简体中文，独立于系统语言。新增入口组件也需在 `attachBaseContext` 中使用它。只覆盖语言，不覆盖屏幕方向、密度或主题。
+- 保留格式参数（如 `%1$s`、`%2$d`）、换行和文件路径；动态数量和文件名通过参数传入。
+- 上游若新增或删除资源，运行检查并补齐中文；上游若已提取同一文本，优先复用其资源，移除本分支重复项。
+
+```sh
+python -m unittest tools.tests.test_localization
+```
+
+该检查验证资源覆盖、重复名称、数组长度和格式参数类型。它不能代替 Android 资源编译和设备验证。使用上游构建流程构建 APK，在中文和英文系统语言下确认应用仍显示中文，检查文件操作、删除确认、无线配对通知及手柄编辑器。对于新增加的其他语言，可使用默认英文回退，随后再补译。
+
+## 发布与更新器
+
+Fork 不会自动继承上游的 Release、签名密钥或 Actions secrets。首次启用 Actions 前，应核对 `.github/workflows/` 中的构建、发布和定时任务；本次适配没有启用定时任务。上游更新器继续使用上游来源，安装上游 APK 可能覆盖中文分支新增内容；维护 fork 发布渠道时需要另行配置和验证签名、版本及更新索引。

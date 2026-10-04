@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets
  * minutes and a percentage that moves.
  */
 class LoadingState(context: Context, steam: Boolean = true) {
+    private val resources = context.resources
     var visible by mutableStateOf(true)
     var step by mutableStateOf("Starting the session…")
     var percent by mutableIntStateOf(-1)
@@ -36,7 +37,7 @@ class LoadingState(context: Context, steam: Boolean = true) {
     /** Once a second: the clock and the hint. */
     fun tick() {
         val seconds = (SystemClock.elapsedRealtime() - startedAt) / 1000
-        elapsed = String.format(java.util.Locale.US, "%d:%02d elapsed · still working", seconds / 60, seconds % 60)
+        elapsed = resources.getString(com.droiddeck.launcher.R.string.session_elapsed, seconds / 60, seconds % 60)
         hint = hints[((seconds / 8) % hints.size).toInt()]
     }
 

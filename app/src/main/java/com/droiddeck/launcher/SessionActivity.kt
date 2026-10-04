@@ -93,6 +93,10 @@ import kotlin.math.abs
  * the HUD line, the loading overlay, the drawer and its dialogs.
  */
 class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.droiddeck.launcher.AppLanguage.wrap(newBase))
+    }
+
     private lateinit var pip: com.droiddeck.launcher.session.SessionPipController
     private var pipUi by mutableStateOf(false)
     private var pipAutoEnter by mutableStateOf(false)
@@ -641,7 +645,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
             val snap = runCatching { ComponentsManager.snapshot(this) }.getOrNull()
             uiHandler.post {
                 drawerComponents = snap
-                if (applied.isNotEmpty()) android.widget.Toast.makeText(this, "Applied: " + applied.joinToString(", "), android.widget.Toast.LENGTH_LONG).show()
+                if (applied.isNotEmpty()) android.widget.Toast.makeText(this, getString(R.string.settings_applied, applied.joinToString(", ")), android.widget.Toast.LENGTH_LONG).show()
             }
         }, "drawer-components").start()
     }
@@ -656,7 +660,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                 val current = active ?: "orig:$build"
                 if (queued != null && value == current) {
                     // Picking what is already in place again cancels the swap waiting for the game.
-                    ComponentsManager.cancelQueued(this, protonId, comp); "The waiting swap was cancelled."
+                    ComponentsManager.cancelQueued(this, protonId, comp); getString(R.string.session_swap_cancelled)
                 } else if (value.startsWith("orig:")) ComponentsManager.restore(this, protonId, comp, value.removePrefix("orig:"))
                 else ComponentsManager.swap(this, protonId, value)
             }.getOrElse { e -> "Swap failed: ${e.message ?: e.javaClass.simpleName}" }
@@ -673,20 +677,21 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         else intent.getStringExtra(SessionService.EXTRA_MODE) ?: SessionService.MODE_STEAM
 
     private fun pausedTitle(): String = when (SessionState.mode) {
-        SessionService.MODE_DESKTOP -> "The desktop is paused"
-        SessionService.MODE_RUN -> (com.droiddeck.launcher.frontend.Library.nameForProgram(SessionState.program) ?: "The program") + " is paused"
-        else -> "Steam is paused"
+        SessionService.MODE_DESKTOP -> getString(R.string.session_desktop_paused)
+        SessionService.MODE_RUN -> getString(R.string.session_program_paused,
+            com.droiddeck.launcher.frontend.Library.nameForProgram(SessionState.program) ?: getString(R.string.session_program_ended))
+        else -> getString(R.string.load_steam_paused)
     }
 
     private fun loadingTitle(): String = when (loadingMode()) {
         SessionService.MODE_DESKTOP ->
-            if (!SessionState.running && intent.getStringExtra(SessionService.EXTRA_STEAM_UI) != null) "Starting Steam on the desktop"
-            else "Starting the desktop"
+            if (!SessionState.running && intent.getStringExtra(SessionService.EXTRA_STEAM_UI) != null) getString(R.string.session_start_steam_desktop)
+            else getString(R.string.session_start_desktop)
         SessionService.MODE_RUN -> {
             val program = if (SessionState.running) SessionState.program else intent.getStringExtra(SessionService.EXTRA_PROGRAM)
-            "Starting " + (com.droiddeck.launcher.frontend.Library.nameForProgram(program) ?: "the program")
+            getString(R.string.session_start_program, com.droiddeck.launcher.frontend.Library.nameForProgram(program) ?: getString(R.string.session_program))
         }
-        else -> "Starting Steam"
+        else -> getString(R.string.session_start_steam)
     }
 
     private fun shareCurrentSessionLogs() {
@@ -694,7 +699,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         // ended screen's Share logs is for that one.
         val folder = SessionPaths.current() ?: SessionPaths.lastEnded()
         if (folder == null || !folder.isDirectory) {
-            Toast.makeText(this, "No logs for this session.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.session_logs_none), Toast.LENGTH_LONG).show()
             return
         }
         Thread({
@@ -703,12 +708,12 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                 .getOrNull()
             uiHandler.post {
                 if (zip == null) {
-                    Toast.makeText(this, "Could not create the session log archive.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, getString(R.string.session_logs_archive_failed), Toast.LENGTH_LONG).show()
                 } else {
                     runCatching { startActivity(SessionLogShare.shareIntent(this, zip)) }
                         .onFailure {
                             Log.w(TAG, "could not share current session logs", it)
-                            Toast.makeText(this, "Could not share the session logs.", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this, getString(R.string.session_logs_share_failed), Toast.LENGTH_LONG).show()
                         }
                 }
             }
@@ -807,7 +812,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                     return@post
                 }
                 loading.percent = -1
-                loading.step = "Starting the session…"
+                loading.step = getString(R.string.session_start)
                 // The surface may have come and gone while the download ran; start on the live one.
                 if (surfaceView.holder.surface?.isValid == true) surfaceCreated(surfaceView.holder)
             }
@@ -838,20 +843,20 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     /** Null when the runtime is in, else the loading screen's closing line. */
     private fun installRuntime(): String? {
         val release = com.droiddeck.launcher.runtime.LinuxRuntimeInstaller.fetchRelease()
-            ?: return "Could not reach the runtime catalog. Check the connection and press Play again."
+            ?: return getString(R.string.session_runtime_catalog_failed)
         val ok = com.droiddeck.launcher.runtime.LinuxRuntimeInstaller.install(this, release,
             progressFor("the Linux runtime", release.size / 1_000_000))
-        return if (ok) null else "The Linux runtime did not install. Check the runtime in Setup and press Play again."
+        return if (ok) null else getString(R.string.session_runtime_install_failed)
     }
 
     /** Null when the desktop package is in, else the loading screen's closing line. */
     private fun installDesktop(): String? {
         uiHandler.post { loading.percent = -1; loading.step = "downloading the desktop" }
         val entry = com.droiddeck.launcher.runtime.DesktopCatalog.fetch()?.firstOrNull { it.id == "desktop" }
-            ?: return "Could not reach the desktop catalog. Check the connection and press Desktop again."
+            ?: return getString(R.string.session_desktop_catalog_failed)
         val problem = com.droiddeck.launcher.runtime.DesktopCatalog.install(this, entry,
             progressFor("the desktop", entry.size / 1_000_000))
-        return problem?.let { "The desktop did not install ($it). Check the connection and press Desktop again." }
+        return problem?.let { getString(R.string.session_desktop_install_failed, it) }
     }
 
     /** Null when the ARM64 Proton is in, else why not; the session goes on either way. */
@@ -1134,13 +1139,13 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         }
         // It stays until the user leaves: a failure read against a timer is a failure not read.
         val what = when (SessionState.mode) {
-            SessionService.MODE_RUN -> com.droiddeck.launcher.frontend.Library.nameForProgram(SessionState.program) ?: "The program"
-            SessionService.MODE_DESKTOP -> "The desktop"
+            SessionService.MODE_RUN -> com.droiddeck.launcher.frontend.Library.nameForProgram(SessionState.program) ?: getString(R.string.session_program_ended)
+            SessionService.MODE_DESKTOP -> getString(R.string.session_desktop_ended)
             else -> "Steam"
         }
         loading.showEnded(
-            hint ?: "$what stopped unexpectedly. Share the logs with a bug report, or try again.",
-            "Exit status $status · ${SessionState.logFile?.path ?: "no log"}",
+            hint ?: getString(R.string.session_ended_unexpectedly, what),
+            getString(R.string.session_exit_status, status, SessionState.logFile?.path ?: getString(R.string.session_no_log)),
         )
         focusEndedScreen()
     }

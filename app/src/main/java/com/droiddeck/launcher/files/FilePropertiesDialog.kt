@@ -1,5 +1,7 @@
 package com.droiddeck.launcher.files
 
+import com.droiddeck.launcher.R
+
 import android.widget.Toast
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -66,7 +68,7 @@ internal fun FilePropertiesDialog(
 
     OutlinedAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Properties") },
+        title = { Text(context.getString(R.string.fm_properties)) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 // ── Basic info ──
@@ -79,14 +81,14 @@ internal fun FilePropertiesDialog(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(Modifier.height(6.dp))
-                PropertyLine("Location", file.parent ?: "-")
+                PropertyLine(context.getString(R.string.fm_location), file.parent ?: "-")
                 PropertyLine(
-                    "Type",
-                    if (file.isDirectory) "Folder"
-                    else file.extension.uppercase().let { if (it.isBlank()) "File" else "$it file" },
+                    context.getString(R.string.fm_type),
+                    if (file.isDirectory) context.getString(R.string.fm_folder)
+                    else file.extension.uppercase().let { if (it.isBlank()) context.getString(R.string.fm_file) else context.getString(R.string.fm_file_type, it) },
                 )
-                if (!file.isDirectory) PropertyLine("Size", FileOps.formatBytes(file.length()))
-                PropertyLine("Modified", dateFormat.format(Date(file.lastModified())))
+                if (!file.isDirectory) PropertyLine(context.getString(R.string.fm_size), FileOps.formatBytes(file.length()))
+                PropertyLine(context.getString(R.string.fm_modified), dateFormat.format(Date(file.lastModified())))
 
                 Spacer(Modifier.height(10.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline)
@@ -95,8 +97,8 @@ internal fun FilePropertiesDialog(
                 val state = attrs
                 // ── Read-only ── checked when the owner can't write (Wine's FILE_ATTRIBUTE_READONLY).
                 AttributeToggleRow(
-                    label = "Read-only",
-                    description = "Stops games (and Wine) from overwriting or deleting this file.",
+                    label = context.getString(R.string.fm_read_only),
+                    description = context.getString(R.string.fm_read_only_hint),
                     checked = state?.readOnly == true,
                     enabled = state != null && !busy,
                     onToggle = { want ->
@@ -108,7 +110,7 @@ internal fun FilePropertiesDialog(
                                 attrs = attrs?.copy(readOnly = want)
                                 onChanged()
                             } else {
-                                Toast.makeText(context, "Couldn't change Read-only", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.fm_read_only_failed), Toast.LENGTH_SHORT).show()
                             }
                         }
                     },
@@ -117,10 +119,10 @@ internal fun FilePropertiesDialog(
                 // ── Hidden ── Wine's DOS hidden bit in the user.DOSATTRIB xattr.
                 val hiddenSupported = state?.hiddenSupported == true
                 AttributeToggleRow(
-                    label = "Hidden",
+                    label = context.getString(R.string.fm_hidden),
                     description = if (state != null && !hiddenSupported)
-                        "This storage can't store the hidden flag."
-                    else "Marks the file hidden in Windows (Wine's hidden attribute).",
+                        context.getString(R.string.fm_hidden_unsupported)
+                    else context.getString(R.string.fm_hidden_hint),
                     checked = state?.hidden == true,
                     enabled = state != null && hiddenSupported && !busy,
                     onToggle = { want ->
@@ -134,14 +136,14 @@ internal fun FilePropertiesDialog(
                             } else {
                                 // The write failed after all - disable the toggle rather than lie.
                                 attrs = attrs?.copy(hiddenSupported = false)
-                                Toast.makeText(context, "Couldn't change Hidden on this storage", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.fm_hidden_failed), Toast.LENGTH_SHORT).show()
                             }
                         }
                     },
                 )
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(context.getString(R.string.fm_done)) } },
     )
 }
 

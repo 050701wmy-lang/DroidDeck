@@ -20,6 +20,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 class WirelessAdbPairingService : Service() {
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.droiddeck.launcher.AppLanguage.wrap(newBase))
+    }
+
     sealed interface Stage {
         data object Idle : Stage
         data object Waiting : Stage
@@ -35,7 +39,7 @@ class WirelessAdbPairingService : Service() {
     private var pairingHost: String? = null
     private var pairingPort: Int? = null
     @Volatile private var working = false
-    private val timeout = Runnable { finish(Stage.Failed("Timed out waiting for the pairing pop-up. Try again from DroidDeck.")) }
+    private val timeout = Runnable { finish(Stage.Failed(getString(R.string.adb_timeout))) }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -75,13 +79,13 @@ class WirelessAdbPairingService : Service() {
             override fun onServiceLost(serviceInfo: NsdServiceInfo) = Unit
             override fun onDiscoveryStopped(serviceType: String) = Unit
             override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
-                main.post { finish(Stage.Failed("Could not look for the pairing pop-up ($errorCode). Check that Wi-Fi is on.")) }
+                main.post { finish(Stage.Failed(getString(R.string.adb_discovery_failed, errorCode))) }
             }
             override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) = Unit
         }
         runCatching { manager.discoverServices("$PAIRING_TYPE.", NsdManager.PROTOCOL_DNS_SD, listener) }
             .onSuccess { nsd = manager; discovery = listener }
-            .onFailure { finish(Stage.Failed("Could not look for the pairing pop-up: ${it.localizedMessage}")) }
+            .onFailure { finish(Stage.Failed(getString(R.string.adb_discovery_error, it.localizedMessage))) }
     }
 
     private fun resolveListener() = object : NsdManager.ResolveListener {
@@ -107,34 +111,34 @@ class WirelessAdbPairingService : Service() {
             return
         }
         if (code.length != 6) {
-            show(Stage.CodeNeeded("Enter all 6 digits of the code"))
+            show(Stage.CodeNeeded(getString(R.string.adb_code_incomplete)))
             return
         }
         working = true
-        show(Stage.Working("Pairing…"))
+        show(Stage.Working(getString(R.string.adb_pairing)))
         Thread({
             val paired = runCatching { kotlinx.coroutines.runBlocking { WirelessAdbFix.pair(this@WirelessAdbPairingService, WirelessAdbFix.LOOPBACK, port, code) } }
             if (paired.isFailure) {
                 main.post {
                     working = false
                     pairingPort = null
-                    show(Stage.CodeNeeded("That code didn't work. Open the pairing pop-up again and enter its new code."))
+                    show(Stage.CodeNeeded(getString(R.string.adb_code_invalid)))
                 }
                 return@Thread
             }
             main.post {
                 stopDiscovery()
-                show(Stage.Working("Paired. Connecting…"))
+                show(Stage.Working(getString(R.string.adb_connecting)))
             }
             val result = runCatching {
                 val connectPort = WirelessAdbFix.localConnectPort(this)
-                    ?: error("Paired, but the Wireless debugging port was not found. Keep Wireless debugging on and try again.")
-                main.post { show(Stage.Working("Applying the setting…")) }
+                    ?: error(getString(R.string.adb_port_missing))
+                main.post { show(Stage.Working(getString(R.string.adb_applying))) }
                 WirelessAdbFix.setChildProcessLimit(this, WirelessAdbFix.LOOPBACK, connectPort, false)
             }
             main.post {
                 working = false
-                finish(result.exceptionOrNull()?.let { Stage.Failed(it.localizedMessage ?: "Wireless debugging command failed") } ?: Stage.Done)
+                finish(result.exceptionOrNull()?.let { Stage.Failed(it.localizedMessage ?: getString(R.string.adb_command_failed)) } ?: Stage.Done)
             }
         }, "wireless-adb-pairing").start()
     }
@@ -174,9 +178,9 @@ class WirelessAdbPairingService : Service() {
 
     private fun notification(stage: Stage): Notification {
         val manager = getSystemService(NotificationManager::class.java)
-        manager?.createNotificationChannel(NotificationChannel(CHANNEL_ID, "Wireless debugging setup",
+        manager?.createNotificationChannel(NotificationChannel(CHANNEL_ID, getString(R.string.adb_channel),
             NotificationManager.IMPORTANCE_HIGH).apply {
-            description = "Asks for the Wireless debugging pairing code while Settings is open"
+            description = getString(R.string.adb_channel_description)
             setShowBadge(false)
             setSound(null, null)
             enableVibration(false)
@@ -193,41 +197,41 @@ class WirelessAdbPairingService : Service() {
             .setCategory(Notification.CATEGORY_STATUS)
         when (stage) {
             Stage.Waiting, Stage.Idle -> builder
-                .setContentTitle("Pair Wireless debugging")
-                .setContentText("Turn on Wireless debugging, then tap “Pair device with pairing code”.")
+                .setContentTitle(getString(R.string.adb_pair_title))
+                .setContentText(getString(R.string.adb_pair_hint))
                 .setStyle(Notification.BigTextStyle().bigText(
-                    "Turn on Wireless debugging, then tap “Pair device with pairing code”. Stay in Settings: the code goes in this notification."))
+                    getString(R.string.adb_pair_full_hint)))
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
-                .addAction(Notification.Action.Builder(null, "Cancel", cancel).build())
+                .addAction(Notification.Action.Builder(null, getString(R.string.fm_cancel), cancel).build())
             is Stage.CodeNeeded -> {
                 val reply = PendingIntent.getService(this, 2,
                     Intent(this, WirelessAdbPairingService::class.java).setAction(ACTION_CODE),
                     if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
                     else PendingIntent.FLAG_UPDATE_CURRENT)
-                val input = RemoteInput.Builder(KEY_CODE).setLabel("6-digit pairing code").build()
-                val text = stage.error ?: "Tap Enter code and type the 6 digits shown in Settings."
+                val input = RemoteInput.Builder(KEY_CODE).setLabel(getString(R.string.adb_code_label)).build()
+                val text = stage.error ?: getString(R.string.adb_code_hint)
                 builder
-                    .setContentTitle(if (stage.error == null) "Enter the Wi-Fi pairing code" else "Try the code again")
+                    .setContentTitle(if (stage.error == null) getString(R.string.adb_code_title) else getString(R.string.adb_code_retry))
                     .setContentText(text)
                     .setStyle(Notification.BigTextStyle().bigText(text))
                     .setOngoing(true)
-                    .addAction(Notification.Action.Builder(null, "Enter code", reply).addRemoteInput(input).build())
-                    .addAction(Notification.Action.Builder(null, "Cancel", cancel).build())
+                    .addAction(Notification.Action.Builder(null, getString(R.string.adb_code_enter), reply).addRemoteInput(input).build())
+                    .addAction(Notification.Action.Builder(null, getString(R.string.fm_cancel), cancel).build())
             }
             is Stage.Working -> builder
-                .setContentTitle("Setting up Steam")
+                .setContentTitle(getString(R.string.adb_steam_setup))
                 .setContentText(stage.step)
                 .setProgress(0, 0, true)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
             Stage.Done -> builder
-                .setContentTitle("Steam is ready")
-                .setContentText("Tap to go back to DroidDeck. You can turn Wireless debugging off now.")
-                .setStyle(Notification.BigTextStyle().bigText("Tap to go back to DroidDeck. You can turn Wireless debugging off now."))
+                .setContentTitle(getString(R.string.adb_steam_ready))
+                .setContentText(getString(R.string.adb_done_hint))
+                .setStyle(Notification.BigTextStyle().bigText(getString(R.string.adb_done_hint)))
                 .setAutoCancel(true)
             is Stage.Failed -> builder
-                .setContentTitle("Wireless debugging setup stopped")
+                .setContentTitle(getString(R.string.adb_stopped))
                 .setContentText(stage.error)
                 .setStyle(Notification.BigTextStyle().bigText(stage.error))
                 .setAutoCancel(true)

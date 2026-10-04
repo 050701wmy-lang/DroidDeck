@@ -80,6 +80,10 @@ import com.droiddeck.launcher.input.SecondScreenDisplays
  * the store, downloads, settings - is the client's own job once [SessionActivity] has it on screen.
  */
 class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.droiddeck.launcher.AppLanguage.wrap(newBase))
+    }
+
     private val ui = Handler(Looper.getMainLooper())
     private val drivers = DriverMenus(this, ui)
     private val components = ComponentsMenu(this, ui)
@@ -243,7 +247,7 @@ class MainActivity : ComponentActivity() {
     /** Import a save zip into [game]: pick it in the app's file picker, then back up and unzip off the main thread. */
     private fun importSaves(name: String, game: () -> GameSaves.Game) {
         if (SessionState.running) {
-            android.widget.Toast.makeText(this, "Close the Steam session first, so the game can't save over the import", android.widget.Toast.LENGTH_LONG).show()
+            android.widget.Toast.makeText(this, getString(R.string.save_import_close_session), android.widget.Toast.LENGTH_LONG).show()
             return
         }
         onSavePicked = { zip ->
@@ -347,15 +351,15 @@ class MainActivity : ComponentActivity() {
         if (intent?.component?.className == SessionActivity::class.java.name) {
             when {
                 busy || LinuxRuntimeInstaller.isBusy() -> {
-                    android.widget.Toast.makeText(this, "Wait for the runtime operation to finish", android.widget.Toast.LENGTH_SHORT).show()
+                    android.widget.Toast.makeText(this, getString(R.string.wait_runtime), android.widget.Toast.LENGTH_SHORT).show()
                     return
                 }
                 protons.protonBusyId != null || ProtonExtras.installInProgress -> {
-                    android.widget.Toast.makeText(this, "Wait for the compatibility tool install to finish", android.widget.Toast.LENGTH_SHORT).show()
+                    android.widget.Toast.makeText(this, getString(R.string.wait_compat), android.widget.Toast.LENGTH_SHORT).show()
                     return
                 }
                 pkgStage != null -> {
-                    android.widget.Toast.makeText(this, "Wait for the desktop app install to finish", android.widget.Toast.LENGTH_SHORT).show()
+                    android.widget.Toast.makeText(this, getString(R.string.wait_desktop), android.widget.Toast.LENGTH_SHORT).show()
                     return
                 }
             }
@@ -426,7 +430,7 @@ class MainActivity : ComponentActivity() {
 
     private fun launchGame(game: Library.SteamGame): Boolean {
         if (protons.protonBusyId != null || ProtonExtras.installInProgress || pkgStage != null) {
-            android.widget.Toast.makeText(this, "Wait for the install to finish before launching a game", android.widget.Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(this, getString(R.string.wait_install_launch), android.widget.Toast.LENGTH_SHORT).show()
             return false
         }
         if (SessionState.running) {
@@ -617,7 +621,7 @@ class MainActivity : ComponentActivity() {
                             Thread({
                                 val zip = runCatching { SessionLogShare.zipLatest(this) }.getOrNull()
                                 ui.post {
-                                    if (zip == null) android.widget.Toast.makeText(this, "No session logs yet: run a session first.", android.widget.Toast.LENGTH_LONG).show()
+                                    if (zip == null) android.widget.Toast.makeText(this, getString(R.string.no_session_logs), android.widget.Toast.LENGTH_LONG).show()
                                     else startActivity(SessionLogShare.shareIntent(this, zip))
                                 }
                             }, "share-logs").start()
@@ -627,7 +631,7 @@ class MainActivity : ComponentActivity() {
                                 val cleared = runCatching { SessionArtifacts.clearAll(this) }.getOrDefault(0)
                                 ui.post {
                                     android.widget.Toast.makeText(this,
-                                        if (cleared == 0) "No session logs to clear." else "Cleared $cleared session log folder${if (cleared == 1) "" else "s"}.",
+                                        if (cleared == 0) getString(R.string.logs_none_clear) else getString(R.string.logs_cleared, cleared),
                                         android.widget.Toast.LENGTH_SHORT).show()
                                 }
                             }, "clear-logs").start()
@@ -700,7 +704,7 @@ class MainActivity : ComponentActivity() {
                             (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(
                                 ClipData.newPlainText("DroidDeck child-process setting", PhantomProcessLimit.adbCommand(enabled)),
                             )
-                            android.widget.Toast.makeText(this, "ADB command copied", android.widget.Toast.LENGTH_SHORT).show()
+                            android.widget.Toast.makeText(this, getString(R.string.adb_command_copied), android.widget.Toast.LENGTH_SHORT).show()
                         },
                         onDismissPhantomGate = { showPhantomGate = false },
                         onStartWirelessAdbPairing = { WirelessAdbPairingService.start(this) },
@@ -741,16 +745,16 @@ class MainActivity : ComponentActivity() {
                 )
                 showNonAdreno?.let { release ->
                     ConfirmDialog(
-                        title = "Not an Adreno GPU",
-                        text = "Turnip supports Adreno GPUs. On ${com.droiddeck.launcher.core.DeviceSupport.gpuName()}, Steam may show a black screen. Download: ${"%.0f".format(release.size / 1e6)} MB.",
+                        title = getString(R.string.gpu_not_adreno),
+                        text = getString(R.string.gpu_adreno_warning, com.droiddeck.launcher.core.DeviceSupport.gpuName(), "%.0f".format(release.size / 1e6)),
                         confirm = "Install anyway",
                         onConfirm = { showNonAdreno = null; install(release) },
                         onDismiss = { showNonAdreno = null },
                     )
                 }
                 if (showRemove) ConfirmDialog(
-                    title = "Remove Linux runtime",
-                    text = "This deletes the runtime, the Steam client inside it, and every game installed there.",
+                    title = getString(R.string.runtime_remove_title),
+                    text = getString(R.string.runtime_remove_warning),
                     confirm = "Remove",
                     onConfirm = { showRemove = false; removeRuntime() },
                     onDismiss = { showRemove = false },
@@ -861,7 +865,7 @@ class MainActivity : ComponentActivity() {
         if (!SessionState.running) Thread({
             val applied = runCatching { ComponentsManager.applyQueued(this) }.getOrDefault(emptyList())
             if (applied.isNotEmpty()) ui.post {
-                android.widget.Toast.makeText(this, "Applied: " + applied.joinToString(", "), android.widget.Toast.LENGTH_LONG).show()
+                android.widget.Toast.makeText(this, getString(R.string.settings_applied, applied.joinToString(", ")), android.widget.Toast.LENGTH_LONG).show()
                 if (showComponents) components.refreshComponents()
             }
         }, "components-queue").start()
@@ -921,7 +925,7 @@ class MainActivity : ComponentActivity() {
         } catch (_: Exception) {
             val target = if (displayId == null || displayId == Display.DEFAULT_DISPLAY) "the primary screen"
                 else secondScreenDisplays.firstOrNull { it.id == displayId }?.label ?: "display $displayId"
-            android.widget.Toast.makeText(this, "Could not open ${app.label} on $target", android.widget.Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(this, getString(R.string.app_open_failed, app.label, target), android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -1354,7 +1358,7 @@ class MainActivity : ComponentActivity() {
         if (path.isNotEmpty() && path != SessionPrefs.GAME_STORAGE_OFF) {
             val problem = GameStorage.prepare(path)
             if (problem != null) {
-                android.widget.Toast.makeText(this, "Not usable: $problem", android.widget.Toast.LENGTH_LONG).show()
+                android.widget.Toast.makeText(this, getString(R.string.tool_unusable, problem), android.widget.Toast.LENGTH_LONG).show()
                 return
             }
         }
@@ -1478,10 +1482,10 @@ class MainActivity : ComponentActivity() {
         } catch (error: Exception) {
             if (displayId != null) {
                 runCatching { startActivity(intent) }
-                android.widget.Toast.makeText(this, "Could not open Settings on the bottom screen; opened it on the main screen.", android.widget.Toast.LENGTH_LONG).show()
+                android.widget.Toast.makeText(this, getString(R.string.settings_bottom_failed), android.widget.Toast.LENGTH_LONG).show()
             } else {
                 startActivity(Intent(android.provider.Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                android.widget.Toast.makeText(this, "Open Developer options in Settings", android.widget.Toast.LENGTH_LONG).show()
+                android.widget.Toast.makeText(this, getString(R.string.developer_options_open), android.widget.Toast.LENGTH_LONG).show()
             }
         }
     }
