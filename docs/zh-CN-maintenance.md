@@ -52,4 +52,6 @@ python -m unittest tools.tests.test_localization
 
 ## 发布与更新器
 
+Steam 大屏幕模式的中文由 Linux 的 fontconfig/CEF 渲染，与 Android 应用资源语言无关。`LinuxRuntime.binds` 将手机可读的 Android 字体目录挂载到客体的 `/usr/share/fonts/android-*`，让 Linux 使用手机已有的中文字体作为回退，不替换运行环境的原有字体。此修复在每次启动会话时生效，已安装的运行环境无需重装；更新 APK 后完整退出 Steam 会话并重新启动。设备验证时可用 `fc-list :lang=zh-cn` 检查中文字体，再检查 Steam 设置与游戏库中的汉字。
+
 Fork 不会自动继承上游的 Release、签名密钥或 Actions secrets。首次启用 Actions 前，应核对 `.github/workflows/` 中的构建、发布和定时任务；本次适配没有启用定时任务。上游更新器继续使用上游来源，安装上游 APK 可能覆盖中文分支新增内容；维护 fork 发布渠道时需要另行配置和验证签名、版本及更新索引。

@@ -194,6 +194,19 @@ public final class LinuxRuntime {
         bind(cmd, new File(root, "etc/bannerlator/empty").getPath() + ":/sys/fs/selinux");
         bind(cmd, context.getFilesDir().getPath());
         bind(cmd, context.getCacheDir().getPath());
+        // The minimal rootfs only carries Western fonts. Expose Android's fonts beneath
+        // fontconfig's standard font directory so Steam/CEF can fall back for Chinese and
+        // other scripts, including in an already installed runtime. Keep the guest's own fonts.
+        String[] fontDirs = {"/system/fonts", "/product/fonts", "/system_ext/fonts", "/data/fonts/files"};
+        for (int i = 0; i < fontDirs.length; i++) {
+            File hostFonts = new File(fontDirs[i]);
+            if (!hostFonts.isDirectory() || !hostFonts.canRead()) continue;
+            String guestFonts = "/usr/share/fonts/android-" + i;
+            File mountPoint = new File(root, guestFonts.substring(1));
+            if (mountPoint.isDirectory() || mountPoint.mkdirs()) {
+                bind(cmd, hostFonts.getPath() + ":" + guestFonts);
+            }
+        }
         if (runtimeDir != null) {
             bind(cmd, runtimeDir.getPath());
             bind(cmd, runtimeDir.getPath() + ":" + GUEST_RUNTIME_DIR);
