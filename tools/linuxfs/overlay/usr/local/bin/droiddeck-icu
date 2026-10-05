@@ -1,0 +1,147 @@
+#!/usr/bin/python3
+"""Supply Albion's missing Windows ICU alias using the selected Proton's exports."""
+import os
+from pathlib import Path
+import struct
+import sys
+
+
+class PE:
+    def __init__(self, path):
+        self.data = Path(path).read_bytes()
+        if self.data[:2] != b"MZ":
+            raise ValueError("not a PE file")
+        pe = self.u32(0x3c)
+        if self.data[pe:pe + 4] != b"PE\0\0":
+            raise ValueError("invalid PE signature")
+        self.machine = self.u16(pe + 4)
+        opt = pe + 24
+        magic = self.u16(opt)
+        if magic not in (0x10b, 0x20b):
+            raise ValueError("unsupported PE header")
+        self.width = 8 if magic == 0x20b else 4
+        self.directory = opt + (112 if self.width == 8 else 96)
+        sec = opt + self.u16(pe + 20)
+        self.sections = [struct.unpack_from("<IIII", self.data, sec + i * 40 + 8)
+                         for i in range(self.u16(pe + 6))]
+
+    def u16(self, p):
+        return struct.unpack_from("<H", self.data, p)[0]
+
+    def u32(self, p):
+        return struct.unpack_from("<I", self.data, p)[0]
+
+    def offset(self, rva):
+        for size, address, rawsize, raw in self.sections:
+            if address <= rva < address + max(size, rawsize):
+                return raw + rva - address
+        raise ValueError("RVA outside PE sections")
+
+    def string(self, rva):
+        p = self.offset(rva)
+        return self.data[p:self.data.index(b"\0", p)].decode("ascii")
+
+    def imports(self, library):
+        rva = self.u32(self.directory + 8)
+        if not rva:
+            return []
+        p = self.offset(rva)
+        while self.u32(p + 12):
+            if self.string(self.u32(p + 12)).lower() == library:
+                t = self.offset(self.u32(p) or self.u32(p + 16))
+                names = []
+                while True:
+                    v = struct.unpack_from("<Q" if self.width == 8 else "<I", self.data, t)[0]
+                    if not v:
+                        return names
+                    if v >> (self.width * 8 - 1):
+                        raise ValueError("ordinal ICU import")
+                    names.append(self.string(v + 2))
+                    t += self.width
+            p += 20
+        return []
+
+    def exports(self):
+        rva = self.u32(self.directory)
+        if not rva:
+            return set()
+        p = self.offset(rva)
+        names = self.offset(self.u32(p + 32))
+        return {self.string(self.u32(names + i * 4)) for i in range(self.u32(p + 24))}
+
+
+def forwarder(names):
+    """An x64 PE DLL with no executable code: its export entries forward to icu.dll."""
+    names = sorted(set(names))
+    count = len(names)
+    section = bytearray(40 + count * 10)
+
+    def string(value):
+        rva = 0x1000 + len(section)
+        section.extend(value.encode("ascii") + b"\0")
+        return rva
+
+    library = string("icuuc.dll")
+    for i, name in enumerate(names):
+        struct.pack_into("<I", section, 40 + i * 4, string("icu." + name))
+        struct.pack_into("<I", section, 40 + count * 4 + i * 4, string(name))
+        struct.pack_into("<H", section, 40 + count * 8 + i * 2, i)
+    struct.pack_into("<IIHHIIIIIII", section, 0, 0, 0, 0, 0, library, 1,
+                     count, count, 0x1028, 0x1028 + count * 4, 0x1028 + count * 8)
+    raw_size = (len(section) + 511) & ~511
+    header = bytearray(512)
+    header[:2] = b"MZ"
+    struct.pack_into("<I", header, 0x3c, 0x80)
+    header[0x80:0x84] = b"PE\0\0"
+    struct.pack_into("<HHIIIHH", header, 0x84, 0x8664, 1, 0, 0, 0, 240, 0x2022)
+    opt = 0x98
+    struct.pack_into("<H", header, opt, 0x20b)
+    struct.pack_into("<I", header, opt + 8, raw_size)
+    struct.pack_into("<QII", header, opt + 24, 0x180000000, 4096, 512)
+    struct.pack_into("<HH", header, opt + 40, 6, 0)
+    struct.pack_into("<HH", header, opt + 48, 6, 0)
+    struct.pack_into("<II", header, opt + 56, (0x1000 + len(section) + 4095) & ~4095, 512)
+    struct.pack_into("<HH", header, opt + 68, 3, 0x100)
+    struct.pack_into("<QQQQII", header, opt + 72, 0x100000, 4096, 0x100000, 4096, 0, 16)
+    struct.pack_into("<II", header, opt + 112, 0x1000, len(section))
+    struct.pack_into("<8sIIIIIIHHI", header, opt + 240, b".edata\0\0", len(section),
+                     0x1000, raw_size, 512, 0, 0, 0, 0, 0x40000040)
+    return bytes(header + section + bytes(raw_size - len(section)))
+
+
+def prepare(command):
+    if len(command) < 3 or command[1] != "waitforexitandrun":
+        return False
+    exe = Path(command[2])
+    if exe.name.lower() != "albionlauncher.exe":
+        return False
+    target = exe.parent / "icuuc.dll"
+    # Never replace the game's own DLL, including a manually installed fix or a broken symlink.
+    if os.path.lexists(target):
+        return False
+    proton = Path(command[0]).resolve().parent
+    wine = proton / "files/lib/wine"
+    if any((wine / arch / "icuuc.dll").exists() for arch in ("aarch64-windows", "x86_64-windows")):
+        return False
+    qt = PE(exe.parent / "Qt6Core.dll")
+    if qt.machine != 0x8664:
+        return False
+    required = qt.imports("icuuc.dll")
+    if not required:
+        return False
+    icu = next((wine / arch / "icu.dll" for arch in ("aarch64-windows", "x86_64-windows")
+                if (wine / arch / "icu.dll").is_file()), None)
+    if icu is None or not set(required) <= PE(icu).exports():
+        print("droiddeck-icu: selected Proton lacks the ICU exports Albion needs; left unchanged", file=sys.stderr)
+        return False
+    data = forwarder(required)
+    # Exclusive creation also preserves files installed concurrently by the game's updater.
+    output = target.open("xb")
+    try:
+        with output:
+            output.write(data)
+    except BaseException:
+        target.unlink()
+        raise
+    print("droiddeck-icu: supplied icuuc.dll (%d exports forwarded to Proton's icu.dll)" % len(required), file=sys.stderr)
+    return True

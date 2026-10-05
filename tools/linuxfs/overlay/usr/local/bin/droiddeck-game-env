@@ -196,6 +196,14 @@ def without_pack(chosen_env, env):
     return result
 
 
+def prepare_icu(command):
+    try:
+        helper = Path(__file__).resolve().parent / "droiddeck-icu"
+        runpy.run_path(str(helper))["prepare"](command)
+    except Exception as error:
+        print("droiddeck-game-env: ICU repair unavailable (%s); continuing launch" % error, file=sys.stderr)
+
+
 def main():
     command = sys.argv[1:]
     if not command:
@@ -225,6 +233,7 @@ def main():
             print("droiddeck-game-env: invalid configuration; using inherited environment", file=sys.stderr)
     sync = load_sync()
     launch, launch_env = select_sync(command, env, sync)
+    prepare_icu(launch)
     if launch[0] != command[0]:
         try:
             os.execvpe(launch[0], launch, launch_env)
