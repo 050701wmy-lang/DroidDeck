@@ -28,7 +28,7 @@ def formats(text):
 
 class LocalizationTest(unittest.TestCase):
     def test_chinese_resources_and_arguments(self):
-        english, chinese = resources("values"), resources("values-zh")
+        english, chinese = resources("values"), resources("values-zh-rCN")
         expected = {key for key, node in english.items()
                     if node.attrib.get("translatable") != "false"}
         self.assertFalse(set(chinese) - set(english), "Chinese resources removed upstream")
@@ -54,7 +54,7 @@ class LocalizationTest(unittest.TestCase):
 
     def test_language_is_declared(self):
         languages = ET.parse(RES / "xml" / "locales_config.xml").getroot()
-        self.assertIn("zh", {n.attrib["{http://schemas.android.com/apk/res/android}name"]
+        self.assertIn("zh-CN", {n.attrib["{http://schemas.android.com/apk/res/android}name"]
                              for n in languages})
 
 

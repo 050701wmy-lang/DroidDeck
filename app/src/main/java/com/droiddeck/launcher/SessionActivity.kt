@@ -36,9 +36,12 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import com.droiddeck.launcher.core.FileUtils
+import com.droiddeck.launcher.core.TextureFiltering
 import com.droiddeck.launcher.files.InAppFilePicker
 import com.droiddeck.launcher.frontend.Library
 import com.droiddeck.launcher.gpu.FrameGen
+import com.droiddeck.launcher.gpu.ScreenEffectLooks
+import com.droiddeck.launcher.gpu.ScreenEffects
 import com.droiddeck.launcher.gpu.Lossless
 import com.droiddeck.launcher.gpu.TurnipDriver
 import com.droiddeck.launcher.input.EvdevKeys
@@ -56,6 +59,8 @@ import com.droiddeck.launcher.runtime.LinuxRuntime
 import com.droiddeck.launcher.session.LoadingState
 import com.droiddeck.launcher.session.PerfHud
 import com.droiddeck.launcher.session.PerfMode
+import com.droiddeck.launcher.session.SteamRepair
+import com.droiddeck.launcher.session.GameEnvironmentStore
 import com.droiddeck.launcher.session.SessionPrefs
 import com.droiddeck.launcher.session.SessionEvents
 import com.droiddeck.launcher.session.SessionArtifacts
@@ -78,7 +83,9 @@ import com.droiddeck.launcher.wayland.CompositorHost
 import com.droiddeck.launcher.wayland.WaylandCompositor
 import java.io.File
 import com.droiddeck.launcher.session.ComponentsManager
-import com.droiddeck.launcher.ui.DRAWER_PAGES
+import com.droiddeck.launcher.ui.SessionDrawerPage
+import com.droiddeck.launcher.ui.sessionDrawerPages
+import com.droiddeck.launcher.ui.step
 import kotlin.math.abs
 
 /**
@@ -205,7 +212,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     private var closeAtOnce = false
     /** The drawer's Components tab: the Protons as last read (ComponentsManager). */
     private var drawerComponents by mutableStateOf<ComponentsManager.Snapshot?>(null)
-    private var drawerPage by mutableIntStateOf(0)
+    private var drawerPage by mutableStateOf(SessionDrawerPage.CONTROLLER)
     private var drawerControllerActive by mutableStateOf(false)
     private var backActionsInverted by mutableStateOf(false)
     /** The on-screen PC keyboard (ui/PcKeyboard): real key presses, Esc and F1 included. */
@@ -214,6 +221,9 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     private var fillScreen by mutableStateOf(true)
     private var upscaler by mutableStateOf(0)
     private var upscaleSharpness by mutableStateOf(75)
+    private var effects by mutableStateOf(ScreenEffects.OFF)
+    private var textureAnisotropy by mutableStateOf(0)
+    private var textureLodBias by mutableStateOf(TextureFiltering.LOD_BIAS_OFF)
     private var lossless by mutableStateOf(Lossless.State.NONE)
     private val pickLossless = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
         if (r.resultCode == RESULT_OK) InAppFilePicker.pickedFile(r.data)?.let { importLossless(it) }
@@ -222,7 +232,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     private var fexPreset by mutableStateOf("")
     private var suspendPolicy by mutableStateOf(SessionPrefs.SUSPEND_MANUAL)
     private var oscMode by mutableStateOf(SessionPrefs.OSC_AUTO)
-    private var shapeMode by mutableStateOf(SessionPrefs.SHAPE_AUTO)
+    private var onScreenButtonsVisible by mutableStateOf(false)
     private var secondScreenMode by mutableStateOf(SessionState.secondScreenMode)
     private var secondScreenDisplays by mutableStateOf<List<SecondScreenDisplay>>(emptyList())
     private var selectedSecondScreenDisplay by mutableStateOf(SessionState.secondScreenDisplay)
@@ -468,11 +478,12 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                     hudOn = hudOn,
                     fillScreen = if (SessionState.mode == SessionService.MODE_STEAM) fillScreen else null,
                     upscaler = upscaler, upscaleSharpness = upscaleSharpness,
+                    effects = effects, textureAnisotropy = textureAnisotropy, textureLodBias = textureLodBias,
                     frameGen = frameGen,
                     lossless = lossless,
-                    oscMode = oscMode, suspendPolicy = suspendPolicy, touchMode = touchMode,
+                    oscMode = oscMode, onScreenButtonsVisible = onScreenButtonsVisible, suspendPolicy = suspendPolicy, touchMode = touchMode,
                     touchAuto = if (usingTouchpad()) "touchpad" else "direct",
-                    shapeMode = shapeMode, fexPreset = fexPreset,
+                    fexPreset = fexPreset,
                     secondScreenMode = secondScreenMode,
                     secondScreenDisplays = secondScreenDisplays,
                     selectedSecondScreenDisplay = selectedSecondScreenDisplay,
@@ -481,11 +492,19 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                     onUpscaler = { m ->
                         SessionPrefs.setUpscaler(this@SessionActivity, m); upscaler = m
                         WaylandCompositor.nativeSetUpscaler(m)
+                        // Two Looks carry a scaling mode of their own, so the mode decides which one the log names.
+                        WaylandCompositor.nativeSetLookName(ScreenEffectLooks.match(effects, m)?.name)
                     },
                     onUpscaleSharpness = { pct ->
                         SessionPrefs.setUpscaleSharpness(this@SessionActivity, pct); upscaleSharpness = pct
                         WaylandCompositor.nativeSetUpscaleSharpness(pct)
                     },
+                    onEffects = { e ->
+                        SessionPrefs.setScreenEffects(this@SessionActivity, e); effects = e
+                        e.push(upscaler)
+                    },
+                    onTextureAnisotropy = { v -> SessionPrefs.setTextureAnisotropy(this@SessionActivity, v); textureAnisotropy = v },
+                    onTextureLodBias = { v -> SessionPrefs.setTextureLodBias(this@SessionActivity, v); textureLodBias = v },
                     onFrameGenPick = { mode ->
                         FrameGen.set(this@SessionActivity, mode)
                         readPrefs()
@@ -516,7 +535,6 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                         SessionService.suspendPolicyChanged(this@SessionActivity)
                     },
                     onTouch = { v -> SessionPrefs.setTouchMode(this@SessionActivity, v); readPrefs() },
-                    onShape = { v -> SessionPrefs.setShapeMode(this@SessionActivity, v); readPrefs() },
                     onFexPreset = { v -> SessionPrefs.setFexPreset(this@SessionActivity, v); readPrefs() },
                     onSecondScreenMode = ::selectSecondScreenMode,
                     onSecondScreenDisplay = ::selectSecondScreenDisplay,
@@ -726,6 +744,9 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         fillScreen = SessionPrefs.forceFullscreen(this)
         upscaler = SessionPrefs.upscaler(this)
         upscaleSharpness = SessionPrefs.upscaleSharpness(this)
+        effects = SessionPrefs.screenEffects(this)
+        textureAnisotropy = SessionPrefs.textureAnisotropy(this)
+        textureLodBias = SessionPrefs.textureLodBias(this)
         val nextTouchMode = SessionPrefs.touchMode(this)
         if (touchMode != nextTouchMode) {
             if (::touchpad.isInitialized) touchpad.cancel()
@@ -742,7 +763,6 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         fexPreset = SessionPrefs.fexPreset(this)
         suspendPolicy = SessionPrefs.suspendPolicy(this, SessionState.mode)
         oscMode = SessionPrefs.oscMode(this)
-        shapeMode = SessionPrefs.shapeMode(this)
         backActionsInverted = SessionPrefs.backActionsInverted(this)
     }
 
@@ -890,11 +910,20 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         val size = if (SessionState.running) SessionState.outputSize else outputSize()
         SessionState.outputSize = size
         if (!SessionState.running) SessionState.refreshHz = refreshHz()
+        // How far the panel enlarges the session, for texture sharpness "Auto" (TextureFiltering):
+        // the game environment is published again so the next launch derives it from this session.
+        val panel = panelBounds()
+        SessionState.upscaleRatio = maxOf(panel.width(), panel.height()).toFloat() / maxOf(size.first, size.second).coerceAtLeast(1)
+        Thread({
+            runCatching { GameEnvironmentStore.publish(this) }
+                .onFailure { Log.e(TAG, "Could not update game environment", it) }
+        }, "game-env-publish").start()
         // Letterbox, never stretch or crop: the output can be a different shape from the panel,
         // and a game's picture must keep its proportions with bars, not lose its edges.
         WaylandCompositor.nativeSetScaleMode(SCALE_FIT, ALIGN_CENTER)
         WaylandCompositor.nativeSetUpscaler(SessionPrefs.upscaler(this))
         WaylandCompositor.nativeSetUpscaleSharpness(SessionPrefs.upscaleSharpness(this))
+        SessionPrefs.screenEffects(this).push(SessionPrefs.upscaler(this))
         // The session's folder, claimed here because the compositor starts before the service and
         // opens its log once. The compositor reads the path from its environment; setting it after
         // it has started changes nothing, which is why the service copies the file in at teardown.
@@ -922,7 +951,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
             val on = wanted && probe.reason == null
             SessionState.hdr = on
             if (on) {
-                try { android.system.Os.setenv("BANNER_WAYLAND_HDR", "1", true) } catch (e: Exception) { Log.w(TAG, "BANNER_WAYLAND_HDR", e) }
+                try { android.system.Os.setenv("DROIDDECK_WAYLAND_HDR", "1", true) } catch (e: Exception) { Log.w(TAG, "DROIDDECK_WAYLAND_HDR", e) }
                 WaylandCompositor.nativeSetZeroCopy(true)
             }
             WaylandCompositor.nativeSetHdrRequest(
@@ -978,48 +1007,26 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
      * The size the session renders at. gamescope is told this and scales its output onto whatever
      * the panel is, so a 1440p phone can run the client at 1080p without the client knowing.
      */
+    /** The panel, not the window: resources.displayMetrics is what is left after the system bars and the cutout are taken out. */
+    private fun panelBounds(): android.graphics.Rect = if (Build.VERSION.SDK_INT >= 30) {
+        windowManager.maximumWindowMetrics.bounds
+    } else {
+        val metrics = android.util.DisplayMetrics()
+        @Suppress("DEPRECATION")
+        windowManager.defaultDisplay.getRealMetrics(metrics)
+        android.graphics.Rect(0, 0, metrics.widthPixels, metrics.heightPixels)
+    }
+
     private fun outputSize(): Pair<Int, Int> {
-        // The panel, not the window: resources.displayMetrics is what is left after the system
-        // bars and the cutout are taken out.
-        val bounds = if (Build.VERSION.SDK_INT >= 30) {
-            windowManager.maximumWindowMetrics.bounds
-        } else {
-            val metrics = android.util.DisplayMetrics()
-            @Suppress("DEPRECATION")
-            windowManager.defaultDisplay.getRealMetrics(metrics)
-            android.graphics.Rect(0, 0, metrics.widthPixels, metrics.heightPixels)
-        }
-        val panelW = maxOf(bounds.width(), bounds.height()).toFloat()
-        val panelH = minOf(bounds.width(), bounds.height()).toFloat()
-        // Never narrower than 16:9. A foldable's inner panel is nearly square, and a game handed a
-        // square display draws for the frame it was made for and cuts the sides off itself.
-        // Wider than 16:9 is fine - games and the client cope with a phone's 20:9 - so the
-        // panel's aspect is kept above that, unless the user pinned 16:9 for a foldable, and the
-        // compositor letterboxes onto a squarer panel.
-        // "Match screen" drops that floor, for a 4:3 or 3:2 handheld whose games should
-        // fill it.
-        val aspect = when (SessionPrefs.shapeMode(this)) {
-            SessionPrefs.SHAPE_WIDE -> 16f / 9f
-            SessionPrefs.SHAPE_EXACT -> panelW / panelH
-            else -> maxOf(panelW / panelH, 16f / 9f)
-        }
-        // 720 tall at most by default, client and desktop alike: the client's CEF is the heaviest
-        // thing in the session, and pixels above that cost frames for nothing anyone can see on a
-        // handheld panel. The mode's settings (the cog beside Play / Desktop) can change
-        // the cap or lift it to the panel.
         val mode = SessionPrefs.prefMode(intent.getStringExtra(SessionService.EXTRA_MODE) ?: SessionService.MODE_STEAM)
-        // A custom resolution is taken as given; the compositor fits it to the panel.
-        SessionPrefs.customResolution(this, mode)?.let { return it }
-        // An emulator whose frames cost next to nothing (Library.drawsAtPanel) gets the panel,
-        // unless the user chose a resolution for the mode.
+        val panel = com.droiddeck.launcher.session.SessionDisplay.panelSize(this)
         val program = intent.getStringExtra(SessionService.EXTRA_PROGRAM)
-        val cap = if (intent.getStringExtra(SessionService.EXTRA_MODE) == SessionService.MODE_RUN &&
-            Library.drawsAtPanel(program) && !SessionPrefs.resolutionChosen(this, mode)) 0
-        else SessionPrefs.resolutionCap(this, mode)
-        val height = (if (cap <= 0) panelH else minOf(panelH, cap.toFloat())).toInt()
-        val width = (height * aspect).toInt()
-        // Odd sizes upset the scaler; both dimensions even is what every mode here would be.
-        return Pair(width and 1.inv(), height and 1.inv())
+        // Lightweight emulators keep their panel-sized default until a resolution is chosen.
+        val choice = if (intent.getStringExtra(SessionService.EXTRA_MODE) == SessionService.MODE_RUN &&
+            Library.drawsAtPanel(program) && !SessionPrefs.resolutionChosen(this, mode))
+            com.droiddeck.launcher.session.SessionDisplay.MATCH_SCREEN
+        else SessionPrefs.resolutionChoice(this, mode, panel)
+        return com.droiddeck.launcher.session.SessionDisplay.resolveChoice(panel, choice)
     }
 
     /**
@@ -1132,8 +1139,8 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         }, "session-end-hint").start()
     }
 
-    private fun showEnded(status: Int, hint: String?) {
-        if (status == 0) {
+    private fun showEnded(status: Int, hint: EndHint?) {
+        if (status == 0 && hint?.evenOnSuccess != true) {
             finish()
             return
         }
@@ -1144,7 +1151,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
             else -> "Steam"
         }
         loading.showEnded(
-            hint ?: getString(R.string.session_ended_unexpectedly, what),
+            hint?.text ?: getString(R.string.session_ended_unexpectedly, what),
             getString(R.string.session_exit_status, status, SessionState.logFile?.path ?: getString(R.string.session_no_log)),
         )
         focusEndedScreen()
@@ -1172,10 +1179,13 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
      * FEX) on some devices (a Fold 5, twice). The switch that answers it is in Performance, and a
      * user who never opens the log would not know.
      */
-    private fun sessionEndHint(log: File?): String? {
+    private class EndHint(val text: String, val evenOnSuccess: Boolean = false)
+
+    private fun sessionEndHint(log: File?): EndHint? {
         if (log == null || !log.isFile) return null
         return try {
             var enosys = 0
+            var fexMissing = false
             // The tail is where a dying session says why; 512 KB covers the storm without reading a 1 GB log.
             val size = log.length()
             java.io.RandomAccessFile(log, "r").use { f ->
@@ -1185,11 +1195,15 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                 f.readFully(bytes)
                 String(bytes, Charsets.ISO_8859_1).lineSequence().forEach { line ->
                     if (line.contains("Function not implemented")) enosys++
+                    if (line.contains(FEX_MISSING)) fexMissing = true
                 }
             }
-            if (enosys >= 8) {
-                "The log shows $enosys \"Function not implemented\" errors: proot's seccomp acceleration is failing a helper on this device. " +
-                    "Try Performance \u2192 \"Run proot without seccomp\" (or \"Skip Steam's xalia helper\") and start again."
+            if (fexMissing) {
+                val what = com.droiddeck.launcher.frontend.Library.nameForProgram(SessionState.program) ?: getString(R.string.session_end_program)
+                EndHint(getString(R.string.session_end_fex_missing, what), evenOnSuccess = true)
+            } else if (enosys >= 8) {
+                EndHint("The log shows $enosys \"Function not implemented\" errors: proot's seccomp acceleration is failing a helper on this device. " +
+                    "Try Performance \u2192 \"Run proot without seccomp\" (or \"Skip Steam's xalia helper\") and start again.")
             } else null
         } catch (e: Exception) {
             null
@@ -1230,7 +1244,8 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         if (drawerOpen) {
             if (fromController && (event.keyCode == KeyEvent.KEYCODE_BUTTON_L1 || event.keyCode == KeyEvent.KEYCODE_BUTTON_R1)) {
                 if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
-                    drawerPage = (drawerPage + if (event.keyCode == KeyEvent.KEYCODE_BUTTON_R1) 1 else DRAWER_PAGES - 1) % DRAWER_PAGES
+                    drawerPage = sessionDrawerPages(SessionState.mode == SessionService.MODE_STEAM && secondScreenDisplays.isNotEmpty())
+                        .step(drawerPage, if (event.keyCode == KeyEvent.KEYCODE_BUTTON_R1) 1 else -1)
                     releaseDrawerDirection()
                 }
                 return true
@@ -1683,6 +1698,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
             ?: SessionPrefs.oscMode(this)
         val controls = onScreenControls ?: return
         if (pipUi) {
+            onScreenButtonsVisible = false
             controls.releaseAll()
             controls.visibility = View.GONE
             return
@@ -1698,6 +1714,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
             // started from the rail, or Steam, gets it; the drawer turns it on anywhere.
             else -> !PadBridge.anyControllerConnected() && SessionState.mode != SessionService.MODE_DESKTOP
         }
+        onScreenButtonsVisible = show
         if (show == (controls.visibility == View.VISIBLE)) return
         if (!show) controls.releaseAll()
         controls.visibility = if (show) View.VISIBLE else View.GONE
@@ -1902,6 +1919,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     private val endListener: (Int) -> Unit = { status -> onSessionEnded(status) }
     private val firstFrameListener = Runnable {
         SessionEvents.firstFrame()
+        if (SessionState.mode == SessionService.MODE_STEAM) SteamRepair.clientShown(this)
         runOnUiThread {
             loading.visible = false
             hud.start()
@@ -1974,6 +1992,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         /** How long the leaving flood may take before the session closes without it. */
         private const val LEAVE_TIMEOUT_MS = 1_500L
         private const val TAG = "SessionActivity"
+        private const val FEX_MISSING = "droiddeck-fex: x86 Linux programs need"
         private const val UNBUFFERED_SOURCES = InputDevice.SOURCE_CLASS_JOYSTICK or InputDevice.SOURCE_CLASS_TRACKBALL or InputDevice.SOURCE_CLASS_POSITION
         private const val CURSOR_PAD_HOLD_MS = 1200L
         private const val DRAWER_HAT_THRESHOLD = 0.5f

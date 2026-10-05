@@ -16,7 +16,13 @@ git fetch origin
 git switch zh-CN
 ```
 
-## 更新上游
+## 跟随预览版
+
+后续中文分支以 `Droid-Deck/DroidDeck-CI` 的 `catalog.json` 中已发布的 `preview.commit` 为同步目标，不跟随尚未发布的 main 提交或 PR 测试构建。2026-10-05 已同步至 `main-eaa4a7a`（`eaa4a7a0472abc211364c3286f78dd9c48c463e1`），补齐 92 项新增中文资源，并迁移简体中文目录到 `values-zh-rCN`。
+
+中文版升级保持包名 `com.droiddeck.launcher.zh`、应用名和现有签名，保留默认中文及 Linux 字体挂载。官方预览 APK 仅作为对应提交的原生载荷来源，不直接替代中文版；复用前校验官方 SHA-256、签名及脚本一致性，原生文件必须与此次预览提交匹配。当前预览原始 APK 的 SHA-256 为 `2a6980a2c9a379feadc75d367252f7cbab6625bd77e3d597562222caa229ca38`。
+
+## 手动更新上游
 
 先提交或暂存本地工作，确保工作区干净，再执行：
 
@@ -27,7 +33,7 @@ git pull --ff-only origin main
 git merge --ff-only upstream/main
 git push origin main
 git switch zh-CN
-git merge main
+git merge <catalog-preview-commit>
 python -m unittest tools.tests.test_localization
 git push origin zh-CN
 ```
@@ -38,7 +44,7 @@ git push origin zh-CN
 
 ## 翻译约定与检查
 
-- 保留上游已有的 `values-zh/strings.xml`。新增遗漏提示先从 Kotlin 代码提取为英文默认资源，再在 `values-zh/strings_localization.xml` 添加中文译文。
+- 保留上游已有的 `values-zh-rCN/strings.xml`。新增遗漏提示先从 Kotlin 代码提取为英文默认资源，再在 `values-zh-rCN/strings_localization.xml` 添加中文译文。
 - Compose 中使用 `stringResource`，回调、服务等非 Compose 上下文使用 `Context.getString`。不要在代码中按语言判断或硬编码中文。
 - 本 fork 通过 `AppLanguage.wrap` 将应用、Activity 和 Service 的资源上下文设为简体中文，独立于系统语言。新增入口组件也需在 `attachBaseContext` 中使用它。只覆盖语言，不覆盖屏幕方向、密度或主题。
 - 保留格式参数（如 `%1$s`、`%2$d`）、换行和文件路径；动态数量和文件名通过参数传入。
