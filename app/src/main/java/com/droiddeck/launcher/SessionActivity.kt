@@ -165,6 +165,21 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     private val cursorBuf = IntArray(WaylandCompositor.CURSOR_BUF_INTS)
     private var cursorSerial = 0
     private var clientHidesCursor = false
+    /**
+     * A program holds a pointer lock (zwp_locked_pointer_v1: a mouse-look game, through gamescope).
+     * While it does, a physical mouse is captured and its raw deltas go to the program as relative
+     * motion. Without capture the deltas are worked out from Android's pointer position, which stops
+     * at the screen edge, and so did the camera (#153).
+     */
+    private var pointerLocked = false
+    private val pointerLockListener = WaylandCompositor.PointerLockListener { locked, _, _ ->
+        uiHandler.post {
+            if (pointerLocked == locked) return@post
+            pointerLocked = locked
+            Log.i(TAG, "pointer lock " + if (locked) "taken by a program" else "released")
+            updatePointerCapture()
+        }
+    }
     private var cursorImage by mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null)
     private var cursorHotX by mutableStateOf(0)
     private var cursorHotY by mutableStateOf(0)
@@ -274,10 +289,12 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         override fun onInputDeviceAdded(deviceId: Int) {
             logInputDevice("connected", deviceId)
             updateOnScreenControls()
+            updatePointerCapture()
         }
         override fun onInputDeviceRemoved(deviceId: Int) {
             Log.i(TAG, "input device $deviceId disconnected")
             updateOnScreenControls()
+            updatePointerCapture()
         }
         override fun onInputDeviceChanged(deviceId: Int) = updateOnScreenControls()
     }
@@ -328,7 +345,16 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         // below) and the session starts when it is in.
         if (!LinuxRuntime.isInstalled(this)) Log.i(TAG, "the Linux runtime is not installed; the loading screen installs it")
 
-        val root = FrameLayout(this)
+        // Captured mouse events go down the focus chain, and focus sits somewhere in the overlay:
+        // the root sees every one of them whichever view that is.
+        val root = object : FrameLayout(this) {
+            override fun dispatchCapturedPointerEvent(event: MotionEvent): Boolean =
+                onCapturedPointer(event) || super.dispatchCapturedPointerEvent(event)
+            override fun dispatchPointerCaptureChanged(hasCapture: Boolean) {
+                super.dispatchPointerCaptureChanged(hasCapture)
+                Log.i(TAG, "pointer capture " + if (hasCapture) "on" else "off")
+            }
+        }
         surfaceView = SurfaceView(this)
         surfaceView.holder.addCallback(this)
         root.addView(surfaceView)
@@ -391,6 +417,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
 
         updateOnScreenControls()
         WaylandCompositor.setFirstFrameListener(firstFrameListener)
+        WaylandCompositor.setPointerLockListener(pointerLockListener)
         SessionEvents.markReadyIfPossible()
         SessionState.endListener = endListener
         // A single Back opens the session menu; two quick presses/swipes send the Steam QAM chord.
@@ -421,6 +448,8 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         // this full-screen host and remain as a white veil after the drawer closes.
         defaultFocusHighlightEnabled = false
         setContent {
+            // The drawer, the PC keyboard and picture in picture take the mouse back.
+            androidx.compose.runtime.LaunchedEffect(drawerOpen, pcKeyboardOpen, pipUi) { updatePointerCapture() }
             DroidDeckTheme {
             if (pipUi) {
                 if (SessionState.suspended) androidx.compose.foundation.layout.Box(
@@ -1121,6 +1150,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                 // the request landed in this instance's onNewIntent and went with its finish().
                 SessionState.relaunch?.let { next ->
                     SessionState.relaunch = null
+                    next.putExtra(EXTRA_RETURN_HOME, intent.getBooleanExtra(EXTRA_RETURN_HOME, false))
                     setIntent(next)
                     recreate()
                     return@runOnUiThread
@@ -1331,6 +1361,10 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         if (event.isFromSource(android.view.InputDevice.SOURCE_MOUSE) && !drawerOpen && onMouse(event)) return true
         return super.dispatchGenericMotionEvent(event)
     }
+
+    /** With no view focused, captured mouse events skip the root and arrive here as trackball events. */
+    override fun dispatchTrackballEvent(event: MotionEvent): Boolean =
+        onCapturedPointer(event) || super.dispatchTrackballEvent(event)
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         if (pipUi) return true
@@ -1682,6 +1716,55 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         return true
     }
 
+    /** A physical mouse, not a touchscreen, stylus or the system's own virtual devices. */
+    private fun mouseAttached(): Boolean = InputDevice.getDeviceIds().any { id ->
+        val d = InputDevice.getDevice(id)
+        d != null && !d.isVirtual && d.supportsSource(InputDevice.SOURCE_MOUSE)
+    }
+
+    /** Capture the mouse exactly while a program holds a lock and the session has the mouse. */
+    private fun updatePointerCapture() {
+        if (!::surfaceView.isInitialized) return
+        val view = window.decorView
+        val want = pointerLocked && resumed && hasWindowFocus() && !drawerOpen && !pcKeyboardOpen && !pipUi && mouseAttached()
+        if (want == view.hasPointerCapture()) return
+        if (want) view.requestPointerCapture() else view.releasePointerCapture()
+    }
+
+    /**
+     * A captured mouse: raw motion as relative pointer deltas, buttons and the wheel as on the
+     * uncaptured path. Anything else (a captured touchpad's absolute fingers) is left alone.
+     */
+    private fun onCapturedPointer(event: MotionEvent): Boolean {
+        if (!pointerLocked || !event.isFromSource(InputDevice.SOURCE_MOUSE_RELATIVE)) return false
+        when (event.actionMasked) {
+            MotionEvent.ACTION_MOVE -> {
+                var dx = event.x
+                var dy = event.y
+                for (i in 0 until event.historySize) {
+                    dx += event.getHistoricalX(i)
+                    dy += event.getHistoricalY(i)
+                }
+                WaylandCompositor.sendPointerDelta(dx, dy)
+            }
+            MotionEvent.ACTION_BUTTON_PRESS, MotionEvent.ACTION_BUTTON_RELEASE -> {
+                val button = when (event.actionButton) {
+                    MotionEvent.BUTTON_SECONDARY -> PointerGestures.BTN_RIGHT
+                    MotionEvent.BUTTON_TERTIARY -> PointerGestures.BTN_MIDDLE
+                    else -> PointerGestures.BTN_LEFT
+                }
+                WaylandCompositor.nativeSendSceneInput(3, button, if (event.actionMasked == MotionEvent.ACTION_BUTTON_PRESS) 1 else 0)
+            }
+            MotionEvent.ACTION_SCROLL -> {
+                val v = event.getAxisValue(MotionEvent.AXIS_VSCROLL)
+                if (v != 0f) WaylandCompositor.nativeSendSceneInput(4, -Math.round(v), 0)
+            }
+            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP -> {} // the BUTTON_* events carry these
+            else -> return false
+        }
+        return true
+    }
+
     /** The mode decides which controls appear; `droiddeck-osc` in Downloads still overrides. */
     /** Which controller the session has, so a pad report says what was plugged in and when. */
     private fun logInputDevice(what: String, deviceId: Int) {
@@ -1829,6 +1912,8 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
             recreate()
             return
         }
+        // Home/notification resumes must retain the external frontend's return destination.
+        if (this.intent.getBooleanExtra(EXTRA_RETURN_HOME, false)) intent.putExtra(EXTRA_RETURN_HOME, true)
         setIntent(intent)
         if (intent.action == SessionService.ACTION_HOME_GUIDE) {
             handleHomeGuideIntent(intent)
@@ -1853,6 +1938,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         controllerSettings = ControllerPrefs.read(this)
         updateOnScreenControls()
         resumed = true
+        updatePointerCapture()
         if (!pipUi) sessionClipboard.start()
         updatePadMotion()
         readPrefs()
@@ -1872,6 +1958,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         // A button held when the app goes away would stay held in the ring for the whole session.
         onScreenControls?.releaseAll()
         resumed = false
+        updatePointerCapture()
         updatePadMotion()
         keyboard?.takeIf { it.shown }?.hide()
         super.onPause()
@@ -1892,6 +1979,8 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
             goFullscreen()
             refreshClipboard()
         }
+        // Android drops a capture with the focus; a lock still held takes it again on return.
+        updatePointerCapture()
     }
 
     /** The keyboard/trackpad presentation can own focus instead of the main display. */
@@ -1942,6 +2031,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         if (SessionState.deckPadListener === deckPadListener) SessionState.deckPadListener = null
         if (SessionState.endListener === endListener) SessionState.endListener = null
         WaylandCompositor.clearFirstFrameListener(firstFrameListener)
+        WaylandCompositor.clearPointerLockListener(pointerLockListener)
         super.onDestroy()
     }
 
@@ -1964,6 +2054,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
      * off, it just closes.
      */
     override fun finish() {
+        if (isFinishing) return
         if (!quitFlooded && !closeAtOnce && com.droiddeck.launcher.ui.Motion.scale != 0f &&
             lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
             if (!leaving) {
@@ -1974,6 +2065,12 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
             return
         }
         super.finish()
+        if (!closeAtOnce && intent.getBooleanExtra(EXTRA_RETURN_HOME, false)) {
+            com.droiddeck.launcher.ui.QuitFlood.take()
+            com.droiddeck.launcher.ui.LaunchOrigin.flooding = null
+            startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
         if (quitFlooded) overridePendingTransition(0, 0)
         else overridePendingTransition(R.anim.session_hold, R.anim.session_sink)
     }
@@ -1989,6 +2086,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     }
 
     companion object {
+        const val EXTRA_RETURN_HOME = "returnHome"
         /** How long the leaving flood may take before the session closes without it. */
         private const val LEAVE_TIMEOUT_MS = 1_500L
         private const val TAG = "SessionActivity"

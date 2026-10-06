@@ -8,6 +8,7 @@ import org.json.JSONObject
 /** The in-session switches: the HUD and how the on-screen controls decide to appear. */
 object SessionPrefs {
     const val SUSPEND_AUTO = "auto"
+    const val SUSPEND_NATIVE = "native"
     const val SUSPEND_MANUAL = "manual"
     const val SUSPEND_NEVER = "never"
 
@@ -168,9 +169,12 @@ object SessionPrefs {
      * Steam only: gamescope makes every game window the size of the screen. A game that resizes
      * its own window when it loses focus (FlatOut) otherwise comes back smaller, drawn in a
      * corner; a game that sets its own resolution and never looks at its window again (Quake 3)
-     * instead draws small in the bottom-left of the stretched one. On unless turned off.
+     * instead draws small in the bottom-left of the stretched one. A game whose resolution differs
+     * from the screen's (DiRT 3 at 1280x720) fights it: it rebuilds its swapchain on every forced
+     * resize and the picture flickers between its own size and the screen's, often from the first
+     * menu, before the player can reach its resolution setting. Off unless turned on.
      */
-    fun forceFullscreen(context: Context): Boolean = prefs(context).getBoolean("forceFullscreen", true)
+    fun forceFullscreen(context: Context): Boolean = prefs(context).getBoolean("forceFullscreen", false)
 
     fun setForceFullscreen(context: Context, on: Boolean) {
         prefs(context).edit().putBoolean("forceFullscreen", on).apply()
@@ -757,11 +761,14 @@ object SessionPrefs {
 
     fun suspendPolicy(context: Context, mode: String): String =
         prefs(context).getString("suspendPolicy.${prefMode(mode)}", SUSPEND_MANUAL)
-            ?.takeIf { it == SUSPEND_AUTO || it == SUSPEND_MANUAL || it == SUSPEND_NEVER }
+            ?.takeIf { it in setOf(SUSPEND_AUTO, SUSPEND_NATIVE, SUSPEND_MANUAL, SUSPEND_NEVER) }
+            // Direct games share Steam's settings but have no Steam client to prepare.
+            ?.let { if (it == SUSPEND_NATIVE && mode != SessionService.MODE_STEAM) SUSPEND_AUTO else it }
             ?: SUSPEND_MANUAL
 
     fun setSuspendPolicy(context: Context, mode: String, policy: String) {
-        val normalized = policy.takeIf { it == SUSPEND_AUTO || it == SUSPEND_MANUAL || it == SUSPEND_NEVER }
+        val normalized = policy.takeIf { it in setOf(SUSPEND_AUTO, SUSPEND_MANUAL, SUSPEND_NEVER) ||
+            (it == SUSPEND_NATIVE && mode == SessionService.MODE_STEAM) }
             ?: SUSPEND_MANUAL
         prefs(context).edit().putString("suspendPolicy.${prefMode(mode)}", normalized).apply()
     }
