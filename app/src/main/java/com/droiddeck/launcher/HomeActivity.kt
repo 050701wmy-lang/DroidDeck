@@ -8,7 +8,8 @@ import com.droiddeck.launcher.session.SessionService
 /** Receives the system Home launch and routes it without consuming KEYCODE_HOME. */
 class HomeActivity : Activity() {
     override fun attachBaseContext(newBase: android.content.Context) {
-        super.attachBaseContext(com.droiddeck.launcher.AppLanguage.wrap(newBase))
+        super.attachBaseContext(newBase)
+        com.droiddeck.launcher.core.AppLanguage.applyTo(this, newBase)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

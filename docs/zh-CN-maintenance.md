@@ -18,9 +18,11 @@ git switch zh-CN
 
 ## 跟随预览版
 
+2026-10-07 同步至 `main-ef38c97`（`ef38c975b994bb131eb327454c836c0ea84efd20`）。语言入口改为复用上游 `core.AppLanguage`，未选择语言时默认简体中文，用户仍可通过设置切换语言；Steam 跟随应用语言。上游已提供系统字体挂载及 fontconfig 配置，复用该修复并保留 OEM、下载字体目录挂载。保留 Albion ICU 修复，并合并新的 Windows 组件和 SSBS 启动逻辑。
+
 后续中文分支以 `Droid-Deck/DroidDeck-CI` 的 `catalog.json` 中已发布的 `preview.commit` 为同步目标，不跟随尚未发布的 main 提交或 PR 测试构建。2026-10-05 已同步至 `main-eaa4a7a`（`eaa4a7a0472abc211364c3286f78dd9c48c463e1`），补齐 92 项新增中文资源，并迁移简体中文目录到 `values-zh-rCN`。
 
-中文版升级保持包名 `com.droiddeck.launcher.zh`、应用名和现有签名，保留默认中文及 Linux 字体挂载。官方预览 APK 仅作为对应提交的原生载荷来源，不直接替代中文版；复用前校验官方 SHA-256、签名及脚本一致性，原生文件必须与此次预览提交匹配。当前预览原始 APK 的 SHA-256 为 `2a6980a2c9a379feadc75d367252f7cbab6625bd77e3d597562222caa229ca38`。
+中文版升级保持包名 `com.droiddeck.launcher.zh`、应用名和现有签名，保留默认中文及 Linux 字体挂载。官方预览 APK 仅作为对应提交的原生载荷来源，不直接替代中文版；复用前校验官方 SHA-256、签名及脚本一致性，原生文件必须与此次预览提交匹配。历史预览 `main-eaa4a7a` 原始 APK 的 SHA-256 为 `2a6980a2c9a379feadc75d367252f7cbab6625bd77e3d597562222caa229ca38`。
 
 ## 手动更新上游
 
@@ -46,7 +48,7 @@ git push origin zh-CN
 
 - 保留上游已有的 `values-zh-rCN/strings.xml`。新增遗漏提示先从 Kotlin 代码提取为英文默认资源，再在 `values-zh-rCN/strings_localization.xml` 添加中文译文。
 - Compose 中使用 `stringResource`，回调、服务等非 Compose 上下文使用 `Context.getString`。不要在代码中按语言判断或硬编码中文。
-- 本 fork 通过 `AppLanguage.wrap` 将应用、Activity 和 Service 的资源上下文设为简体中文，独立于系统语言。新增入口组件也需在 `attachBaseContext` 中使用它。只覆盖语言，不覆盖屏幕方向、密度或主题。
+- 本 fork 复用 `core.AppLanguage`，通过 `chosen` 的默认值设为简体中文；用户显式选择其他语言或系统默认后尊重其选择。Application/Service 使用 `wrap`，Activity 按上游方式使用 `applyTo`。新增入口应遵循上游语言配置，避免重复包装上下文。
 - 保留格式参数（如 `%1$s`、`%2$d`）、换行和文件路径；动态数量和文件名通过参数传入。
 - 上游若新增或删除资源，运行检查并补齐中文；上游若已提取同一文本，优先复用其资源，移除本分支重复项。
 
@@ -58,6 +60,6 @@ python -m unittest tools.tests.test_localization
 
 ## 发布与更新器
 
-Steam 大屏幕模式的中文由 Linux 的 fontconfig/CEF 渲染，与 Android 应用资源语言无关。`LinuxRuntime.binds` 将手机可读的 Android 字体目录挂载到客体的 `/usr/share/fonts/android-*`，让 Linux 使用手机已有的中文字体作为回退，不替换运行环境的原有字体。此修复在每次启动会话时生效，已安装的运行环境无需重装；更新 APK 后完整退出 Steam 会话并重新启动。设备验证时可用 `fc-list :lang=zh-cn` 检查中文字体，再检查 Steam 设置与游戏库中的汉字。
+Steam 大屏幕模式的中文由 Linux 的 fontconfig/CEF 渲染，与 Android 应用资源语言无关。上游 `LinuxRuntime.bindSystemFonts` 将系统字体挂载到 `/usr/local/share/fonts/android`，并通过会话 fontconfig 配置启用；本分支还在 `LinuxRuntime.binds` 中将可读的额外字体目录挂载到 `/usr/share/fonts/android-*`，让 Linux 使用手机已有的中文字体作为回退，不替换运行环境的原有字体。此修复在每次启动会话时生效，已安装的运行环境无需重装；更新 APK 后完整退出 Steam 会话并重新启动。设备验证时可用 `fc-list :lang=zh-cn` 检查中文字体，再检查 Steam 设置与游戏库中的汉字。
 
 Fork 不会自动继承上游的 Release、签名密钥或 Actions secrets。首次启用 Actions 前，应核对 `.github/workflows/` 中的构建、发布和定时任务；本次适配没有启用定时任务。上游更新器继续使用上游来源，安装上游 APK 可能覆盖中文分支新增内容；维护 fork 发布渠道时需要另行配置和验证签名、版本及更新索引。

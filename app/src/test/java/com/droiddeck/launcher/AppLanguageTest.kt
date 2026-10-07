@@ -1,5 +1,6 @@
 package com.droiddeck.launcher
 
+import com.droiddeck.launcher.core.AppLanguage
 import android.app.Application
 import android.content.res.Configuration
 import android.os.LocaleList
@@ -17,6 +18,7 @@ import org.robolectric.annotation.Config
 class AppLanguageTest {
     @Test fun englishDeviceGetsChineseWithoutChangingItsDisplayConfiguration() {
         val base = RuntimeEnvironment.getApplication<Application>()
+        base.getSharedPreferences("language", 0).edit().clear().commit()
         val localized = AppLanguage.wrap(base)
         assertEquals(Locale.SIMPLIFIED_CHINESE, localized.resources.configuration.locales[0])
         assertEquals("取消", localized.getString(android.R.string.cancel))
@@ -31,6 +33,7 @@ class AppLanguageTest {
         val changed = base.createConfigurationContext(Configuration().apply {
             setLocales(LocaleList(Locale.forLanguageTag("es-ES")))
         })
+        base.getSharedPreferences("language", 0).edit().clear().commit()
         val localized = AppLanguage.wrap(changed)
         assertEquals("取消", localized.getString(android.R.string.cancel))
         assertEquals(Locale.SIMPLIFIED_CHINESE, localized.resources.configuration.locales[0])

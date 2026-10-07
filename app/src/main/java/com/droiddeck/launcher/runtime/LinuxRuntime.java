@@ -42,6 +42,8 @@ public final class LinuxRuntime {
      * session ended at once. A long host path behind it is proot's to shorten.
      */
     public static final String GUEST_RUNTIME_DIR = "/run/droiddeck";
+    private static final String SYSTEM_FONTS = "/system/fonts";
+    private static final String GUEST_SYSTEM_FONTS = "/usr/local/share/fonts/android";
     /** Where every Linux session's debug log lands: public, so a user can just hand the folder over. */
     public static final String DEBUG_LOG_DIR = "DroidDeck";
 
@@ -196,10 +198,10 @@ public final class LinuxRuntime {
         bind(cmd, new File(root, "etc/droiddeck/empty").getPath() + ":/sys/fs/selinux");
         bind(cmd, context.getFilesDir().getPath());
         bind(cmd, context.getCacheDir().getPath());
-        // The minimal rootfs only carries Western fonts. Expose Android's fonts beneath
+        // Upstream mounts /system/fonts. Also expose readable OEM and downloaded fonts beneath
         // fontconfig's standard font directory so Steam/CEF can fall back for Chinese and
         // other scripts, including in an already installed runtime. Keep the guest's own fonts.
-        String[] fontDirs = {"/system/fonts", "/product/fonts", "/system_ext/fonts", "/data/fonts/files"};
+        String[] fontDirs = {"/product/fonts", "/system_ext/fonts", "/data/fonts/files"};
         for (int i = 0; i < fontDirs.length; i++) {
             File hostFonts = new File(fontDirs[i]);
             if (!hostFonts.isDirectory() || !hostFonts.canRead()) continue;
@@ -220,6 +222,7 @@ public final class LinuxRuntime {
         File shm = new File(context.getCacheDir(), "shm");
         shm.mkdirs();
         bind(cmd, shm.getPath() + ":/dev/shm");
+        bindSystemFonts(cmd, root);
 
         // Android denies apps these; glibc, Steam and libcap read them at startup.
         File fakeProc = new File(root, "etc/droiddeck/proc");
@@ -476,6 +479,15 @@ public final class LinuxRuntime {
             }
         }
         return byType;
+    }
+
+    private static void bindSystemFonts(List<String> cmd, File root) {
+        File fonts = new File(SYSTEM_FONTS);
+        File target = new File(root, GUEST_SYSTEM_FONTS.substring(1));
+        if (!fonts.isDirectory() || !fonts.canRead() || !new File(root, "usr/local").isDirectory()) return;
+        if (target.isDirectory() || target.mkdirs()) {
+            bind(cmd, SYSTEM_FONTS + ":" + GUEST_SYSTEM_FONTS);
+        }
     }
 
     private static void bind(List<String> cmd, String spec) {

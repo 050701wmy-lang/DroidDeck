@@ -60,9 +60,8 @@ import java.util.UUID
  * The activity comes and goes on top of this; see [com.droiddeck.launcher.wayland.CompositorHost].
  */
 class SessionService : Service() {
-    override fun attachBaseContext(newBase: android.content.Context) {
-        super.attachBaseContext(com.droiddeck.launcher.AppLanguage.wrap(newBase))
-    }
+    override fun attachBaseContext(newBase: android.content.Context) =
+        super.attachBaseContext(com.droiddeck.launcher.core.AppLanguage.wrap(newBase))
 
     private val components = java.util.concurrent.CopyOnWriteArrayList<SessionPart>()
     /** The Steam Deck controller's sysfs binds (SteamDeckPad), when this session has one. */
@@ -313,6 +312,14 @@ class SessionService : Service() {
         // The desktop's Steam launchers start the client there (droiddeck-steam-launch), through the
         // same set-up as a Steam session: it gets what the client and its games are started with.
         val steamHere = SessionState.mode == MODE_STEAM || SessionState.mode == MODE_DESKTOP
+        // Some GPUs need a component Proton does not ship. Apply those before the guest, so the
+        // next game launch copies them into the prefix. A download failure is logged and the
+        // session still starts; the next session tries again.
+        if (steamHere) {
+            runCatching { ComponentsManager.ensureForcedPackages(this) }
+                .onSuccess { if (it != null) Log.i(TAG, it) }
+                .onFailure { Log.w(TAG, "forced components", it) }
+        }
         addClientEnvironment(guest, steamHere)
         // Where the fast path's description of proot's view goes, once the binds are known.
         val fastPathAt = guest.size
@@ -412,6 +419,9 @@ class SessionService : Service() {
                 guest.addAll(fastPathAt, env)
                 shellGuest.addAll(fastPathAt, env)
                 Log.i(TAG, "proot: fast path on (${prootBinds.size} binds)")
+            } ?: run {
+                Log.w(TAG, "proot: fast path off - ${prootBinds.size} binds (it holds ${ProotFastPath.MAX_BINDS}) or a path it cannot be told")
+                null
             }
         } else null
 
@@ -547,6 +557,12 @@ class SessionService : Service() {
         guest.add("PATH=/usr/local/bin:/usr/bin:/bin")
         guest.add("TERM=xterm-256color")
         guest.add("LANG=C.UTF-8")
+        // Steam's interface language: the app's (Setup's choice, or the system's). The system's
+        // region decides between Spain's and Latin American Spanish, which the app has one of.
+        guest.add("BL_STEAM_LANGUAGE=" + SteamLanguage.forLocale(
+            com.droiddeck.launcher.core.AppLanguage.effective(this),
+            com.droiddeck.launcher.core.AppLanguage.system(this).country,
+        ))
         // Without this the session is UTC: the client's clock, its logs and every timestamp in a
         // session bundle sit hours off the device's. Bannerlator carries the same line.
         guest.add("TZ=" + java.util.TimeZone.getDefault().id)
@@ -600,9 +616,7 @@ class SessionService : Service() {
         if (SessionState.mode == MODE_STEAM) guest.add("BL_MANGOAPP=" + (if (SessionPrefs.mangoapp(this)) "1" else "0"))
         if (steamHere) guest.add("BL_STEAM_CHANNEL=" + SessionPrefs.steamChannel(this))
         if (SessionState.mode == MODE_STEAM) {
-            guest.add("BL_GAMESCOPE_FORCE_FULLSCREEN=" + (if (SessionPrefs.forceFullscreen(this)) "1" else "0"))
             guest.add("BL_GAMESCOPE_STRETCH_16X9=" + (if (SessionPrefs.stretch16x9(this)) "1" else "0"))
-            SessionPrefs.writeForceFullscreenFlag(this)
         }
         // Proton's own gate for its xalia helper (its `proton` script reads this, and sets
         // XALIA_SUPPORTED_ONLY itself otherwise). Skipped by default: under FEX it costs every game
@@ -614,6 +628,7 @@ class SessionService : Service() {
         // gamescope's realtime Vulkan queues (the session script turns this into
         // GAMESCOPE_FORCE_VULKAN_REALTIME); off unless the user turns it on.
         guest.add("BL_GAMESCOPE_REALTIME=" + (if (SessionPrefs.gamescopeRealtime(this)) "1" else "0"))
+        guest.add("BANNER_AUDIO_DIRECT_DECAY=0")
         // Anything else, for a device that cannot be reached with a debugger: Downloads/droiddeck-env
         // holds KEY=VALUE lines that go into the session's environment as written, after ours, so a
         // line here wins. Zink and Turnip tunables (ZINK_DESCRIPTORS=lazy, MESA_*), gamescope's,
@@ -803,7 +818,7 @@ class SessionService : Service() {
         val library = GameStorage.effective(this)
         var storageDiagnosticLibrary: File? = null
         if (library != null) {
-            val problem = GameStorage.prepare(library.path)
+            val problem = GameStorage.prepare(this, library.path)
             if (problem == null) {
                 File(LinuxRuntime.rootDir(this), "mnt/droiddeck-sd").mkdirs()
                 // Links, prefixes and Steam entries made before the rename still name the old path.

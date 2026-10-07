@@ -20,9 +20,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 class WirelessAdbPairingService : Service() {
-    override fun attachBaseContext(newBase: android.content.Context) {
-        super.attachBaseContext(com.droiddeck.launcher.AppLanguage.wrap(newBase))
-    }
+    override fun attachBaseContext(newBase: android.content.Context) =
+        super.attachBaseContext(com.droiddeck.launcher.core.AppLanguage.wrap(newBase))
 
     sealed interface Stage {
         data object Idle : Stage
@@ -39,7 +38,7 @@ class WirelessAdbPairingService : Service() {
     private var pairingHost: String? = null
     private var pairingPort: Int? = null
     @Volatile private var working = false
-    private val timeout = Runnable { finish(Stage.Failed(getString(R.string.adb_timeout))) }
+    private val timeout = Runnable { finish(Stage.Failed(getString(R.string.adbpair_timed_out))) }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -79,13 +78,13 @@ class WirelessAdbPairingService : Service() {
             override fun onServiceLost(serviceInfo: NsdServiceInfo) = Unit
             override fun onDiscoveryStopped(serviceType: String) = Unit
             override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
-                main.post { finish(Stage.Failed(getString(R.string.adb_discovery_failed, errorCode))) }
+                main.post { finish(Stage.Failed(getString(R.string.adbpair_discovery_failed_code, errorCode))) }
             }
             override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) = Unit
         }
         runCatching { manager.discoverServices("$PAIRING_TYPE.", NsdManager.PROTOCOL_DNS_SD, listener) }
             .onSuccess { nsd = manager; discovery = listener }
-            .onFailure { finish(Stage.Failed(getString(R.string.adb_discovery_error, it.localizedMessage))) }
+            .onFailure { finish(Stage.Failed(getString(R.string.adbpair_discovery_failed, it.localizedMessage.toString()))) }
     }
 
     private fun resolveListener() = object : NsdManager.ResolveListener {
@@ -111,34 +110,34 @@ class WirelessAdbPairingService : Service() {
             return
         }
         if (code.length != 6) {
-            show(Stage.CodeNeeded(getString(R.string.adb_code_incomplete)))
+            show(Stage.CodeNeeded(getString(R.string.adbpair_six_digits)))
             return
         }
         working = true
-        show(Stage.Working(getString(R.string.adb_pairing)))
+        show(Stage.Working(getString(R.string.adbpair_pairing)))
         Thread({
             val paired = runCatching { kotlinx.coroutines.runBlocking { WirelessAdbFix.pair(this@WirelessAdbPairingService, WirelessAdbFix.LOOPBACK, port, code) } }
             if (paired.isFailure) {
                 main.post {
                     working = false
                     pairingPort = null
-                    show(Stage.CodeNeeded(getString(R.string.adb_code_invalid)))
+                    show(Stage.CodeNeeded(getString(R.string.adbpair_code_rejected)))
                 }
                 return@Thread
             }
             main.post {
                 stopDiscovery()
-                show(Stage.Working(getString(R.string.adb_connecting)))
+                show(Stage.Working(getString(R.string.adbpair_connecting)))
             }
             val result = runCatching {
                 val connectPort = WirelessAdbFix.localConnectPort(this)
-                    ?: error(getString(R.string.adb_port_missing))
-                main.post { show(Stage.Working(getString(R.string.adb_applying))) }
+                    ?: error(getString(R.string.adbpair_port_not_found))
+                main.post { show(Stage.Working(getString(R.string.adbpair_applying))) }
                 WirelessAdbFix.setChildProcessLimit(this, WirelessAdbFix.LOOPBACK, connectPort, false)
             }
             main.post {
                 working = false
-                finish(result.exceptionOrNull()?.let { Stage.Failed(it.localizedMessage ?: getString(R.string.adb_command_failed)) } ?: Stage.Done)
+                finish(result.exceptionOrNull()?.let { Stage.Failed(it.localizedMessage ?: getString(R.string.adbpair_command_failed)) } ?: Stage.Done)
             }
         }, "wireless-adb-pairing").start()
     }
@@ -178,9 +177,9 @@ class WirelessAdbPairingService : Service() {
 
     private fun notification(stage: Stage): Notification {
         val manager = getSystemService(NotificationManager::class.java)
-        manager?.createNotificationChannel(NotificationChannel(CHANNEL_ID, getString(R.string.adb_channel),
+        manager?.createNotificationChannel(NotificationChannel(CHANNEL_ID, getString(R.string.adbpair_channel_name),
             NotificationManager.IMPORTANCE_HIGH).apply {
-            description = getString(R.string.adb_channel_description)
+            description = getString(R.string.adbpair_channel_description)
             setShowBadge(false)
             setSound(null, null)
             enableVibration(false)
@@ -197,41 +196,40 @@ class WirelessAdbPairingService : Service() {
             .setCategory(Notification.CATEGORY_STATUS)
         when (stage) {
             Stage.Waiting, Stage.Idle -> builder
-                .setContentTitle(getString(R.string.adb_pair_title))
-                .setContentText(getString(R.string.adb_pair_hint))
-                .setStyle(Notification.BigTextStyle().bigText(
-                    getString(R.string.adb_pair_full_hint)))
+                .setContentTitle(getString(R.string.adbpair_title_pair))
+                .setContentText(getString(R.string.adbpair_waiting_text))
+                .setStyle(Notification.BigTextStyle().bigText(getString(R.string.adbpair_waiting_long)))
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
-                .addAction(Notification.Action.Builder(null, getString(R.string.fm_cancel), cancel).build())
+                .addAction(Notification.Action.Builder(null, getString(R.string.common_cancel), cancel).build())
             is Stage.CodeNeeded -> {
                 val reply = PendingIntent.getService(this, 2,
                     Intent(this, WirelessAdbPairingService::class.java).setAction(ACTION_CODE),
                     if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
                     else PendingIntent.FLAG_UPDATE_CURRENT)
-                val input = RemoteInput.Builder(KEY_CODE).setLabel(getString(R.string.adb_code_label)).build()
-                val text = stage.error ?: getString(R.string.adb_code_hint)
+                val input = RemoteInput.Builder(KEY_CODE).setLabel(getString(R.string.adbpair_code_label)).build()
+                val text = stage.error ?: getString(R.string.adbpair_code_hint)
                 builder
-                    .setContentTitle(if (stage.error == null) getString(R.string.adb_code_title) else getString(R.string.adb_code_retry))
+                    .setContentTitle(getString(if (stage.error == null) R.string.adbpair_title_code else R.string.adbpair_title_retry))
                     .setContentText(text)
                     .setStyle(Notification.BigTextStyle().bigText(text))
                     .setOngoing(true)
-                    .addAction(Notification.Action.Builder(null, getString(R.string.adb_code_enter), reply).addRemoteInput(input).build())
-                    .addAction(Notification.Action.Builder(null, getString(R.string.fm_cancel), cancel).build())
+                    .addAction(Notification.Action.Builder(null, getString(R.string.adbpair_enter_code), reply).addRemoteInput(input).build())
+                    .addAction(Notification.Action.Builder(null, getString(R.string.common_cancel), cancel).build())
             }
             is Stage.Working -> builder
-                .setContentTitle(getString(R.string.adb_steam_setup))
+                .setContentTitle(getString(R.string.adbpair_title_working))
                 .setContentText(stage.step)
                 .setProgress(0, 0, true)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
             Stage.Done -> builder
-                .setContentTitle(getString(R.string.adb_steam_ready))
-                .setContentText(getString(R.string.adb_done_hint))
-                .setStyle(Notification.BigTextStyle().bigText(getString(R.string.adb_done_hint)))
+                .setContentTitle(getString(R.string.adbpair_title_done))
+                .setContentText(getString(R.string.adbpair_done_text))
+                .setStyle(Notification.BigTextStyle().bigText(getString(R.string.adbpair_done_text)))
                 .setAutoCancel(true)
             is Stage.Failed -> builder
-                .setContentTitle(getString(R.string.adb_stopped))
+                .setContentTitle(getString(R.string.adbpair_title_failed))
                 .setContentText(stage.error)
                 .setStyle(Notification.BigTextStyle().bigText(stage.error))
                 .setAutoCancel(true)
