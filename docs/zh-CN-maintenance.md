@@ -18,6 +18,8 @@ git switch zh-CN
 
 ## 跟随预览版
 
+2026-10-08 同步至 `main-679948e`（`679948e792ee51514d0c2944b575541d6288b71b`），保留默认简体中文、上游字体修复及额外字体目录挂载、Albion ICU 修复。补齐 4 项后台下载与暂停提示。新增 Steam 库、快捷方式和共享字体脚本在 Linux 中验证；同步仍以官方已发布预览提交为准。
+
 2026-10-07 同步至 `main-ef38c97`（`ef38c975b994bb131eb327454c836c0ea84efd20`）。语言入口改为复用上游 `core.AppLanguage`，未选择语言时默认简体中文，用户仍可通过设置切换语言；Steam 跟随应用语言。上游已提供系统字体挂载及 fontconfig 配置，复用该修复并保留 OEM、下载字体目录挂载。保留 Albion ICU 修复，并合并新的 Windows 组件和 SSBS 启动逻辑。
 
 后续中文分支以 `Droid-Deck/DroidDeck-CI` 的 `catalog.json` 中已发布的 `preview.commit` 为同步目标，不跟随尚未发布的 main 提交或 PR 测试构建。2026-10-05 已同步至 `main-eaa4a7a`（`eaa4a7a0472abc211364c3286f78dd9c48c463e1`），补齐 92 项新增中文资源，并迁移简体中文目录到 `values-zh-rCN`。
