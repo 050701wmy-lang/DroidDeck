@@ -221,7 +221,10 @@ def buildRustStores = tasks.register('buildRustStores', Exec) {
     // does not always have it on PATH.
     def cargoBin = "${System.getProperty('user.home')}/.cargo/bin"
     environment 'PATH', "${cargoBin}${File.pathSeparator}${System.getenv('PATH')}"
-    environment 'ANDROID_NDK_HOME', android.ndkDirectory.absolutePath
+    // skipRust must also work on machines without an installed NDK.
+    if (!skipRust) {
+        environment 'ANDROID_NDK_HOME', android.ndkDirectory.absolutePath
+    }
     environment 'CARGO_TERM_COLOR', 'never'
     // --platform 26 = minSdkVersion: the engines link against the API 26 libc, like the C++ code.
     commandLine 'cargo', 'ndk', '--target', 'arm64-v8a', '--platform', '26',

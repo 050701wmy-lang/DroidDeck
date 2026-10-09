@@ -43,6 +43,11 @@ import java.util.concurrent.atomic.AtomicBoolean
  * StoreAccounts' private file and the activity finishes.
  */
 class StoreLoginActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(newBase)
+        com.droiddeck.launcher.core.AppLanguage.applyTo(this, newBase)
+    }
+
     companion object {
         private const val TAG = "StoreLogin"
         const val EXTRA_STORE = "store"
