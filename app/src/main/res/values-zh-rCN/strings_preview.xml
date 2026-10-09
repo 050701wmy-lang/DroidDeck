@@ -4,4 +4,6 @@
     <string name="mode_background_downloads">保持下载运行</string>
     <string name="mode_background_downloads_hint">Steam 正在下载时，延后后台暂停。</string>
     <string name="suspend_now">立即暂停</string>
+    <string name="add_app_flatpak_bundle_hint">也可选择 .flatpak 文件，安装 Flathub 中没有的应用。</string>
+    <string name="add_app_pick_flatpak">选择 .flatpak 文件</string>
 </resources>
