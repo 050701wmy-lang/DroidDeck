@@ -39,9 +39,9 @@ for tool in curl tar zstd shasum unzip; do
         exit 1
     fi
 done
-if [[ -f "${repo_root}/tools/gamescope/release.env" || -f "${repo_root}/tools/wlroots/release.env" \
+if [[ -f "${repo_root}/tools/gamescope/release.env" \
         || -f "${repo_root}/tools/droiddeck-esync/release.env" ]] && ! command -v gh >/dev/null 2>&1; then
-    echo "GitHub CLI is required to download the pinned Gamescope, wlroots and droiddeck-esync release assets." >&2
+    echo "GitHub CLI is required to download the pinned Gamescope and droiddeck-esync release assets." >&2
     exit 1
 fi
 
@@ -138,9 +138,7 @@ docker run --rm --platform linux/amd64 \
         install -Dm644 tools/linuxfs/desktop/droiddeck-desktop "$d/usr/local/bin/droiddeck-desktop"
         install -Dm644 tools/linuxfs/desktop/droiddeck-gpu "$d/usr/local/bin/droiddeck-gpu"
         install -Dm644 tools/linuxfs/desktop/droiddeck-desktop-gpu "$d/usr/local/bin/droiddeck-desktop-gpu"
-        install -Dm644 tools/linuxfs/desktop/autostart "$d/etc/xdg/labwc/autostart"
-        install -Dm644 tools/linuxfs/desktop/rc.xml "$d/etc/xdg/labwc/rc.xml"
-        install -Dm644 tools/linuxfs/desktop/panel.conf "$d/etc/xdg/lxqt/panel.conf"
+        install -Dm644 tools/linuxfs/desktop/kwin_wayland_wrapper "$d/usr/local/bin/kwin_wayland_wrapper"
         install -Dm644 tools/linuxfs/desktop/firefox-droiddeck.js \
             "$d/usr/lib/firefox/defaults/pref/droiddeck.js"
 
@@ -223,14 +221,6 @@ if [[ -f "${repo_root}/tools/gamescope/release.env" ]]; then
         bash -c 'gh release download "$0" -R "$1" -p gamescope.tzst -O "$out"' "${GAMESCOPE_TAG}" "${GAMESCOPE_REPO:-${github_repo}}")
     zstd -dc "${gamescope_archive}" | tar -xf - -C "${linuxfs_dir}"
     test -f "${linuxfs_dir}/usr/local/bin/gamescope"
-fi
-
-if [[ -f "${repo_root}/tools/wlroots/release.env" ]]; then
-    . "${repo_root}/tools/wlroots/release.env"
-    wlroots_archive=$(cached "${WLROOTS_SHA256}" wlroots.tzst \
-        bash -c 'gh release download "$0" -R "$1" -p wlroots.tzst -O "$out"' "${WLROOTS_TAG}" "${github_repo}")
-    zstd -dc "${wlroots_archive}" | tar -xf - -C "${linuxfs_dir}"
-    test -f "${linuxfs_dir}/usr/local/lib/droiddeck-wlroots/libwlroots-0.20.so"
 fi
 
 . "${repo_root}/tools/linuxfs/uruntime.env"
@@ -331,8 +321,29 @@ tar -cf - -C "${bundle_dir}" . | zstd -19 -T0 -c > "${staging_dir}/pulseaudio.tz
 bundle_replaced=1
 mv "${staging_dir}/pulseaudio.tzst" "${bundle_asset}"
 
+# The GOG / Epic / Amazon download engines are Rust (app/src/main/rust/stores); Gradle's
+# buildRustStores task cross-compiles them with cargo-ndk, which needs the Android target and the
+# cargo-ndk binary installed once. DROIDDECK_SKIP_RUST=1 builds an apk without the engines (the
+# stores then report themselves unavailable) for a machine without a Rust toolchain.
+gradle_rust_arg=""
+if [[ "${DROIDDECK_SKIP_RUST:-0}" == 1 ]]; then
+    gradle_rust_arg="-PskipRust=true"
+else
+    export PATH="${HOME}/.cargo/bin:${PATH}"
+    for tool in rustup cargo; do
+        if ! command -v "${tool}" >/dev/null 2>&1; then
+            echo "${tool} is required for the store engines (https://rustup.rs); set DROIDDECK_SKIP_RUST=1 to build without them." >&2
+            exit 1
+        fi
+    done
+    rustup target add aarch64-linux-android
+    if ! command -v cargo-ndk >/dev/null 2>&1; then
+        cargo install cargo-ndk --locked
+    fi
+fi
+
 cd "${repo_root}"
-./gradlew "${gradle_task}" --console=plain -PndkVersion="${ndk_version}"
+./gradlew "${gradle_task}" --console=plain -PndkVersion="${ndk_version}" ${gradle_rust_arg}
 python3 tools/release/check_session_assets.py "app/build/outputs/apk/${build_variant}/app-${build_variant}.apk"
 cp -p "${bundle_backup}" "${bundle_asset}"
 bundle_replaced=0

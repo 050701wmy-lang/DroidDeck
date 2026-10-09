@@ -216,14 +216,6 @@ jobs:
             test -f "$D/usr/local/bin/gamescope"
             rm gamescope.tzst
           fi
-          if [ -f tools/wlroots/release.env ]; then
-            . tools/wlroots/release.env
-            gh release download "${WLROOTS_TAG}" -R "${GITHUB_REPOSITORY}" -p wlroots.tzst -O wlroots.tzst
-            echo "${WLROOTS_SHA256}  wlroots.tzst" | sha256sum -c -
-            tar --use-compress-program=unzstd -xf wlroots.tzst -C "$D"
-            test -f "$D/usr/local/lib/droiddeck-wlroots/libwlroots-0.20.so"
-            rm wlroots.tzst
-          fi
           . tools/linuxfs/uruntime.env
           curl -fsSL --retry 3 -o uruntime "https://github.com/VHSgunzo/uruntime/releases/download/${URUNTIME_VERSION}/${URUNTIME_ASSET}"
           echo "${URUNTIME_SHA256}  uruntime" | sha256sum -c -
@@ -262,10 +254,13 @@ jobs:
           done
           install -m644 msi-pkgs/usr/bin/msiinfo "$T/msiinfo"
           install -m644 msi-pkgs/usr/bin/cabextract "$T/cabextract"
+          # 7-Zip (the full build with its format plugin) opens installer .exe wrappers.
+          install -m644 msi-pkgs/usr/lib/7zip/7z "$T/7z"
+          install -m644 msi-pkgs/usr/lib/7zip/7z.so "$T/7z.so"
           for so in libmsi-1.0.so.0 libgsf-1.so.114 libgcab-1.0.so.0; do
             cp -L "msi-pkgs/usr/lib/$so" "$T/$so"
           done
-          for f in NOTICE GPL-2 GPL-3 LGPL-2.1; do
+          for f in NOTICE GPL-2 GPL-3 LGPL-2.1 7zip-License 7zip-unRarLicense; do
             install -Dm644 "tools/msitools/licenses/$f" "$D/usr/local/share/licenses/droiddeck-msitools/$f"
           done
           rm -rf msi-pkgs
@@ -273,9 +268,7 @@ jobs:
           install -Dm644 tools/linuxfs/desktop/droiddeck-desktop "$D/usr/local/bin/droiddeck-desktop"
           install -Dm644 tools/linuxfs/desktop/droiddeck-gpu "$D/usr/local/bin/droiddeck-gpu"
           install -Dm644 tools/linuxfs/desktop/droiddeck-desktop-gpu "$D/usr/local/bin/droiddeck-desktop-gpu"
-          install -Dm644 tools/linuxfs/desktop/autostart "$D/etc/xdg/labwc/autostart"
-          install -Dm644 tools/linuxfs/desktop/rc.xml "$D/etc/xdg/labwc/rc.xml"
-          install -Dm644 tools/linuxfs/desktop/panel.conf "$D/etc/xdg/lxqt/panel.conf"
+          install -Dm644 tools/linuxfs/desktop/kwin_wayland_wrapper "$D/usr/local/bin/kwin_wayland_wrapper"
           install -Dm644 tools/linuxfs/desktop/firefox-droiddeck.js "$D/usr/lib/firefox/defaults/pref/droiddeck.js"
           ls -lR "$D"
 
@@ -401,9 +394,42 @@ jobs:
           test -f "$D/usr/local/bin/droiddeck-session"
           test -f "$D/usr/local/bin/droiddeck-proton-extra"
           test -f "$D/usr/local/bin/droiddeck-msi-install"
-          for f in msiinfo cabextract libmsi-1.0.so.0 libgsf-1.so.114 libgcab-1.0.so.0; do
+          for f in msiinfo cabextract 7z 7z.so libmsi-1.0.so.0 libgsf-1.so.114 libgcab-1.0.so.0; do
             test -f "$D/usr/local/lib/droiddeck-msitools/$f" || { echo "::error::droiddeck-msitools/$f missing"; exit 1; }
           done
+
+      # The store download engines (app/src/main/rust/stores) are Rust, built by Gradle's
+      # buildRustStores task through cargo-ndk. rustup and cargo are on the runner image; the Android
+      # target and cargo-ndk are added here. Cache = cargo registry + cargo-ndk + the crate's target
+      # tree, keyed on the rustc version and Cargo.lock, so a source-only change rebuilds this crate
+      # on top of the cached dependency objects, and a lockfile change still starts from the
+      # previous objects (restore-keys).
+      - name: Rust toolchain for the store engines (aarch64-linux-android)
+        id: rust
+        run: |
+          set -euo pipefail
+          rustup target add aarch64-linux-android
+          echo "rustc=$(rustc -V | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+          rustc -V; cargo -V
+
+      - name: Cache cargo registry and the store engines' target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            ~/.cargo/bin/cargo-ndk
+            app/src/main/rust/stores/target
+          key: stores-${{ steps.rust.outputs.rustc }}-${{ hashFiles('app/src/main/rust/stores/Cargo.lock') }}
+          restore-keys: |
+            stores-${{ steps.rust.outputs.rustc }}-
+
+      - name: cargo-ndk
+        run: |
+          set -euo pipefail
+          command -v cargo-ndk >/dev/null || cargo install cargo-ndk --locked
+          cargo ndk --version
 
       - name: Cache the CMake build tree
         uses: actions/cache@v4
@@ -423,6 +449,52 @@ jobs:
           set -o pipefail
           ./gradlew assembleRelease --console=plain -PndkVersion="$NDK_VERSION" 2>&1 | tee /tmp/build.log
           python3 tools/release/check_session_assets.py app/build/outputs/apk/release/app-release.apk
+
+      - name: Check the store engines' library
+        # The exports Kotlin binds must be in the apk's libdroiddeckstores.so, or the stores fail on
+        # the device with an UnsatisfiedLinkError instead of here. The lockfile check is the
+        # reproducibility guard: cargo must not have had to re-resolve anything.
+        run: |
+          set -euo pipefail
+          NDK="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-$ANDROID_NDK_ROOT}}"
+          NM="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm"
+          SO=app/build/rustJniLibs/arm64-v8a/libdroiddeckstores.so
+          test -s "$SO"
+          ls -la "$SO"
+          unzip -l app/build/outputs/apk/release/app-release.apk | grep -q 'lib/arm64-v8a/libdroiddeckstores.so' \
+            || { echo "::error::libdroiddeckstores.so is not in the apk"; exit 1; }
+          for sym in \
+              Java_com_droiddeck_launcher_stores_StoresNative_nativeVersion \
+              Java_com_droiddeck_launcher_stores_gog_GogNative_nativeStart \
+              Java_com_droiddeck_launcher_stores_epic_EpicNative_nativeStart \
+              Java_com_droiddeck_launcher_stores_epic_EpicNative_nativeAssemble \
+              Java_com_droiddeck_launcher_stores_amazon_AmazonNative_nativeStart; do
+            "$NM" -D --defined-only "$SO" | grep -q " ${sym}\$" \
+              || { echo "::error::libdroiddeckstores.so does not export $sym"; exit 1; }
+          done
+          git diff --stat -- app/src/main/rust/stores/Cargo.lock
+          git diff --exit-code -- app/src/main/rust/stores/Cargo.lock \
+            || { echo "::error::Cargo.lock changed during the build; commit the regenerated lockfile (uploaded as stores-cargo-lock)"; exit 1; }
+
+      - name: Store engines host unit tests
+        # The crate's #[test] functions are pure host-side logic (manifest parsing, chunk plans,
+        # assembly from a cache, hashes), so a plain `cargo test` on the runner's own architecture
+        # runs them; the Android build above compiles none of them. Informational on this first
+        # run - the point is to learn whether they pass - and bounded so a hang can never hold
+        # the apk. Make it blocking once it is known green.
+        timeout-minutes: 10
+        continue-on-error: true
+        run: |
+          cd app/src/main/rust/stores
+          cargo test --locked 2>&1 | tail -60
+
+      - name: Upload the regenerated Cargo.lock
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stores-cargo-lock
+          path: app/src/main/rust/stores/Cargo.lock
+          if-no-files-found: ignore
 
       - name: Steam import and game environment tests
         run: python3 -m unittest discover -s tools/tests -p 'test_*.py'
