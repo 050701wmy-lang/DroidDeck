@@ -115,6 +115,11 @@ import androidx.compose.ui.window.PopupProperties
 private val RowShape = RoundedCornerShape(12.dp)
 private val GroupShape = RoundedCornerShape(14.dp)
 
+/** Whether a pad's A is held right now, as the activity sees it: a focus move waits for its release. */
+internal object HeldKeys {
+    @Volatile var confirm = false
+}
+
 internal fun Modifier.controllerConfirm(enabled: Boolean = true, onClick: () -> Unit): Modifier = onPreviewKeyEvent { event ->
     val keyEvent = event.nativeKeyEvent
     if (keyEvent.keyCode != KeyEvent.KEYCODE_BUTTON_A) {
@@ -486,6 +491,19 @@ fun <T> ChoiceRow(
                 }
             }
         }
+    }
+}
+
+/** A small "?" beside a value the app guessed and is not sure of; [description] says what to check. */
+@Composable
+fun UncertainMark(description: String) {
+    val colors = MaterialTheme.colorScheme
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.size(22.dp).clip(CircleShape).background(colors.surfaceVariant)
+            .semantics { contentDescription = description },
+    ) {
+        Text("?", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = colors.onSurfaceVariant)
     }
 }
 
