@@ -322,10 +322,10 @@
     <string name="wincomp_no_recommendation">游戏文件夹中没有指向任何组件的内容。</string>
     <string name="wincomp_all">全部组件（%1$d）</string>
     <string name="wincomp_installers">需要 Windows 安装程序（%1$d）</string>
-    <string name="wincomp_installers_note">这些组件需要在前缀中运行真正的安装程序（.NET、PhysX、XNA、完整的 Visual C++ 安装程序等）。DroidDeck 暂时无法做到，接下来会支持。</string>
+    <string name="wincomp_installers_note">这些组件使用自己的安装程序，没有可解包的内嵌包，也尚未记录其安装内容。大多为旧运行库，Proton 内置的 Mono 已可替代；安装记录会逐步补充。</string>
     <string name="wincomp_show">显示</string>
     <string name="wincomp_hide">隐藏</string>
-    <string name="wincomp_needs_installer">需要 Windows 安装程序（即将支持）</string>
+    <string name="wincomp_needs_installer">使用独立安装程序（尚无安装记录）</string>
     <string name="wincomp_unsupported">此处暂不支持</string>
     <string name="wincomp_loading">正在加载组件…</string>
     <string name="wincomp_failed">无法安装：%1$s</string>
