@@ -16,4 +16,10 @@
     <string name="stores_signout_stay">保持登录</string>
     <string name="stores_signout_go">退出登录</string>
     <string name="stores_search_open">搜索</string>
+    <string name="desktop_remove_title">卸载桌面</string>
+    <string name="desktop_remove_text">移除桌面及其附带应用。保留游戏、添加的应用、设置和共享库。</string>
+    <string name="desktop_removing">正在移除桌面</string>
+    <string name="desktop_removed">桌面已移除</string>
+    <string name="desktop_cleaning_legacy">正在清理旧 LXQt 文件</string>
+    <string name="desktop_removal_unknown">请先更新 DroidDeck，再移除此版本的桌面。</string>
 </resources>
