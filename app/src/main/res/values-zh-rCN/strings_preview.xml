@@ -7,4 +7,13 @@
     <string name="add_app_flatpak_bundle_hint">也可选择 .flatpak 文件，安装 Flathub 中没有的应用。</string>
     <string name="add_app_pick_flatpak">选择 .flatpak 文件</string>
     <string name="display_follow_screen">跟随屏幕（折叠或展开时调整尺寸）</string>
+    <string name="osc_steam_touch">Steam 触控（测试版）</string>
+    <string name="osc_style_next_session">Steam 触控将在下次 Steam 会话启用</string>
+    <string name="osc_steam_layout">Steam 触控布局</string>
+    <string name="osc_steam_layout_hint">移动、调整大小或隐藏此游戏的触控控件；布局保存到 Steam</string>
+    <string name="stores_signout_title">退出 %1$s 登录？</string>
+    <string name="stores_signout_note">已安装游戏会保留。重新登录后将再次获取游戏库。</string>
+    <string name="stores_signout_stay">保持登录</string>
+    <string name="stores_signout_go">退出登录</string>
+    <string name="stores_search_open">搜索</string>
 </resources>
