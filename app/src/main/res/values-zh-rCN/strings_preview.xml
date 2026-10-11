@@ -22,4 +22,16 @@
     <string name="desktop_removed">桌面已移除</string>
     <string name="desktop_cleaning_legacy">正在清理旧 LXQt 文件</string>
     <string name="desktop_removal_unknown">请先更新 DroidDeck，再移除此版本的桌面。</string>
+    <string name="setup_orientation">屏幕方向</string>
+    <string name="setup_orientation_auto">自动横屏</string>
+    <string name="setup_orientation_landscape">横屏</string>
+    <string name="setup_orientation_reverse">反向横屏</string>
+    <string name="deck_tab_gamepad">手柄</string>
+    <string name="deck_surface_stick">摇杆</string>
+    <string name="deck_surface_trackpad">触摸板</string>
+    <string name="deck_surface_switch">切换摇杆与触摸板</string>
+    <string name="deck_more_controls">更多 Deck 控件</string>
+    <string name="deck_panels">面板</string>
+    <string name="unfolded_controls">展开屏幕时的控件</string>
+    <string name="unfolded_controls_hint">展开时，游戏显示在 Steam Deck 触摸板和背键上方；折叠时，游戏全屏显示。</string>
 </resources>
