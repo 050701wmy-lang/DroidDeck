@@ -56,7 +56,7 @@
     <string name="game_env_save">保存</string>
     <string name="game_env_remove">移除</string>
     <string name="game_env_restore">重新继承</string>
-    <string name="game_env_reset">重置此配置档案</string>
+    <string name="game_env_reset">清除环境自定义设置</string>
     <string name="game_env_unset">在此配置档案中取消设置</string>
     <string name="game_env_empty">未设置任何变量。</string>
     <string name="game_env_inherited">已继承</string>
@@ -415,7 +415,7 @@
     <string name="comp_applies_next_game">下次启动游戏时生效</string>
     <string name="comp_import_zip">导入 .zip</string>
     <string name="comp_reading">正在读取 Proton…</string>
-    <string name="comp_no_proton">尚未安装 Proton。启动一次 Steam 下载其 ARM64 Proton，或从“配置”添加 GE-Proton 或 CachyOS。</string>
+    <string name="comp_no_proton">尚未安装 Proton。启动一次 Steam 以下载 ARM64 Proton，或在设置中添加 GE-Proton、CachyOS 或 DroidDeck-Proton。</string>
     <string name="comp_original">原件 · %1$s</string>
     <string name="comp_this_build">%1$s · 当前构建</string>
     <string name="comp_earlier_build">%1$s · 较早的构建</string>

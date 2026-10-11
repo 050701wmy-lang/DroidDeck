@@ -10,7 +10,6 @@
     <string name="source_steam">Steam</string>
     <string name="source_added">自定义</string>
     <string name="setup_stores">商店</string>
-    <string name="setup_stores_show">在侧栏显示商店</string>
     <string name="setup_stores_open_on">打开商店时显示</string>
     <string name="setup_stores_speed">下载速度档位</string>
     <string name="setup_stores_engine">商店引擎</string>
