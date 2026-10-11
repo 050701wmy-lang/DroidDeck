@@ -194,6 +194,9 @@ class DrawerActions(
     val suspendPolicy: String,
     val steamDownloadsInBackground: Boolean = false,
     val backActionsInverted: Boolean,
+    /** What the pad is to Steam (SessionPrefs.CONTROLLER_*), switched live; null hides the row. */
+    val padType: String? = null,
+    val onPadType: (String) -> Unit = {},
     val touchMode: String,
     val touchAuto: String,
     val fexPreset: String,
@@ -242,6 +245,9 @@ class DrawerActions(
     val pipAutoEnter: Boolean = false,
     val onPip: () -> Unit = {},
     val onPipAutoEnter: (Boolean) -> Unit = {},
+    /** Unfolded controls (on a foldable; null hides the row). */
+    val unfoldedControls: Boolean? = null,
+    val onUnfoldedControls: (Boolean) -> Unit = {},
     val onShareLogs: () -> Unit,
     val onStop: () -> Unit,
     /** Stop with the dialog's button's bounds on screen, for the flood to grow out of; null falls back to [onStop]. */
@@ -416,6 +422,15 @@ internal fun SessionDrawer(open: Boolean, requestedPage: SessionDrawerPage, cont
                         }
                         SessionDrawerPage.CONTROLLER -> {
                             SettingsGroup(stringResource(R.string.drawer_page_controller)) {
+                                a.padType?.let { type ->
+                                    ChoiceRow(host, "pad-type", stringResource(R.string.mode_controller), null,
+                                        listOf(SessionPrefs.CONTROLLER_DECK to stringResource(R.string.mode_controller_deck),
+                                            SessionPrefs.CONTROLLER_STEAM to stringResource(R.string.mode_controller_steam),
+                                            SessionPrefs.CONTROLLER_DS4 to stringResource(R.string.mode_controller_ds4),
+                                            SessionPrefs.CONTROLLER_DUALSENSE to stringResource(R.string.mode_controller_dualsense),
+                                            SessionPrefs.CONTROLLER_XBOX360 to stringResource(R.string.mode_controller_x360)),
+                                        type, chipModifier = focus.track(page, "pad-type"), onPick = a.onPadType)
+                                }
                                 ChoiceRow(host, "touch", stringResource(R.string.mode_touch), null,
                                     listOf(SessionPrefs.TOUCH_AUTO to stringResource(R.string.drawer_touch_auto, a.touchAuto), SessionPrefs.TOUCH_PAD to stringResource(R.string.mode_touch_touchpad), SessionPrefs.TOUCH_DIRECT to stringResource(R.string.mode_touch_direct), SessionPrefs.TOUCH_OFF to stringResource(R.string.widgets_off)),
                                     a.touchMode, chipModifier = focus.track(page, "touch"), onPick = a.onTouch)
@@ -445,6 +460,9 @@ internal fun SessionDrawer(open: Boolean, requestedPage: SessionDrawerPage, cont
                                 if (a.steam) ChoiceRow(host, "back-actions", stringResource(R.string.mode_back), null,
                                     listOf(false to stringResource(SessionPrefs.BACK_MENU_THEN_QAM), true to stringResource(SessionPrefs.BACK_QAM_THEN_MENU)),
                                     a.backActionsInverted, chipModifier = focus.track(page, "back-actions"), onPick = a.onBackActionsInverted)
+                                if (a.steam && a.unfoldedControls != null) ToggleRow(host, "unfolded-controls", stringResource(R.string.unfolded_controls),
+                                    stringResource(R.string.unfolded_controls_hint), a.unfoldedControls,
+                                    chipModifier = focus.track(page, "unfolded-controls"), onChange = a.onUnfoldedControls)
                             }
                             SettingsGroup(stringResource(R.string.drawer_keyboard)) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(8.dp)) {
