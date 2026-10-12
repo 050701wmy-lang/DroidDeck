@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="github_download_group">下载</string>
+    <string name="github_download_enabled">加速 GitHub 下载</string>
+    <string name="github_download_hint">使用第三方加速服务下载 GitHub 公开文件。连接失败时回退官方地址，保留原有摘要与签名校验。商店下载不受影响。</string>
+    <string name="github_download_address">GitHub 加速地址</string>
+    <string name="github_download_off">官方地址</string>
+    <string name="github_download_address_hint">填写 HTTPS 前缀，例如 https://ghfast.top/，下载时会在其后附加原 GitHub 地址。留空即关闭，更改对新请求生效。</string>
+    <string name="github_download_invalid">请输入 HTTPS 地址，不含账号密码、查询参数或片段。</string>
+</resources>

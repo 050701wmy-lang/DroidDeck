@@ -9,7 +9,6 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -54,8 +53,7 @@ public final class Downloader {
         HttpURLConnection connection = null;
         long have = resume && destination.isFile() ? destination.length() : 0;
         try {
-            connection = open(url);
-            if (have > 0) connection.setRequestProperty("Range", "bytes=" + have + "-");
+            connection = open(url, have);
             int code = connection.getResponseCode();
             boolean appending = code == HttpURLConnection.HTTP_PARTIAL;
             if (code / 100 != 2) {
@@ -102,11 +100,16 @@ public final class Downloader {
     }
 
     private static HttpURLConnection open(String url) throws java.io.IOException {
-        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
-        connection.setConnectTimeout(TIMEOUT_MS);
-        connection.setReadTimeout(TIMEOUT_MS);
-        connection.setInstanceFollowRedirects(true);
-        connection.setRequestProperty("User-Agent", "DroidDeck-Android");
-        return connection;
+        return open(url, 0);
+    }
+
+    private static HttpURLConnection open(String url, long have) throws java.io.IOException {
+        return GitHubDownloads.open(url, connection -> {
+            connection.setConnectTimeout(TIMEOUT_MS);
+            connection.setReadTimeout(TIMEOUT_MS);
+            connection.setInstanceFollowRedirects(true);
+            connection.setRequestProperty("User-Agent", "DroidDeck-Android");
+            if (have > 0) connection.setRequestProperty("Range", "bytes=" + have + "-");
+        });
     }
 }

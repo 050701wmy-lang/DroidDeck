@@ -846,11 +846,11 @@ object EsyncPacks {
     private fun httpFetch(url: String, limit: Long, out: OutputStream, progress: ((Long) -> Unit)?): Boolean {
         var connection: HttpURLConnection? = null
         try {
-            connection = (URL(url).openConnection() as HttpURLConnection).apply {
-                connectTimeout = TIMEOUT_MS
-                readTimeout = TIMEOUT_MS
-                instanceFollowRedirects = true
-                setRequestProperty("User-Agent", "DroidDeck-Android")
+            connection = com.droiddeck.launcher.core.GitHubDownloads.open(url) { c ->
+                c.connectTimeout = TIMEOUT_MS
+                c.readTimeout = TIMEOUT_MS
+                c.instanceFollowRedirects = true
+                c.setRequestProperty("User-Agent", "DroidDeck-Android")
             }
             val code = connection.responseCode
             if (code / 100 != 2) {

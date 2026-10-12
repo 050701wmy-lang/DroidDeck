@@ -41,11 +41,12 @@ object SelfInstaller {
         FileUtils.delete(dir)
         dir.mkdirs()
         val target = File(dir, apk.name)
-        val c = URL(apk.url).openConnection() as HttpURLConnection
-        c.connectTimeout = 15_000
-        c.readTimeout = 60_000
-        c.setRequestProperty("User-Agent", "DroidDeck-app")
-        c.instanceFollowRedirects = true
+        val c = com.droiddeck.launcher.core.GitHubDownloads.open(apk.url) { connection ->
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 60_000
+            connection.setRequestProperty("User-Agent", "DroidDeck-app")
+            connection.instanceFollowRedirects = true
+        }
         try {
             if (c.responseCode != 200) throw IOException(context.getString(R.string.selfinst_http, c.responseCode))
             val total = c.contentLengthLong.takeIf { it > 0 } ?: apk.size

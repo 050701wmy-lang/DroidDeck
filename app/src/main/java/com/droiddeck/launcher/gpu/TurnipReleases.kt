@@ -137,11 +137,12 @@ object TurnipReleases {
     }
 
     private fun get(context: Context, url: String): String {
-        val c = URL(url).openConnection() as HttpURLConnection
-        c.connectTimeout = 15_000
-        c.readTimeout = 20_000
-        c.setRequestProperty("Accept", "application/vnd.github+json")
-        c.setRequestProperty("User-Agent", "DroidDeck-app")
+        val c = com.droiddeck.launcher.core.GitHubDownloads.open(url) { connection ->
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 20_000
+            connection.setRequestProperty("Accept", "application/vnd.github+json")
+            connection.setRequestProperty("User-Agent", "DroidDeck-app")
+        }
         try {
             val code = c.responseCode
             if (code == 403 || code == 429) throw IOException(context.getString(R.string.turnip_rate_limited))
@@ -197,11 +198,12 @@ object TurnipReleases {
     fun download(context: Context, asset: Asset, progress: (Int) -> Unit): File {
         if (asset.sha256.isEmpty()) throw IOException(context.getString(R.string.turnip_list_predates_checksums))
         val target = File(context.cacheDir, asset.name)
-        val c = URL(asset.url).openConnection() as HttpURLConnection
-        c.connectTimeout = 15_000
-        c.readTimeout = 60_000
-        c.setRequestProperty("User-Agent", "DroidDeck-app")
-        c.instanceFollowRedirects = true
+        val c = com.droiddeck.launcher.core.GitHubDownloads.open(asset.url) { connection ->
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 60_000
+            connection.setRequestProperty("User-Agent", "DroidDeck-app")
+            connection.instanceFollowRedirects = true
+        }
         try {
             if (c.responseCode != 200) throw IOException(context.getString(R.string.turnip_download_http, c.responseCode))
             val total = c.contentLengthLong.takeIf { it > 0 } ?: asset.size

@@ -85,3 +85,11 @@ python -m unittest tools.tests.test_localization
 Steam 大屏幕模式的中文由 Linux 的 fontconfig/CEF 渲染，与 Android 应用资源语言无关。上游 `LinuxRuntime.bindSystemFonts` 将系统字体挂载到 `/usr/local/share/fonts/android`，并通过会话 fontconfig 配置启用；本分支还在 `LinuxRuntime.binds` 中将可读的额外字体目录挂载到 `/usr/share/fonts/android-*`，让 Linux 使用手机已有的中文字体作为回退，不替换运行环境的原有字体。此修复在每次启动会话时生效，已安装的运行环境无需重装；更新 APK 后完整退出 Steam 会话并重新启动。设备验证时可用 `fc-list :lang=zh-cn` 检查中文字体，再检查 Steam 设置与游戏库中的汉字。
 
 Fork 不会自动继承上游的 Release、签名密钥或 Actions secrets。首次启用 Actions 前，应核对 `.github/workflows/` 中的构建、发布和定时任务；本次适配没有启用定时任务。上游更新器继续使用上游来源，安装上游 APK 可能覆盖中文分支新增内容；维护 fork 发布渠道时需要另行配置和验证签名、版本及更新索引。
+
+## GitHub 下载加速
+
+2026-10-12 中文分支加入统一 GitHub 下载加速。入口：设置 → 启动器 → 下载。默认启用第三方 `https://ghfast.top/`，可更换 HTTPS 地址前缀或留空关闭。地址按“前缀 + 原始 GitHub URL”拼接，更改对新请求生效。
+
+只代理 `raw.githubusercontent.com` 公开资源和 `github.com/<owner>/<repo>/releases/download/...` 文件，包括运行环境、桌面、组件、驱动和应用更新文件。GitHub API 查询仍直连，Steam、Epic、GOG 等商店、登录和游戏 CDN 不改写。第三方无法连接、返回非成功 HTTP 状态或 HTML 页面时回退官方地址；传输中断仍遵循原下载器重试逻辑。保留所有原有摘要和签名校验，校验失败仍拒绝安装。
+
+后续同步须保留 `core.GitHubDownloads`、Application 中的初始化、独立下载器的接入，以及 `GitHubDownloadSettings` 和英文/中文资源。测试：`python -m unittest tools.tests.test_github_downloads tools.tests.test_localization`；测试用本机 JDK 编译真实 Java 路由，覆盖地址白名单、HTTPS 校验、关闭状态、Range 请求头和网络/HTTP/HTML 回退。加速服务属于第三方，国内可用性和速度不能保证，可在设置中更换地址。

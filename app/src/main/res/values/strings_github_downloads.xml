@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="github_download_group">Downloads</string>
+    <string name="github_download_enabled">Accelerate GitHub downloads</string>
+    <string name="github_download_hint">Uses a third-party accelerator for public GitHub files. Falls back to the official URL if the connection fails; existing checksums and signatures still apply. Store downloads are unchanged.</string>
+    <string name="github_download_address">GitHub accelerator address</string>
+    <string name="github_download_off">Official URLs</string>
+    <string name="github_download_address_hint">Enter an HTTPS prefix, for example https://ghfast.top/. The original GitHub URL is appended. Leave blank to disable. Changes apply to new requests.</string>
+    <string name="github_download_invalid">Use an HTTPS address without credentials, a query or a fragment.</string>
+</resources>

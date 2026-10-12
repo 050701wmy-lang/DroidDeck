@@ -366,12 +366,13 @@ object AppUpdates {
     }
 
     private fun get(context: Context, url: String): String {
-        val c = URL(url).openConnection() as HttpURLConnection
-        c.connectTimeout = 15_000
-        c.readTimeout = 20_000
-        c.setRequestProperty("Accept", "application/json")
-        c.setRequestProperty("User-Agent", "DroidDeck-app")
-        c.setRequestProperty("Cache-Control", "no-cache")
+        val c = com.droiddeck.launcher.core.GitHubDownloads.open(url) { connection ->
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 20_000
+            connection.setRequestProperty("Accept", "application/json")
+            connection.setRequestProperty("User-Agent", "DroidDeck-app")
+            connection.setRequestProperty("Cache-Control", "no-cache")
+        }
         try {
             val code = c.responseCode
             if (code != 200) throw IOException(context.getString(R.string.appupd_http, code))

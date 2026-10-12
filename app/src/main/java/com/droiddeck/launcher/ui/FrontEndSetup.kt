@@ -395,8 +395,8 @@ internal fun SetupPanel(
                         // Two columns on a wide page: how it looks; this device and the library's art.
                         if (wide) Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.Top) {
                             Column(Modifier.weight(1f)) { look() }
-                            Column(Modifier.weight(1f)) { device(); art() }
-                        } else { look(); device(); art() }
+                            Column(Modifier.weight(1f)) { device(); art(); GitHubDownloadSettings(host) }
+                        } else { look(); device(); art(); GitHubDownloadSettings(host) }
                     }
                     3 -> {
                         SettingsGroup(stringResource(R.string.setup_tab_diagnostics)) {
