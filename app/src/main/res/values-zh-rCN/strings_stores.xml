@@ -161,4 +161,5 @@
     <string name="stores_login_error_ssl">登录页面的连接不安全。</string>
     <string name="stores_login_error_verification">无法验证登录，请重试。</string>
     <string name="stores_login_error_generic">登录失败，请重试。</string>
+    <string name="stores_dl_interrupted">已中断</string>
 </resources>
