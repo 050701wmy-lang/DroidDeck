@@ -321,14 +321,6 @@ internal fun SetupPanel(
                                 }
                             }
                         }
-                        SettingsGroup(stringResource(R.string.setup_account)) {
-                            accountCheck(true)
-                            ToggleRow(
-                                host, "offline", stringResource(R.string.setup_offline),
-                                s.offlineAccount?.let { if (it.isEmpty()) stringResource(R.string.setup_signed_in_unnamed) else stringResource(R.string.setup_signed_in, it) } ?: stringResource(R.string.setup_sign_in_first),
-                                s.offline, enabled = s.offlineAccount != null,
-                            ) { a.onOffline() }
-                        }
                         SettingsGroup(stringResource(R.string.setup_runtime)) { runtimeCheck(false) }
                     }
                     1 -> {
@@ -366,6 +358,7 @@ internal fun SetupPanel(
                                 ToggleRow(host, "launcher-animations", stringResource(R.string.setup_animations), null,
                                     s.animationsEnabled, onChange = a.onAnimationsEnabled)
                                 LanguageRow(host, s.language, a.onLanguage)
+                                ToggleRow(host, "show-stores", stringResource(R.string.setup_stores), null, s.gameStoresEnabled, onChange = a.onGameStoresEnabled)
                             }
                         }
                         val device: @Composable () -> Unit = {
