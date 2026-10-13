@@ -81,7 +81,6 @@
     <string name="stores_eyebrow_store">商店</string>
     <string name="stores_in_steam">✓ 已添加到 Steam</string>
     <string name="stores_uninstall">卸载</string>
-    <string name="stores_uninstall_confirm">再次按下以卸载</string>
     <string name="stores_launch_not_registered">Steam 下次启动时会读取此游戏；请从 Steam 启动游戏，或现在启动 Steam。</string>
     <string name="stores_card_proton">Proton</string>
     <string name="stores_card_proton_value">由 Steam 为每个游戏选择</string>
