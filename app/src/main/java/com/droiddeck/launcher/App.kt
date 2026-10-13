@@ -23,6 +23,7 @@ class App : Application() {
         super.onCreate()
         com.droiddeck.launcher.core.GitHubDownloads.init(this)
         CrashHandler.install(this)
+        com.droiddeck.launcher.session.QuestExperimental.initialize(this)
         com.droiddeck.launcher.session.SessionPrefs.settleGpuDriverMode(this)
         com.droiddeck.launcher.update.AppUpdates.init(this)
         GpuClockPin.clearLeftover(this)
