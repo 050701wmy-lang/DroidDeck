@@ -1,9 +1,11 @@
 import hashlib
+import http.server
 import os
 from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import threading
 import unittest
 import zipfile
 
@@ -29,8 +31,17 @@ class SteamInstallTest(unittest.TestCase):
         curl = self.bin / 'curl'
         curl.write_text('''#!/bin/bash
 set -eu
-printf '%s\\n' "$2" >> "$TEST_REQUESTS"
-cp "$TEST_CDN/${2##*/}" "$4"
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    https://*) url=$1; shift ;;
+    -o) output=$2; shift 2 ;;
+    --retry|--retry-delay|--retry-max-time|--connect-timeout|--speed-limit|--speed-time) shift 2 ;;
+    *) shift ;;
+  esac
+done
+printf '%s\\n' "$url" >> "$TEST_REQUESTS"
+if [ "${TEST_FAIL:-}" = "${url##*/}" ]; then exit 35; fi
+cp "$TEST_CDN/${url##*/}" "$output"
 ''')
         curl.chmod(0o755)
         # macOS has shasum; the guest and Linux CI have sha256sum.
@@ -76,6 +87,56 @@ cp "$TEST_CDN/${2##*/}" "$4"
 
     def test_downloads_the_deck_beta_client(self):
         self.assert_installed()
+
+    def test_exhausted_download_reports_component_and_curl_error(self):
+        for file, component in [('steam_client_steamdeck_publicbeta_linuxarm64', 'manifest'),
+                                ('steamdeck_publicbeta.zip', 'client_linuxarm64_linuxarm64')]:
+            with self.subTest(file=file):
+                self.env['TEST_FAIL'] = file
+                result = self.install()
+                self.assertEqual(35, result.returncode)
+                self.assertIn(f'== STEAM_DOWNLOAD_FAILED {component} 35', result.stderr)
+                self.assertFalse((self.steam / 'package/droiddeck-installed').exists())
+
+    def test_real_curl_retries_transient_server_errors(self):
+        real_curl = shutil.which('curl')
+        if real_curl is None:
+            self.skipTest('curl is required')
+        requests = []
+        cdn = self.cdn
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                requests.append(self.path)
+                if requests.count(self.path) == 1:
+                    self.send_response(503)
+                    self.end_headers()
+                    return
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write((cdn / self.path.lstrip('/')).read_bytes())
+
+            def log_message(self, *args):
+                pass
+
+        server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        self.env['REAL_CURL'] = real_curl
+        self.env['TEST_URL'] = f'http://127.0.0.1:{server.server_port}'
+        (self.bin / 'curl').write_text(r'''#!/bin/bash
+args=()
+for arg in "$@"; do
+  args+=("${arg/https:\/\/client-update.fastly.steamstatic.com/$TEST_URL}")
+done
+exec "$REAL_CURL" "${args[@]}"
+''')
+        result = self.install()
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(4, len(requests))
+        self.assertTrue((self.steam / 'package/droiddeck-installed').exists())
 
     def test_an_install_from_another_branch_is_left_for_steam_to_move(self):
         # An older app could install publicbeta; droiddeck-session moves the client at its start.

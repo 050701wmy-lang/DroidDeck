@@ -1475,7 +1475,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
             return
         }
         closeSecondScreen(reset = true)
-        if (status == 0) {
+        if (status == 0 && SessionState.relaunch != null) {
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 // A session asked for in this one's place (the desktop's Steam launchers or
@@ -1551,6 +1551,8 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         return try {
             var enosys = 0
             var fexMissing = false
+            var steamDownloadFailure: MatchResult? = null
+            val downloadFailure = Regex("^== STEAM_DOWNLOAD_FAILED (\\S+) (\\d+)$")
             // The tail is where a dying session says why; 512 KB covers the storm without reading a 1 GB log.
             val size = log.length()
             java.io.RandomAccessFile(log, "r").use { f ->
@@ -1561,9 +1563,13 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                 String(bytes, Charsets.ISO_8859_1).lineSequence().forEach { line ->
                     if (line.contains("Function not implemented")) enosys++
                     if (line.contains(FEX_MISSING)) fexMissing = true
+                    downloadFailure.matchEntire(line)?.let { steamDownloadFailure = it }
                 }
             }
-            if (fexMissing) {
+            if (steamDownloadFailure != null) {
+                val failure = steamDownloadFailure!!
+                EndHint(getString(R.string.session_end_steam_download, failure.groupValues[1], failure.groupValues[2]), evenOnSuccess = true)
+            } else if (fexMissing) {
                 val what = com.droiddeck.launcher.frontend.Library.nameForProgram(SessionState.program) ?: getString(R.string.session_end_program)
                 EndHint(getString(R.string.session_end_fex_missing, what), evenOnSuccess = true)
             } else if (enosys >= 8) {
