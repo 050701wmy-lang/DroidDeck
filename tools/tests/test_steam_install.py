@@ -27,7 +27,6 @@ class SteamInstallTest(unittest.TestCase):
         self.requests = self.root / 'requests'
         self.bin = self.root / 'bin'
         self.bin.mkdir()
-        # Only the network is faked: exercise real manifest parsing, checksums and zip extraction.
         curl = self.bin / 'curl'
         curl.write_text('''#!/bin/bash
 set -eu
@@ -44,7 +43,6 @@ if [ "${TEST_FAIL:-}" = "${url##*/}" ]; then exit 35; fi
 cp "$TEST_CDN/${url##*/}" "$output"
 ''')
         curl.chmod(0o755)
-        # macOS has shasum; the guest and Linux CI have sha256sum.
         if shutil.which('sha256sum') is None:
             sha = self.bin / 'sha256sum'
             sha.write_text('#!/bin/bash\nexec shasum -a 256 "$@"\n')
@@ -139,7 +137,6 @@ exec "$REAL_CURL" "${args[@]}"
         self.assertTrue((self.steam / 'package/droiddeck-installed').exists())
 
     def test_an_install_from_another_branch_is_left_for_steam_to_move(self):
-        # An older app could install publicbeta; droiddeck-session moves the client at its start.
         self.assert_installed()
         requests = self.requests.read_text()
         (self.steam / 'package/beta').write_text('publicbeta\n')
