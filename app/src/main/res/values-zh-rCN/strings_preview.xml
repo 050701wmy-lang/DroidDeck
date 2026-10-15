@@ -6,4 +6,23 @@
     <string name="stores_target_free_unknown">可用空间未知</string>
     <string name="stores_storage_insufficient">可用空间不足：需要 %1$s，仅剩 %2$s</string>
     <string name="stores_storage_low">空间不足（剩余 %1$s，需要 %2$s）</string>
+    <string name="drawer_latency">延迟</string>
+    <string name="drawer_low_latency_controller">低延迟手柄</string>
+    <string name="drawer_low_latency_controller_hint">手柄报告频率从 250 Hz 提升至 1000 Hz，略微增加 CPU 占用。</string>
+    <string name="drawer_low_latency_touch">低延迟触控</string>
+    <string name="drawer_low_latency_touch_hint">触控跳过帧批处理，Steam 触控控件以 1000 Hz 更新，略微增加 CPU 占用。</string>
+    <string name="drivers_using_quest">使用内置 Quest 显示驱动和默认运行驱动。</string>
+    <string name="drivers_using_quest_restart">使用内置 Quest 显示驱动和默认运行驱动。显示驱动在重启 DroidDeck 后生效。</string>
+    <string name="art_search_sgdb">搜索 SteamGridDB…</string>
+    <string name="art_sgdb_title">SteamGridDB：%1$s</string>
+    <string name="art_sgdb_search_label">搜索游戏</string>
+    <string name="art_sgdb_more">显示更多</string>
+    <string name="art_sgdb_other_games">其他匹配</string>
+    <string name="art_sgdb_none">未找到结果。</string>
+    <string name="art_sgdb_no_key">SteamGridDB 需要 API 密钥，请在设置 › 启动器中添加。</string>
+    <string name="art_sgdb_bad_key">SteamGridDB 未接受此 API 密钥，请在设置 › 启动器中检查。</string>
+    <string name="art_sgdb_limit">SteamGridDB 当前限制了请求，请稍后重试。</string>
+    <string name="art_sgdb_offline">无法连接 SteamGridDB，请检查网络。</string>
+    <string name="art_sgdb_server">SteamGridDB 服务出错，请稍后重试。</string>
+    <string name="art_sgdb_no_game">SteamGridDB 没有匹配到此游戏，请尝试搜索。</string>
 </resources>
