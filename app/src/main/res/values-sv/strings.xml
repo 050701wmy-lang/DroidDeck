@@ -2236,4 +2236,21 @@
     <string name="stores_hltb_completionist">Komplettering</string>
     <string name="stores_hltb_hours">%1$s h</string>
     <string name="stores_hltb_minutes">%1$d min</string>
+    <string name="boot_movie">Startvideo</string>
+    <string name="boot_movie_video">Video</string>
+    <string name="boot_movie_droiddeck">DroidDeck · %1$d fps</string>
+    <string name="boot_movie_note">60 fps ser jämnare ut men använder mer CPU medan Steam startar. En startvideo vald i Steams egna inställningar har företräde.</string>
+    <string name="boot_movie_sound">Ljud</string>
+    <string name="boot_movie_custom">Egen video</string>
+    <string name="boot_movie_custom_hint">MP4, MOV, MKV eller WebM. Andra format och filer över %1$d MB konverteras till 720p-WebM på enheten, upp till %2$d sekunder.</string>
+    <string name="boot_movie_import">Importera</string>
+    <string name="boot_movie_remove">Ta bort</string>
+    <string name="boot_movie_pick">Välj en startvideo</string>
+    <string name="boot_movie_imported">%1$s är nu startvideon</string>
+    <string name="boot_movie_imported_silent">%1$s är nu startvideon, utan ljud</string>
+    <string name="boot_movie_too_long">Videor som ska konverteras får vara högst %1$d sekunder</string>
+    <string name="boot_movie_converting">Konverterar %1$d %%</string>
+    <string name="boot_movie_converting_started">Konverterar %1$s för Steam. Håll DroidDeck öppet.</string>
+    <string name="boot_movie_unsupported">Enheten kan inte avkoda videon.</string>
+    <string name="boot_movie_import_failed">Kunde inte importera videon</string>
 </resources>

@@ -2211,4 +2211,21 @@
     <string name="stores_hltb_completionist">เก็บครบ</string>
     <string name="stores_hltb_hours">%1$s ชม.</string>
     <string name="stores_hltb_minutes">%1$d นาที</string>
+    <string name="boot_movie">วิดีโอบูต</string>
+    <string name="boot_movie_video">วิดีโอ</string>
+    <string name="boot_movie_droiddeck">DroidDeck · %1$d fps</string>
+    <string name="boot_movie_note">60 fps ลื่นกว่าแต่ใช้ CPU มากขึ้นระหว่างที่ Steam กำลังเริ่ม วิดีโอเริ่มต้นที่เลือกในการตั้งค่าของ Steam เองจะมีลำดับความสำคัญกว่า</string>
+    <string name="boot_movie_sound">เสียง</string>
+    <string name="boot_movie_custom">วิดีโอของคุณเอง</string>
+    <string name="boot_movie_custom_hint">MP4, MOV, MKV หรือ WebM รูปแบบอื่นและไฟล์ที่ใหญ่กว่า %1$d MB จะถูกแปลงเป็น WebM 720p บนอุปกรณ์ ความยาวไม่เกิน %2$d วินาที</string>
+    <string name="boot_movie_import">นำเข้า</string>
+    <string name="boot_movie_remove">ลบ</string>
+    <string name="boot_movie_pick">เลือกวิดีโอบูต</string>
+    <string name="boot_movie_imported">%1$s เป็นวิดีโอบูตแล้ว</string>
+    <string name="boot_movie_imported_silent">%1$s เป็นวิดีโอบูตแล้ว แบบไม่มีเสียง</string>
+    <string name="boot_movie_too_long">วิดีโอที่ต้องแปลงต้องยาวไม่เกิน %1$d วินาที</string>
+    <string name="boot_movie_converting">กำลังแปลง %1$d%%</string>
+    <string name="boot_movie_converting_started">กำลังแปลง %1$s สำหรับ Steam โปรดเปิด DroidDeck ค้างไว้</string>
+    <string name="boot_movie_unsupported">อุปกรณ์นี้ถอดรหัสวิดีโอนั้นไม่ได้</string>
+    <string name="boot_movie_import_failed">นำเข้าวิดีโอนี้ไม่ได้</string>
 </resources>
