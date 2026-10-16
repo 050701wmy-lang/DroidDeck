@@ -16,7 +16,6 @@
     <string name="art_search_sgdb">搜索 SteamGridDB…</string>
     <string name="art_sgdb_title">SteamGridDB：%1$s</string>
     <string name="art_sgdb_search_label">搜索游戏</string>
-    <string name="art_sgdb_more">显示更多</string>
     <string name="art_sgdb_other_games">其他匹配</string>
     <string name="art_sgdb_none">未找到结果。</string>
     <string name="art_sgdb_no_key">SteamGridDB 需要 API 密钥，请在设置 › 启动器中添加。</string>
