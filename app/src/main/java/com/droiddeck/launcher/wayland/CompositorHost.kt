@@ -7,6 +7,10 @@ import com.droiddeck.launcher.session.SessionState
 object CompositorHost {
     @Volatile
     private var started = false
+
+    @Volatile
+    var displayChoice: String? = null
+
     @Volatile
     private var vsyncRunning = false
 
