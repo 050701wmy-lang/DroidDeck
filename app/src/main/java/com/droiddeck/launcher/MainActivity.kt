@@ -1209,6 +1209,8 @@ class MainActivity : ComponentActivity() {
                 onImportAndroid = { pickAndroidDriver.launch(InAppFilePicker.buildIntent(this, ZIP_EXT, getString(R.string.drivers_pick_android))) },
                 onImportZip = { pickAnyDriver.launch(InAppFilePicker.buildIntent(this, ZIP_EXT, getString(R.string.drivers_pick_any))) },
                 onRestoreBundled = { TurnipDriver(this).restoreBundled(); drivers.refreshDrivers() },
+                onMode = { m -> drivers.chooseMode(m) },
+                onRestart = { drivers.restartApp() },
             ),
             protons = com.droiddeck.launcher.ui.ProtonsState(
                 rows = protons.protonRows, busyId = protons.protonBusyId, stage = protons.protonStage, percent = protons.protonPercent,
@@ -1592,6 +1594,7 @@ class MainActivity : ComponentActivity() {
 
     private fun refresh() {
         if (!busy && LinuxRuntimeInstaller.isBusy()) followRuntimeOperation { LinuxRuntimeInstaller.attach(it) }
+        if (showComponents) drivers.refreshDrivers()
         addedGamesArt = SessionPrefs.addedGamesArt(this)
         desktopInstalled = DesktopCatalog.desktopInstalled(this)
         desktopPresent = DesktopCatalog.desktopPresent(this)
