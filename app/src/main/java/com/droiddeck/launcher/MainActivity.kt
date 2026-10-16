@@ -1519,10 +1519,17 @@ class MainActivity : ComponentActivity() {
         }, "added-games-update").start()
     }
 
+    private val steamArtRefreshes = HashMap<Int, Int>()
+
     private fun refreshSteamGameArt(appId: Int) {
+        val version = (steamArtRefreshes[appId] ?: 0) + 1
+        steamArtRefreshes[appId] = version
         Thread({
             val fresh = com.droiddeck.launcher.frontend.Library.steamGames(this).firstOrNull { it.appId == appId } ?: return@Thread
-            ui.post { steamGames = steamGames.map { if (it.appId == appId && it.library != Library.ADDED) fresh else it } }
+            ui.post {
+                if (steamArtRefreshes[appId] != version) return@post
+                steamGames = steamGames.map { if (it.appId == appId && it.library != Library.ADDED) fresh else it }
+            }
         }, "steam-art-update").start()
     }
 
@@ -1666,6 +1673,7 @@ class MainActivity : ComponentActivity() {
             else -> "Steam"
         } else null
         val scanGeneration = ++libraryScanGeneration
+        val artRefreshesAtStart = HashMap(steamArtRefreshes)
         if (shortcutPicker) shortcutLibraryScanning = true
         Thread({
             val emus = Library.emulators(this) { id -> DesktopCatalog.installed(this, id) != null }
@@ -1694,7 +1702,11 @@ class MainActivity : ComponentActivity() {
             }
             ui.post {
                 if (scanGeneration == libraryScanGeneration) {
-                    steamGames = all
+                    val current = steamGames.filter { it.library != Library.ADDED }.associateBy { it.appId }
+                    steamGames = all.map { g ->
+                        val newer = current[g.appId]
+                        if (newer != null && g.library != Library.ADDED && steamArtRefreshes[g.appId] != artRefreshesAtStart[g.appId]) g.withArt(newer.art, newer.hero, newer.icon) else g
+                    }
                     shortcutLibraryScanning = false
                     handleGameLink(all)
                 }
