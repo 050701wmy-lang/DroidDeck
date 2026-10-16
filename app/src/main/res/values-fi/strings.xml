@@ -2236,4 +2236,21 @@
     <string name="stores_hltb_completionist">Kaikki</string>
     <string name="stores_hltb_hours">%1$s t</string>
     <string name="stores_hltb_minutes">%1$d min</string>
+    <string name="boot_movie">Käynnistysvideo</string>
+    <string name="boot_movie_video">Video</string>
+    <string name="boot_movie_droiddeck">DroidDeck · %1$d fps</string>
+    <string name="boot_movie_note">60 fps näyttää sulavammalta, mutta kuormittaa suoritinta enemmän Steamin käynnistyessä. Steamin omista asetuksista valittu käynnistysvideo on etusijalla.</string>
+    <string name="boot_movie_sound">Ääni</string>
+    <string name="boot_movie_custom">Oma video</string>
+    <string name="boot_movie_custom_hint">MP4, MOV, MKV tai WebM. Muut muodot ja yli %1$d Mt:n tiedostot muunnetaan laitteella 720p-WebM-muotoon, enintään %2$d sekuntia.</string>
+    <string name="boot_movie_import">Tuo</string>
+    <string name="boot_movie_remove">Poista</string>
+    <string name="boot_movie_pick">Valitse käynnistysvideo</string>
+    <string name="boot_movie_imported">%1$s on nyt käynnistysvideo</string>
+    <string name="boot_movie_imported_silent">%1$s on nyt käynnistysvideo, ilman ääntä</string>
+    <string name="boot_movie_too_long">Muunnettavan videon pituus saa olla enintään %1$d sekuntia</string>
+    <string name="boot_movie_converting">Muunnetaan %1$d %%</string>
+    <string name="boot_movie_converting_started">Muunnetaan %1$s Steamille. Pidä DroidDeck auki.</string>
+    <string name="boot_movie_unsupported">Laite ei pysty purkamaan videota.</string>
+    <string name="boot_movie_import_failed">Videon tuonti epäonnistui</string>
 </resources>
