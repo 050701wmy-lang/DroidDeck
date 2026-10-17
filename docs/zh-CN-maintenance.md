@@ -56,7 +56,7 @@ git switch zh-CN
 
 后续中文分支以 `Droid-Deck/DroidDeck-CI` 的 `catalog.json` 中已发布的 `preview.commit` 为同步目标，不跟随尚未发布的 main 提交或 PR 测试构建。2026-10-05 已同步至 `main-eaa4a7a`（`eaa4a7a0472abc211364c3286f78dd9c48c463e1`），补齐 92 项新增中文资源，并迁移简体中文目录到 `values-zh-rCN`。
 
-中文版升级保持包名 `com.droiddeck.launcher.zh`、应用名和现有签名，保留默认中文及 Linux 字体挂载。官方预览 APK 仅作为对应提交的原生载荷来源，不直接替代中文版；复用前校验官方 SHA-256、签名及脚本一致性，原生文件必须与此次预览提交匹配。历史预览 `main-eaa4a7a` 原始 APK 的 SHA-256 为 `2a6980a2c9a379feadc75d367252f7cbab6625bd77e3d597562222caa229ca38`。
+中文版升级保持包名 `com.droiddeck.launcher.zh`、现有签名及显示名称 `DroidDeck`，保留默认中文及 Linux 字体挂载。官方预览 APK 仅作为对应提交的原生载荷来源，不直接替代中文版；复用前校验官方 SHA-256、签名及脚本一致性，原生文件必须与此次预览提交匹配。历史预览 `main-eaa4a7a` 原始 APK 的 SHA-256 为 `2a6980a2c9a379feadc75d367252f7cbab6625bd77e3d597562222caa229ca38`。
 
 ## 手动更新上游
 
@@ -105,3 +105,7 @@ Fork 不会自动继承上游的 Release、签名密钥或 Actions secrets。首
 只代理 `raw.githubusercontent.com` 公开资源和 `github.com/<owner>/<repo>/releases/download/...` 文件，包括运行环境、桌面、组件、驱动和应用更新文件。GitHub API 查询仍直连，Steam、Epic、GOG 等商店、登录和游戏 CDN 不改写。第三方无法连接、返回非成功 HTTP 状态或 HTML 页面时回退官方地址；传输中断仍遵循原下载器重试逻辑。保留所有原有摘要和签名校验，校验失败仍拒绝安装。
 
 后续同步须保留 `core.GitHubDownloads`、Application 中的初始化、独立下载器的接入，以及 `GitHubDownloadSettings` 和英文/中文资源。测试：`python -m unittest tools.tests.test_github_downloads tools.tests.test_localization`；测试用本机 JDK 编译真实 Java 路由，覆盖地址白名单、HTTPS 校验、关闭状态、Range 请求头和网络/HTTP/HTML 回退。加速服务属于第三方，国内可用性和速度不能保证，可在设置中更换地址。
+
+## 显示名称
+
+2026-10-17 按用户要求，应用显示名称统一为 `DroidDeck`，不再添加“中文版”。使用上游的 `app_name`，本地构建不再加入 `.gradle/install/chinese-res` 名称覆盖。包名仍为 `com.droiddeck.launcher.zh`，签名、默认简体中文、GitHub 加速及其他修复不变。后续同步和构建须保留此名称要求。
