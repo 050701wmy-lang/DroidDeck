@@ -1,6 +1,6 @@
 #!/bin/bash
 set -eu
-cdn=https://client-update.fastly.steamstatic.com
+cdn_list="https://client-update.steamstatic.com https://client-update.akamai.steamstatic.com https://client-update.fastly.steamstatic.com"
 steam_channel=steamdeck_publicbeta
 manifest=steam_client_${steam_channel}_linuxarm64
 steam_root=${XDG_DATA_HOME:-$HOME/.local/share}/Steam
@@ -33,23 +33,40 @@ if [ -n "$repair" ]; then
     [ "$(sha1sum "$part" | cut -d' ' -f1)" = "$sum" ] || rm -f "$part"
   done
 fi
-[ -x "$steam_root/steamrtarm64/steam" ] && [ -f "$stamp" ] && exit 0
+sync=
+if [ "${1:-}" = --sync ]; then
+  case "${2:-}" in publicbeta|steamdeck_publicbeta) sync=$2 ;; *) sync=$steam_channel ;; esac
+  manifest=steam_client_${sync}_linuxarm64
+fi
+[ -z "$sync" ] && [ -x "$steam_root/steamrtarm64/steam" ] && [ -f "$stamp" ] && exit 0
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
-download() {
-  local status
-  if curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 180 \
-      --connect-timeout 20 --speed-limit 1024 --speed-time 60 "$cdn/$1" -o "$2"; then
-    return 0
+cdn=""
+status=1
+for candidate in $cdn_list; do
+  if curl -fsSL --connect-timeout 10 --max-time 30 --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 180 \
+      "$candidate/$manifest" -o "$work/manifest"; then
+    cdn=$candidate
+    break
   else
     status=$?
-    echo "== STEAM_DOWNLOAD_FAILED $3 $status" >&2
-    exit "$status"
   fi
-}
-download "$manifest" "$work/manifest" manifest
+done
+[ -n "$cdn" ] || { echo "== STEAM_DOWNLOAD_FAILED manifest $status" >&2; exit "$status"; }
+cdn_order=("$cdn")
+for candidate in $cdn_list; do
+  [ "$candidate" = "$cdn" ] || cdn_order+=("$candidate")
+done
 version=$(awk -F'"' '$2 == "version" { print $4; exit }' "$work/manifest")
+if [ -n "$sync" ]; then
+  installed=$(awk -F'"' '$2 == "version" { print $4; exit }' "$steam_root/package/$manifest.manifest" 2>/dev/null || true)
+  if [ -x "$steam_root/steamrtarm64/steam" ] && [ "$installed" = "$version" ]; then
+    chmod -R a+x "$steam_root/steamrtarm64" "$steam_root/linuxarm64" 2>/dev/null || true
+    exit 0
+  fi
+  echo "== STEP $(date -u +%H:%M:%S) updating the arm64 Steam client to $version (was ${installed:-none}) for the x86-64 client"
+fi
 awk -F'"' '
   /^\t"/ && NF >= 3 && $4 == "" { block = $2 }
   $2 == "file" { file[block] = $4 }
@@ -63,8 +80,20 @@ mkdir -p "$steam_root/package"
 while read -r block file sum; do
   i=$((${i:-0} + 1))
   echo "== STEP $(date -u +%H:%M:%S) downloading Steam: $block ($i/$total)"
-  download "$file" "$work/$file" "$block"
-  echo "$sum  $work/$file" | sha256sum -c --quiet
+  fetched=""
+  status=1
+  for host in "${cdn_order[@]}"; do
+    if curl -fsSL --connect-timeout 10 --speed-limit 1024 --speed-time 60 --max-time 1800 \
+        --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 180 \
+        "$host/$file" -o "$work/$file" && echo "$sum  $work/$file" | sha256sum -c --quiet; then
+      fetched=$host
+      break
+    else
+      status=$?
+    fi
+    rm -f "$work/$file"
+  done
+  [ -n "$fetched" ] || { echo "== STEAM_DOWNLOAD_FAILED $block $status" >&2; exit "$status"; }
   unzip -qo "$work/$file" -d "$steam_root"
   rm -f "$work/$file"
 done < "$work/parts"
@@ -77,7 +106,12 @@ find "$steam_root" -depth -name '*\\*' | while read -r odd; do
     mv -f "$odd" "$fixed"
   fi
 done
-echo "$steam_channel" > "$steam_root/package/beta"
+chmod -R a+x "$steam_root/steamrtarm64" "$steam_root/linuxarm64" 2>/dev/null || true
+if [ -n "$sync" ]; then
+  cp -f "$work/manifest" "$steam_root/package/$manifest.manifest"
+else
+  echo "$steam_channel" > "$steam_root/package/beta"
+fi
 ln -sfn "$steam_root/steamrtarm64" "$steam_root/steamrtarm32"
 chmod +x "$steam_root/steamrtarm64/steam" 2>/dev/null || true
 mkdir -p "$HOME/.steam"

@@ -149,6 +149,7 @@ import java.util.Locale
 
 private val SessionDrawerPage.title: Int get() = when (this) {
     SessionDrawerPage.CONTROLLER -> R.string.drawer_page_controller
+    SessionDrawerPage.GLASSES -> R.string.drawer_page_glasses
     SessionDrawerPage.SECOND_SCREEN -> R.string.drawer_second_screen
     SessionDrawerPage.DISPLAY -> R.string.drawer_page_display
     SessionDrawerPage.VR -> R.string.vr_title
@@ -159,6 +160,7 @@ private val SessionDrawerPage.title: Int get() = when (this) {
 
 private val SessionDrawerPage.icon get() = when (this) {
     SessionDrawerPage.CONTROLLER -> Icons.Outlined.SportsEsports
+    SessionDrawerPage.GLASSES -> GlassesIcon
     SessionDrawerPage.SECOND_SCREEN -> Icons.Outlined.ScreenShare
     SessionDrawerPage.DISPLAY -> Icons.Outlined.DesktopWindows
     SessionDrawerPage.VR -> VrHeadsetIcon
@@ -211,6 +213,8 @@ class DrawerActions(
     val cardboard: Cardboard = Cardboard.OFF,
     val cardboardSensor: Boolean = false,
     val steamVr: SteamVr.Status? = null,
+    val glassesPresent: Boolean = false,
+    val glassesOutput: Boolean = false,
     val immersiveSteamVr: Boolean = false,
     val textureAnisotropy: Int? = 0,
     val textureLodBias: String? = TextureFiltering.LOD_BIAS_OFF,
@@ -247,6 +251,7 @@ class DrawerActions(
     val onEffects: (ScreenEffects) -> Unit = {},
     val onCardboard: (Cardboard) -> Unit = {},
     val onCardboardRecenter: () -> Unit = {},
+    val onGlassesRecenter: () -> Unit = {},
     val onSteamVr: (String) -> Unit = {},
     val onTextureAnisotropy: (Int?) -> Unit = {},
     val onTextureLodBias: (String?) -> Unit = {},
@@ -287,12 +292,15 @@ class DrawerActions(
     val onGameNoSteam: (Long, Boolean) -> Unit = { _, _ -> },
     val onComponentSwap: (protonId: String, comp: String, value: String) -> Unit = { _, _, _ -> },
     val onGameComponent: (appId: Long, comp: String, file: String?) -> Unit = { _, _, _ -> },
+    val defaultProtonId: String? = null,
+    val onDefaultProton: (protonId: String) -> Unit = {},
+    val onGameProton: (appId: Long, protonId: String?) -> Unit = { _, _ -> },
 )
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 internal fun SessionDrawer(open: Boolean, requestedPage: SessionDrawerPage, controllerActive: Boolean, onPageChange: (SessionDrawerPage) -> Unit, a: DrawerActions) {
-    val pages = sessionDrawerPages(a.steam && a.secondScreenDisplays.isNotEmpty())
+    val pages = sessionDrawerPages(a.steam && a.secondScreenDisplays.isNotEmpty(), a.glassesPresent)
     val page = requestedPage.takeIf { it in pages } ?: SessionDrawerPage.CONTROLLER
     LaunchedEffect(requestedPage, pages) { if (page != requestedPage) onPageChange(page) }
     val colors = MaterialTheme.colorScheme
@@ -462,7 +470,7 @@ internal fun SessionDrawer(open: Boolean, requestedPage: SessionDrawerPage, cont
                         }
                         SessionDrawerPage.VR -> {
                             SteamVrGroup(a) { key -> focus.track(page, key) }
-                            CardboardGroup(host, a) { key -> focus.track(page, key) }
+                            if (!a.glassesOutput) CardboardGroup(host, a) { key -> focus.track(page, key) }
                         }
                         SessionDrawerPage.CONTROLLER -> {
                             SettingsGroup(stringResource(R.string.drawer_page_controller)) {
@@ -528,6 +536,12 @@ internal fun SessionDrawer(open: Boolean, requestedPage: SessionDrawerPage, cont
                         }
                         SessionDrawerPage.SECOND_SCREEN -> {
                             SecondScreenGroup(host, a) { key -> focus.track(page, key) }
+                        }
+                        SessionDrawerPage.GLASSES -> {
+                            val (g, s) = rememberGlasses()
+                            GlassesGroups(host, g, s, { key -> focus.track(page, key) }, onRecenter = a.onGlassesRecenter,
+                                outputActive = a.glassesOutput, steamVrRunning = a.steamVr == SteamVr.Status.RUNNING,
+                                steamVr = { SteamVrRow(a) })
                         }
                         SessionDrawerPage.GAMES -> {
                             if (a.steam) SelectedGameProfileGroup(host, a) { key -> focus.track(page, key) }
@@ -952,6 +966,19 @@ private fun SteamVrGroup(a: DrawerActions, track: (String) -> Modifier) {
 }
 
 @Composable
+private fun SteamVrRow(a: DrawerActions) {
+    val vrLabel = stringResource(R.string.cardboard_steamvr)
+    when (a.steamVr) {
+        SteamVr.Status.NOT_INSTALLED -> ActionRow(vrLabel, null, stringResource(R.string.cardboard_steamvr_install), { a.onSteamVr("install") })
+        SteamVr.Status.INSTALLING -> SettingsRow(vrLabel, stringResource(R.string.cardboard_steamvr_installing)) {}
+        SteamVr.Status.READY -> ActionRow(vrLabel, null, stringResource(R.string.cardboard_steamvr_start), { a.onSteamVr("start") })
+        SteamVr.Status.RUNNING -> ActionRow(vrLabel, null, stringResource(R.string.cardboard_steamvr_stop), { a.onSteamVr("stop") })
+        SteamVr.Status.UNAVAILABLE -> SettingsRow(vrLabel, stringResource(R.string.cardboard_steamvr_unavailable)) {}
+        null -> {}
+    }
+}
+
+@Composable
 private fun SecondScreenGroup(host: MenuHost, a: DrawerActions, track: (String) -> Modifier) {
     val colors = MaterialTheme.colorScheme
     val pal = LocalPalette.current
@@ -1205,9 +1232,21 @@ private fun ComponentsDrawerPage(host: MenuHost, a: DrawerActions, track: (Strin
             return
         }
         SettingsGroup(stringResource(R.string.drawer_page_components)) {
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp)) {
-                ProfileSummaryRow(stringResource(R.string.comp_proton), gameProfile.proton.value)
-            }
+            DrawerStackedChoice(
+                host = host,
+                key = "game-cmp-proton",
+                label = stringResource(R.string.comp_proton),
+                hint = if (gameProfile.proton.inherited && gameProfile.proton.value.isNotEmpty()) {
+                    stringResource(R.string.drawer_component_inherited, gameProfile.proton.value)
+                } else {
+                    null
+                },
+                options = listOf<Pair<String?, String>>(null to stringResource(R.string.comp_game_use_general)) +
+                    snap.protons.map { it.proton.id to it.proton.name },
+                selected = if (gameProfile.proton.inherited) null else gameProfile.protonId,
+                chipModifier = track("cmp-proton"),
+                onPick = { id -> a.onGameProton(gameProfile.appId, id) },
+            )
             for (comp in ComponentsManager.COMPONENTS) {
                 val value = gameProfile.components.getValue(comp)
                 val options: List<Pair<String?, String>> =
@@ -1238,8 +1277,7 @@ private fun ComponentsDrawerPage(host: MenuHost, a: DrawerActions, track: (Strin
         return
     }
     val running = snap.protons.filter { it.inUseByGame }
-    var pick by rememberSaveable { mutableStateOf<String?>(null) }
-    val view = snap.protons.firstOrNull { it.proton.id == pick } ?: running.firstOrNull() ?: snap.protons.firstOrNull()
+    val view = snap.protons.firstOrNull { it.proton.id == a.defaultProtonId } ?: running.firstOrNull() ?: snap.protons.firstOrNull()
     SettingsGroup(stringResource(R.string.drawer_running_now)) {
         val src = remember { MutableInteractionSource() }
         val hot = src.collectIsFocusedAsState().value
@@ -1280,7 +1318,7 @@ private fun ComponentsDrawerPage(host: MenuHost, a: DrawerActions, track: (Strin
                 view.reappliedAt.takeIf { it > 0 }?.let { stringResource(R.string.drawer_reapplied, java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(it * 1000))) },
             ).joinToString(" · "),
             snap.protons.map { it.proton.id to it.proton.name }, p.id,
-            chipModifier = track("cmp-proton"), onPick = { pick = it },
+            chipModifier = track("cmp-proton"), onPick = { if (it != p.id) a.onDefaultProton(it) },
         )
         val originalLabel = stringResource(R.string.drawer_original)
         val build = ComponentsManager.safeName(p.version)

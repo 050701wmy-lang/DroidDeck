@@ -3,8 +3,10 @@ package com.droiddeck.launcher.update
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import com.droiddeck.launcher.BuildConfig
 import com.droiddeck.launcher.R
+import com.droiddeck.launcher.core.DownloadSource
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
@@ -13,6 +15,7 @@ import java.net.URL
 import java.security.MessageDigest
 
 object AppUpdates {
+    private const val TAG = "AppUpdates"
     private const val REPO = "Droid-Deck/DroidDeck"
     private const val CI_REPO = "Droid-Deck/DroidDeck-CI"
     private const val CATALOG_URL = "https://raw.githubusercontent.com/$CI_REPO/main/catalog.json"
@@ -353,13 +356,29 @@ object AppUpdates {
     }
 
     private fun get(context: Context, url: String): String {
-        val c = com.droiddeck.launcher.core.GitHubDownloads.open(url) { connection ->
-            connection.connectTimeout = 15_000
-            connection.readTimeout = 20_000
-            connection.setRequestProperty("Accept", "application/json")
-            connection.setRequestProperty("User-Agent", "DroidDeck-app")
-            connection.setRequestProperty("Cache-Control", "no-cache")
+        val sources = DownloadSource.candidates(url)
+        var last: IOException? = null
+        for ((index, source) in sources.withIndex()) {
+            try {
+                val body = get(context, source, url)
+                DownloadSource.succeeded(source)
+                return body
+            } catch (e: IOException) {
+                last = e
+                if (index < sources.lastIndex) Log.i(TAG, "retrying $url via $source")
+            }
         }
+        DownloadSource.failed()
+        throw last ?: IOException(context.getString(R.string.appupd_http, 0))
+    }
+
+    private fun get(context: Context, source: String, url: String): String {
+        val c = URL(source).openConnection() as HttpURLConnection
+        c.connectTimeout = 15_000
+        c.readTimeout = 20_000
+        c.setRequestProperty("Accept", "application/json")
+        c.setRequestProperty("User-Agent", "DroidDeck-app")
+        c.setRequestProperty("Cache-Control", "no-cache")
         try {
             val code = c.responseCode
             if (code != 200) throw IOException(context.getString(R.string.appupd_http, code))
