@@ -37,6 +37,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -55,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
@@ -80,32 +82,45 @@ import com.droiddeck.launcher.session.ComponentsManager
 import com.droiddeck.launcher.session.ComponentsManager.CatalogItem
 import com.droiddeck.launcher.session.ComponentsManager.Snapshot
 import kotlinx.coroutines.delay
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.runtime.rememberCoroutineScope
+import com.droiddeck.launcher.core.FexPreset
+import com.droiddeck.launcher.core.GameEnvironment
+import com.droiddeck.launcher.frontend.Library
+import com.droiddeck.launcher.session.GameEnvironmentStore
+import com.droiddeck.launcher.session.GameProfileManager
+import com.droiddeck.launcher.session.ProtonDefault
+import com.droiddeck.launcher.session.WinComponents
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.DateFormat
 import java.util.Date
 
-/** The Components page's layer for the GPU drivers, under every Proton's. */
 const val GPU_TAB = "gpu"
 
-/** The Components page's layer for the Proton itself, the one the indented layers belong to. */
 const val PROTON_TAB = "proton"
 
-/** The stack's layers, top to bottom: LB / RB and the d-pad walk them in this order. */
-internal val LAYERS = listOf(PROTON_TAB, "dxvk", "vkd3d", "fex", GPU_TAB)
+internal val LAYERS = listOf(GPU_TAB, PROTON_TAB, "dxvk", "vkd3d", "fex")
 
-/** The layer [by] steps from [current] (LB -1, RB +1), wrapping round the stack. */
 internal fun layerStep(current: String, by: Int): String {
     val i = LAYERS.indexOf(current).coerceAtLeast(0)
     return LAYERS[((i + by) % LAYERS.size + LAYERS.size) % LAYERS.size]
 }
 
-/** One installed row: a Proton's original bundle (one per Proton build) or a stored package. */
 private class InstalledItem(
     val name: String, val detail: String, val tag: String,
     val selected: Boolean, val removable: Boolean,
-    /** Stored package file, or null for an original. */
     val file: String?,
-    /** The Proton build an original belongs to. */
     val protonVersion: String?,
+)
+
+private data class ProfileEditorState(
+    val environment: GameEnvironment.Config,
+    val protonChoice: ProtonDefault.GameChoice?,
+    val protonId: String?,
+    val components: Map<String, String>,
 )
 
 private val GOLD = Color(0xFFF2C66D)
@@ -113,14 +128,7 @@ private val QUEUED = Color(0xFFFFB86B)
 private val ROW_SHAPE = RoundedCornerShape(10.dp)
 private val LAYER_SHAPE = RoundedCornerShape(12.dp)
 
-/**
- * Everything a game runs on, as one stack: the Proton, its DXVK, VKD3D-Proton and FEX indented
- * under it because they belong to it, then the GPU drivers that every Proton shares. One selection
- * glides along the stack (LB / RB, or the d-pad in it); beside it a detail frame that never moves -
- * what is in use, what is installed and what is available, and what else can be done - only its
- * rows trade places. A swap is asked for by stepping out of its row, and the row flies home to its
- * layer. On a narrow page the stack is the page, and a layer's detail floods out of its card.
- */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun ComponentsPage(
     snapshot: Snapshot?,
@@ -142,14 +150,14 @@ fun ComponentsPage(
     onRefresh: () -> Unit,
     onImport: () -> Unit,
     onBack: () -> Unit,
+    games: List<Library.SteamGame> = emptyList(),
+    generalFexPreset: String = "",
+    onGeneralFexPreset: (String) -> Unit = {},
     requestInitialFocus: Boolean = true,
-    /** The GPU drivers layer ([GPU_TAB]): what it shows and does. */
     gpu: GpuDriversState = GpuDriversState(),
     gpuActions: GpuDriversActions = GpuDriversActions(),
-    /** The Proton layer ([PROTON_TAB]): the Protons DroidDeck can install, and installing them. */
     protons: ProtonsState = ProtonsState(),
     protonActions: ProtonsActions = ProtonsActions(),
-    /** The Proton layer's options for every Proton (sync, FEX preset, SSBS, environment). */
     protonOptions: @Composable () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
@@ -160,16 +168,217 @@ fun ComponentsPage(
     val inputMode = LocalInputModeManager.current
     val layer = if (comp in LAYERS) comp else GPU_TAB
     BackHandler(onBack = onBack)
+    var scopeMenu by remember { mutableStateOf(false) }
+    var selectedGameKey by remember { mutableStateOf<String?>(null) }
+    var fexMenu by remember { mutableStateOf(false) }
+    var gameProtonMenu by remember { mutableStateOf(false) }
+    var gameProtonId by remember { mutableStateOf<String?>(null) }
+    var gameProtonChoice by remember { mutableStateOf<ProtonDefault.GameChoice?>(null) }
+    var gameComponents by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var gameComponentMenu by remember { mutableStateOf<String?>(null) }
+    var environmentEditor by remember { mutableStateOf(false) }
+    var winComponentsOpen by remember { mutableStateOf<Boolean?>(null) }
+    var winComponentsRevision by remember { mutableStateOf(0) }
+    var environment by remember { mutableStateOf<GameEnvironment.Config?>(null) }
+    var profileLoading by remember { mutableStateOf(false) }
+    var profileLoadGeneration by remember { mutableStateOf(0L) }
+    var environmentBusy by remember { mutableStateOf(false) }
+    var environmentError by remember { mutableStateOf(false) }
+    var profileNotice by remember { mutableStateOf<String?>(null) }
+    var confirm by remember { mutableStateOf<Pair<String, () -> Unit>?>(null) }
+    var confirmTitle by remember { mutableStateOf("") }
+    var confirmVerb by remember { mutableStateOf(R.string.comp_swap) }
+    fun ask(title: String, body: String, verb: Int, action: () -> Unit) {
+        confirmTitle = title
+        confirmVerb = verb
+        confirm = body to action
+    }
+    val coroutine = rememberCoroutineScope()
+    val selectedGame = games.firstOrNull { it.profileKey == selectedGameKey }
+    LaunchedEffect(Unit) {
+        runCatching { withContext(Dispatchers.IO) { GameEnvironmentStore.read(ctx) } }
+            .onSuccess { environment = it }
+            .onFailure { environmentError = true }
+    }
+    LaunchedEffect(games, selectedGameKey) {
+        if (selectedGameKey != null && games.none { it.profileKey == selectedGameKey }) selectedGameKey = null
+    }
+    LaunchedEffect(selectedGame?.profileKey, snapshot) {
+        profileLoadGeneration++
+        val generation = profileLoadGeneration
+        val game = selectedGame
+        profileNotice = null
+        environmentError = false
+        gameProtonChoice = null
+        gameProtonId = null
+        gameComponents = emptyMap()
+        gameProtonMenu = false
+        gameComponentMenu = null
+        fexMenu = false
+        if (game == null) {
+            profileLoading = false
+            return@LaunchedEffect
+        }
+        profileLoading = true
+        try {
+            val (choice, id, components) = withContext(Dispatchers.IO) {
+                val choice = ProtonDefault.gameChoice(ctx, game.profileKey)
+                Triple(
+                    choice,
+                    ProtonDefault.gameSelectedId(ctx, game.profileKey, snapshot?.protons.orEmpty().map { it.proton }),
+                    ComponentsManager.gameComponents(ctx, game.profileKey),
+                )
+            }
+            if (profileLoadGeneration == generation && selectedGameKey == game.profileKey) {
+                gameProtonChoice = choice
+                gameProtonId = id
+                gameComponents = components
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            if (profileLoadGeneration == generation && selectedGameKey == game.profileKey) {
+                environmentError = true
+                profileNotice = ctx.getString(
+                    R.string.comp_game_load_failed,
+                    game.name,
+                    error.message ?: error.javaClass.simpleName,
+                )
+            }
+        } finally {
+            if (profileLoadGeneration == generation) profileLoading = false
+        }
+    }
+    fun setGameFexPreset(preset: String?) {
+        val game = selectedGame ?: return
+        environmentBusy = true
+        profileNotice = null
+        coroutine.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    GameEnvironmentStore.setGameFexPreset(ctx, game.profileKey, preset)
+                }
+            }.onSuccess { saved ->
+                environment = saved
+                if (selectedGameKey == game.profileKey) {
+                    environmentError = false
+                    profileNotice = ctx.getString(R.string.comp_game_saved_next, game.name)
+                }
+            }.onFailure {
+                if (selectedGameKey == game.profileKey) {
+                    environmentError = true
+                    profileNotice = ctx.getString(R.string.comp_game_save_failed, it.message ?: it.javaClass.simpleName)
+                }
+            }
+            environmentBusy = false
+        }
+    }
+    fun setGameProton(id: String?) {
+        val game = selectedGame ?: return
+        val proton = id?.let { wanted -> snapshot?.protons?.firstOrNull { it.proton.id == wanted }?.proton }
+        environmentBusy = true
+        profileNotice = null
+        coroutine.launch {
+            runCatching { withContext(Dispatchers.IO) { ProtonDefault.requestGame(ctx, game.profileKey, proton) } }
+                .onSuccess { outcome ->
+                    if (selectedGameKey == game.profileKey) {
+                        gameProtonChoice = proton?.let { ProtonDefault.GameChoice(it.valve, it.dir.name) }
+                        gameProtonId = id
+                        environmentError = false
+                        profileNotice = ctx.getString(
+                            when (outcome) {
+                                ProtonDefault.Outcome.LIVE -> R.string.comp_game_proton_live
+                                ProtonDefault.Outcome.NEXT_START -> R.string.comp_game_proton_next
+                                ProtonDefault.Outcome.NOT_RUNNABLE -> R.string.comp_game_proton_not_runnable
+                            },
+                            game.name,
+                        )
+                    }
+                }
+                .onFailure {
+                    if (selectedGameKey == game.profileKey) {
+                        environmentError = true
+                        profileNotice = ctx.getString(R.string.comp_game_save_failed, it.message ?: it.javaClass.simpleName)
+                    }
+                }
+            environmentBusy = false
+        }
+    }
+    fun setGameComponent(comp: String, file: String?) {
+        val game = selectedGame ?: return
+        environmentBusy = true
+        profileNotice = null
+        coroutine.launch {
+            runCatching { withContext(Dispatchers.IO) { ComponentsManager.setGameComponent(ctx, game.profileKey, comp, file) } }
+                .onSuccess {
+                    val components = ComponentsManager.gameComponents(ctx, game.profileKey)
+                    if (selectedGameKey == game.profileKey) {
+                        gameComponents = components
+                        environmentError = false
+                        profileNotice = ctx.getString(R.string.comp_game_saved_next, game.name)
+                    }
+                }
+                .onFailure {
+                    if (selectedGameKey == game.profileKey) {
+                        environmentError = true
+                        profileNotice = ctx.getString(R.string.comp_game_save_failed, it.message ?: it.javaClass.simpleName)
+                    }
+                }
+            environmentBusy = false
+        }
+    }
+    fun resetGameProfile() {
+        val game = selectedGame ?: return
+        environmentBusy = true
+        profileNotice = null
+        coroutine.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    val resetFailure = runCatching { GameProfileManager.reset(ctx, game.profileKey) }.exceptionOrNull()
+                    val config = GameEnvironmentStore.read(ctx)
+                    val choice = ProtonDefault.gameChoice(ctx, game.profileKey)
+                    val id = ProtonDefault.gameSelectedId(
+                        ctx,
+                        game.profileKey,
+                        snapshot?.protons.orEmpty().map { it.proton },
+                    )
+                    val components = ComponentsManager.gameComponents(ctx, game.profileKey)
+                    ProfileEditorState(config, choice, id, components) to resetFailure
+                }
+            }.onSuccess { (state, resetFailure) ->
+                environment = state.environment
+                if (selectedGameKey == game.profileKey) {
+                    gameProtonChoice = state.protonChoice
+                    gameProtonId = state.protonId
+                    gameComponents = state.components
+                    winComponentsRevision++
+                    environmentError = resetFailure != null
+                    profileNotice = if (resetFailure == null) {
+                        ctx.getString(R.string.comp_game_reset_done, game.name)
+                    } else {
+                        ctx.getString(
+                            R.string.comp_game_reset_failed,
+                            resetFailure.message ?: resetFailure.javaClass.simpleName,
+                        )
+                    }
+                }
+            }.onFailure {
+                if (selectedGameKey == game.profileKey) {
+                    environmentError = true
+                    profileNotice = ctx.getString(R.string.comp_game_reset_failed, it.message ?: it.javaClass.simpleName)
+                }
+            }
+            environmentBusy = false
+        }
+    }
 
     val views = snapshot?.protons ?: emptyList()
     val view = views.firstOrNull { it.proton.id == protonId } ?: views.firstOrNull()
 
-    // Where things sit, root px: each layer card, each row (for a swap's dot), the page itself.
     val cardsAt = remember { mutableStateMapOf<String, Rect>() }
     val rowsAt = remember { HashMap<String, Rect>() }
     var stackAt by remember { mutableStateOf(Offset.Zero) }
     var pageAt by remember { mutableStateOf(Offset.Zero) }
-    // A layer card pops and rings as a swap's dot lands on it, and rings as a hop arrives on it.
     val landed = remember { mutableStateMapOf<String, Int>() }
     val rings = remember { mutableStateMapOf<String, Int>() }
     fun land(l: String) { landed[l] = (landed[l] ?: 0) + 1; rings[l] = (rings[l] ?: 0) + 1 }
@@ -177,24 +386,20 @@ fun ComponentsPage(
     LaunchedEffect(Hops.arrived) {
         if (Hops.arrived == arrivedSeen[0]) return@LaunchedEffect
         arrivedSeen[0] = Hops.arrived
-        // Once the page has flooded in from the rail.
         delay(Motion.ms(700).toLong())
         rings[layer] = (rings[layer] ?: 0) + 1
     }
-    /** The row at [key] squashes into a dot and flies home to [to]'s card, which pops on landing. */
     fun flyHome(key: String, to: String) {
         val from = rowsAt[key] ?: return land(to)
         Flights.fly(Flight(from, to = { cardsAt[to]?.center }, onLand = { land(to) }))
     }
 
-    // A confirm stepping out of the row that asked: right of a left-column row, left of a right one.
     fun ask(key: String, right: Boolean, title: String, note: String, verb: String, danger: Boolean, face: String = "", then: () -> Unit) {
         val at = rowsAt[key] ?: return then()
         val cancel = ctx.getString(R.string.common_cancel)
         Steps.ask(StepAsk(
             anchor = at, side = if (right) StepSide.Left else StepSide.Right,
             accent = if (danger) colors.error else pal.signal, pillCorner = 10.dp, items = 3, maxWidth = 340.dp,
-            // The row's own name rides on top, as the pull's handle.
             handle = {
                 Box(Modifier.fillMaxSize().padding(start = 46.dp, end = 14.dp), contentAlignment = Alignment.CenterStart) {
                     Text(face, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = if (danger) colors.error else pal.signal, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -210,20 +415,20 @@ fun ComponentsPage(
         })
     }
 
-    // The runtime and display drivers on their own pages, flooding out of the link that opens them.
     var driverPage by remember { mutableStateOf<String?>(null) }
     var driverShown by remember { mutableStateOf<String?>(null) }
     var driverLeaving by remember { mutableStateOf(false) }
     var driverFrom by remember { mutableStateOf<Origin?>(null) }
+    val slotFocus = remember { mapOf(SLOT_DISPLAY to FocusRequester(), SLOT_RUNTIME to FocusRequester()) }
     LaunchedEffect(driverPage) {
         val d = driverPage
         if (d != null) { driverLeaving = false; driverShown = d }
-        else if (driverShown != null) {
+        else driverShown?.let { closed ->
             if (driverFrom != null) { driverLeaving = true; delay(Motion.ms(PAGE_RETURN_MS).toLong()) }
             driverShown = null; driverLeaving = false; driverFrom = null
+            if (inputMode.inputMode == InputMode.Keyboard) focusSoon { slotFocus.getValue(closed) }
         }
     }
-    // Narrow: a layer's detail floods out of its card, and B draws it back in.
     var narrowOpen by rememberSaveable { mutableStateOf<String?>(null) }
     var narrowShown by remember { mutableStateOf<String?>(null) }
     var narrowLeaving by remember { mutableStateOf(false) }
@@ -239,27 +444,23 @@ fun ComponentsPage(
     BackHandler(enabled = driverPage != null || narrowOpen != null) {
         if (driverPage != null) driverPage = null else narrowOpen = null
     }
-    // Leaving the page: nothing stays stepped out of a row that is no longer on screen.
     androidx.compose.runtime.DisposableEffect(Unit) { onDispose { Steps.drop() } }
 
     val checked = if (catalogAt > 0) DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(catalogAt * 1000)) else stringResource(R.string.comp_never)
     val firstRow = remember { FocusRequester() }
     val layerFocus = remember { LAYERS.associateWith { FocusRequester() } }
-    // Arrived (from the rail, a hop, a game's card): a pad starts on the chosen layer.
     LaunchedEffect(requestInitialFocus) {
-        if (!requestInitialFocus || inputMode.inputMode != InputMode.Keyboard) return@LaunchedEffect
+        if (!requestInitialFocus || selectedGame != null || inputMode.inputMode != InputMode.Keyboard) return@LaunchedEffect
         delay(Motion.ms(200).toLong())
         focusSoon { layerFocus.getValue(layer) }
     }
     var travel by remember { mutableIntStateOf(1) }
-    // LB / RB (taken by the activity before the page sees them): a pad anywhere on the page goes to
-    // the new layer's card, so one on a row - which leaves with its layer - is never left with nothing.
     var pageFocused by remember { mutableStateOf(false) }
     val seenLayer = remember { arrayOf(layer) }
     LaunchedEffect(layer) {
         if (seenLayer[0] == layer) return@LaunchedEffect
         seenLayer[0] = layer
-        if (!pageFocused || inputMode.inputMode != InputMode.Keyboard) return@LaunchedEffect
+        if (selectedGame != null || !pageFocused || inputMode.inputMode != InputMode.Keyboard) return@LaunchedEffect
         if (narrowOpen != null) runCatching { firstRow.requestFocus() }
         else focusSoon { layerFocus.getValue(layer) }
     }
@@ -267,20 +468,9 @@ fun ComponentsPage(
         if (l != layer) { travel = if (LAYERS.indexOf(l) > LAYERS.indexOf(layer)) 1 else -1; onComp(l) }
     }
 
-    // ---- one layer's detail, a slot at a time ------------------------------------------------------
     val compState = { l: String -> view?.components?.get(l) }
     val bar: @Composable (String) -> Unit = { l ->
         when (l) {
-            GPU_TAB -> {
-                val active = gpu.activePair
-                InUseBar(
-                    queued = gpu.busy != null,
-                    sentence = (active?.let { "${it.name} ${it.version}" } ?: gpu.activeBundle ?: stringResource(R.string.gpu_builtin))
-                        .let { if (gpu.auto) stringResource(R.string.gpu_bar_auto, it) else it },
-                    note = if (gpu.busy != null) (if (gpu.percent >= 0) "${gpu.percent}%" else "…")
-                        else gpu.autoStatus.ifEmpty { if (active != null || gpu.activeBundle != null) "" else gpu.pairs.firstOrNull { it.recommended }?.let { stringResource(R.string.gpu_recommended_for, it.name) } ?: stringResource(R.string.gpu_refresh_hint) },
-                )
-            }
             PROTON_TAB -> InUseBar(
                 queued = false,
                 sentence = view?.let { stringResource(R.string.comp_proton_bar, it.proton.name) } ?: stringResource(R.string.comp_no_proton),
@@ -304,58 +494,26 @@ fun ComponentsPage(
         }
     }
 
-    // Installed and Available, as (title, rows) for a layer; [right] says which column it is in.
-    var showAllPairs by rememberSaveable { mutableStateOf(false) }
     val installedTitle: @Composable (String) -> String = { l ->
         when (l) {
-            GPU_TAB -> stringResource(R.string.comp_installed_count, 1 + gpu.pairs.count { it.installed && (it.suits || showAllPairs) })
             PROTON_TAB -> stringResource(R.string.comp_installed_count, views.size)
             else -> stringResource(R.string.comp_installed_count, installedFor(l, view, snapshot).size)
         }
     }
     val availableTitle: @Composable (String) -> String = { l ->
         when (l) {
-            GPU_TAB -> stringResource(R.string.comp_available_count, gpu.pairs.count { !it.installed && it.complete && (it.suits || showAllPairs) })
-            PROTON_TAB -> stringResource(R.string.comp_available_count, protons.rows.count { it.installed == null })
+            PROTON_TAB -> stringResource(R.string.comp_available_count, protons.rows.count { it.installed == null || it.update != null })
             else -> stringResource(R.string.comp_nightlies_count, availableFor(l, catalog, snapshot).size)
         }
     }
     val installedRows: @Composable ColumnScope.(String, Boolean) -> Unit = { l, right ->
         when (l) {
-            GPU_TAB -> {
-                val autoKey = "gpu:auto"
-                ChoiceLine(
-                    stringResource(R.string.common_auto), stringResource(R.string.gpu_auto_keeps), gpu.auto, removable = false,
-                    modifier = Modifier.focusRequester(firstRow).trackRow(autoKey, rowsAt),
-                    onSelect = {
-                        if (gpu.auto) return@ChoiceLine
-                        ask(autoKey, right, ctx.getString(R.string.gpu_use_title, ctx.getString(R.string.common_auto)), ctx.getString(R.string.gpu_auto_hint), ctx.getString(R.string.common_use), false, ctx.getString(R.string.common_auto)) {
-                            gpuActions.onAuto(true); flyHome(autoKey, GPU_TAB)
-                        }
-                    },
-                )
-                for (p in gpu.pairs.filter { it.installed && (it.suits || showAllPairs) }) {
-                    val key = "gpu:${p.key}"
-                    ChoiceLine(
-                        p.name, "${p.version} · ${p.detail}", !gpu.auto && p.active, removable = false,
-                        badge = if (p.recommended) stringResource(R.string.gpu_recommended_caps) else null,
-                        progress = if (gpu.busy == p.key) gpu.percent else null,
-                        modifier = Modifier.trackRow(key, rowsAt),
-                        onSelect = {
-                            if (!gpu.auto && p.active || gpu.busy != null) return@ChoiceLine
-                            ask(key, right, ctx.getString(R.string.gpu_use_title, p.name), "${p.version} · ${p.detail}", ctx.getString(R.string.common_use), false, p.name) {
-                                gpuActions.onAuto(false); gpuActions.onPair(p.key); flyHome(key, GPU_TAB)
-                            }
-                        },
-                    )
-                }
-            }
             PROTON_TAB -> {
                 if (views.isEmpty()) EmptyLine(stringResource(if (snapshot == null) R.string.comp_reading else R.string.comp_no_proton))
                 views.forEachIndexed { i, v ->
                     val key = "proton:${v.proton.id}"
                     val swaps = v.components.values.count { it.activeFile != null }
-                    val extra = protons.rows.firstOrNull { it.installed == v.proton.dir.name }
+                    val extra = protons.rows.firstOrNull { v.proton.dir.name in it.installedAll }
                     val removable = extra != null && protons.busyId == null && protons.runtimeReady && !protons.sessionRunning
                     ChoiceLine(
                         v.proton.name,
@@ -365,8 +523,8 @@ fun ComponentsPage(
                         modifier = (if (i == 0) Modifier.focusRequester(firstRow) else Modifier).trackRow(key, rowsAt),
                         onSelect = { if (v.proton.id != view?.proton?.id) { onProton(v.proton.id); flyHome(key, PROTON_TAB) } },
                         onDelete = {
-                            if (extra != null) ask(key, right, ctx.getString(R.string.proton_remove_title, v.proton.name), "", ctx.getString(R.string.store_remove), true, v.proton.name) {
-                                protonActions.onRemove(extra.id)
+                            if (extra != null) ask(key, right, ctx.getString(R.string.proton_remove_title, v.proton.name), ctx.getString(R.string.proton_remove_body), ctx.getString(R.string.store_remove), true, v.proton.name) {
+                                protonActions.onRemove(extra.id, v.proton.dir.name)
                             }
                         },
                     )
@@ -404,26 +562,21 @@ fun ComponentsPage(
     }
     val availableRows: @Composable ColumnScope.(String) -> Unit = { l ->
         when (l) {
-            GPU_TAB -> {
-                val shown = gpu.pairs.filter { !it.installed && it.complete && (it.suits || showAllPairs) }
-                if (shown.isEmpty()) EmptyLine(stringResource(if (gpu.checking) R.string.gpu_checking else R.string.gpu_none_listed))
-                for (p in shown) GetLine(
-                    p.name, "${p.version} · ${p.detail}", progress = if (gpu.busy == p.key) gpu.percent else null, enabled = gpu.busy == null,
-                    badge = if (p.recommended) stringResource(R.string.gpu_recommended_caps) else null,
-                ) { gpuActions.onAuto(false); gpuActions.onPair(p.key) }
-                if (gpu.pairs.any { !it.suits }) Box(Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
-                    FocusText(stringResource(if (showAllPairs) R.string.gpu_hide_other else R.string.gpu_show_other), pal.signal) { showAllPairs = !showAllPairs }
-                }
-            }
             PROTON_TAB -> {
-                val rows = protons.rows.filter { it.installed == null }
+                val rows = protons.rows.filter { it.installed == null || it.update != null }
                 if (rows.isEmpty()) EmptyLine(stringResource(R.string.comp_nothing_new))
                 for (row in rows) GetLine(
-                    row.name, if (row.queued) stringResource(R.string.proton_queued) else stringResource(R.string.proton_not_installed),
+                    row.name,
+                    when {
+                        row.update != null -> stringResource(R.string.proton_update_available, row.update)
+                        row.queued -> stringResource(R.string.proton_queued)
+                        else -> stringResource(R.string.proton_not_installed)
+                    },
                     progress = if (protons.busyId == row.id) protons.percent else null,
                     stage = if (protons.busyId == row.id) protons.stage else null,
                     enabled = protons.busyId == null && protons.runtimeReady && !protons.sessionRunning,
                     onCancel = if (row.queued && protons.busyId == null && !protons.sessionRunning) ({ protonActions.onCancel(row.id) }) else null,
+                    action = if (row.update != null) stringResource(R.string.common_update) else null,
                 ) { protonActions.onInstall(row.id) }
             }
             else -> {
@@ -439,29 +592,21 @@ fun ComponentsPage(
     val actions: @Composable (String) -> Unit = { l ->
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
             when (l) {
-                GPU_TAB -> {
-                    SmallButton(stringResource(R.string.comp_import_zip), onClick = gpuActions.onImportZip)
-                    var at by remember { mutableStateOf<Rect?>(null) }
-                    Box(Modifier.onGloballyPositioned { at = it.boundsInRoot() }) {
-                        FocusText(stringResource(R.string.gpu_separately) + " ›", pal.signal) {
-                            val from = at
-                            val title = ctx.getString(R.string.gpu_separately)
-                            if (from == null) { driverPage = "rt"; return@FocusText }
-                            Steps.ask(StepAsk(anchor = from, side = StepSide.Right, accent = pal.signal, pillCorner = 10.dp, items = 3, handle = {}) {
-                                StepTitle(title)
-                                StepList {
-                                    StepChoice(ctx.getString(R.string.comp_runtime_driver), enabled = open, modifier = Modifier.fillMaxWidth().stepItem(1).focusRequester(first)) {
-                                        Steps.fold(); driverFrom = Origin(from.translate(-pageAt), 10f * density.density); driverPage = "rt"
-                                    }
-                                    StepChoice(ctx.getString(R.string.comp_display_driver), enabled = open, modifier = Modifier.fillMaxWidth().stepItem(2)) {
-                                        Steps.fold(); driverFrom = Origin(from.translate(-pageAt), 10f * density.density); driverPage = "panel"
-                                    }
-                                }
-                            })
+                PROTON_TAB -> {
+                    val idle = protons.busyId == null && protons.runtimeReady && !protons.sessionRunning
+                    for (row in protons.rows.filter { it.installedAll.size > 1 }) {
+                        val key = "older:${row.id}"
+                        val older = row.installedAll.dropLast(1)
+                        Box(Modifier.trackRow(key, rowsAt)) {
+                            FocusText(stringResource(R.string.proton_remove_older, row.name), if (idle) pal.signal else colors.onSurfaceVariant) {
+                                if (!idle) return@FocusText
+                                ask(key, false, ctx.getString(R.string.proton_remove_older, row.name) + "?",
+                                    ctx.getString(R.string.proton_remove_older_body, older.joinToString(", ")),
+                                    ctx.getString(R.string.store_remove), true, row.name) { protonActions.onRemoveOlder(row.id) }
+                            }
                         }
                     }
                 }
-                PROTON_TAB -> {}
                 else -> {
                     SmallButton(stringResource(R.string.comp_import_wcp), onClick = onImport)
                     val st = compState(l)
@@ -482,15 +627,22 @@ fun ComponentsPage(
         }
     }
 
-    // ---- the frame ------------------------------------------------------------------------------
     val detail: @Composable (String, Boolean) -> Unit = { l, narrowPage ->
         androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
-        // Two columns while each gets room for a row's name and its Get; one under the other below that.
         val single = narrowPage || maxWidth < 600.dp
-        Column(Modifier.fillMaxSize()) {
-            // The in-use bar keeps its place; only its words change.
+        if (l == GPU_TAB) GpuDriversBody(gpu, gpuActions, single, firstRow, slotFocus) { slot, at ->
+            driverFrom = Origin(at.translate(-pageAt), 10f * density.density); driverPage = slot
+        }
+        else Column(Modifier.fillMaxSize()) {
             AnimatedContent(l, transitionSpec = { fadeIn(Motion.tw(240)) togetherWith fadeOut(Motion.tw(160)) }, label = "inUse") { k -> bar(k) }
-            Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(top = 12.dp, bottom = 16.dp)) {
+            val detailScroll = androidx.compose.runtime.key(l) { rememberScrollState() }
+            Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(detailScroll).padding(top = 12.dp, bottom = 16.dp)) {
+                if (l == PROTON_TAB) {
+                    if (!protons.runtimeReady) EmptyLine(stringResource(R.string.content_needs_runtime))
+                    if (protons.sessionRunning) EmptyLine(stringResource(R.string.proton_stop_first))
+                    SettingsGroup(stringResource(R.string.comp_for_every_proton)) { protonOptions() }
+                    Spacer(Modifier.height(12.dp))
+                }
                 val slide: @Composable (@Composable (String) -> Unit) -> Unit = { body ->
                     AnimatedContent(
                         l,
@@ -512,11 +664,22 @@ fun ComponentsPage(
                     Column(Modifier.weight(1f)) { slide { k -> RowGroup(availableTitle(k)) { availableRows(k) } } }
                 }
                 Box(Modifier.padding(top = 14.dp)) { slide { k -> actions(k) } }
+                if (l == "fex") {
+                    SettingsGroup(stringResource(R.string.fex_preset_title)) {
+                        SettingsRow(stringResource(R.string.fex_preset_title), null) {
+                            FexPresetChip(
+                                preset = generalFexPreset,
+                                inherited = false,
+                                open = fexMenu,
+                                enabled = true,
+                                onToggle = { fexMenu = !fexMenu },
+                                onDismiss = { fexMenu = false },
+                                onPick = { it?.let(onGeneralFexPreset) },
+                            )
+                        }
+                    }
+                }
                 if (l == PROTON_TAB) {
-                    Spacer(Modifier.height(10.dp))
-                    if (!protons.runtimeReady) EmptyLine(stringResource(R.string.content_needs_runtime))
-                    if (protons.sessionRunning) EmptyLine(stringResource(R.string.proton_stop_first))
-                    SettingsGroup(stringResource(R.string.comp_for_every_proton)) { protonOptions() }
                     Spacer(Modifier.height(12.dp))
                     Note(stringResource(R.string.comp_about_text))
                 }
@@ -528,9 +691,11 @@ fun ComponentsPage(
     Box(Modifier.fillMaxSize().onGloballyPositioned { pageAt = it.positionInRoot() }.onFocusChanged { pageFocused = it.hasFocus }) {
         Column(
             Modifier.fillMaxSize().padding(horizontal = if (narrow) 16.dp else 22.dp, vertical = if (narrow) 12.dp else 18.dp)
-                .bumpers(onPrevious = { pick(layerStep(layer, -1)) }, onNext = { pick(layerStep(layer, 1)) }),
+                .then(if (selectedGame == null) Modifier.bumpers(
+                    onPrevious = { pick(layerStep(layer, -1)) },
+                    onNext = { pick(layerStep(layer, 1)) },
+                ) else Modifier),
         ) {
-            // ---- header: the title, the device, when the lists were checked and the one refresh ----
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.comp_title), fontSize = if (narrow) 22.sp else 26.sp, fontWeight = FontWeight.Bold, color = colors.onBackground, maxLines = 1)
                 if (!narrow) DeviceChip(gpu)
@@ -547,33 +712,108 @@ fun ComponentsPage(
             }
             if (narrow) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) { DeviceChip(gpu) }
             Spacer(Modifier.height(14.dp))
-            Row(Modifier.weight(1f).fillMaxWidth()) {
-                // ---- the stack ----
-                Box(
-                    (if (narrow) Modifier.fillMaxWidth() else Modifier.width(250.dp)).fillMaxHeight()
-                        .onGloballyPositioned { stackAt = it.positionInRoot() },
+            if (games.isNotEmpty()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
                 ) {
-                    val tint = rememberUpdatedState(pal.signal)
-                    val local = cardsAt[layer]?.translate(-stackAt)
-                    ChipGlide(LAYERS.indexOf(layer), local, tint, GlideAxis.Vertical, corner = 12.dp)
-                    Stack(
-                        layer, view, gpu, focus = layerFocus, landed = landed, rings = rings,
-                        onPlaced = { l, r -> cardsAt[l] = r },
-                        onFocus = { l -> pick(l) },
-                        onOpen = { l ->
-                            pick(l)
-                            if (narrow) narrowOpen = l
-                            else runCatching { firstRow.requestFocus() }
-                        },
-                    )
+                    Text(stringResource(R.string.comp_profile), fontSize = 14.sp, color = colors.onSurfaceVariant)
+                    Box(Modifier.weight(1f, fill = false)) {
+                        ValueChip(
+                            selectedGame?.name ?: stringResource(R.string.comp_scope_general),
+                            scopeMenu,
+                            modifier = Modifier.widthIn(max = 320.dp).heightIn(min = 44.dp),
+                        ) { scopeMenu = !scopeMenu }
+                        AnchoredMenu(
+                            scopeMenu,
+                            onDismiss = { scopeMenu = false },
+                            title = stringResource(R.string.comp_profile_configure),
+                        ) { first ->
+                            MenuItem(
+                                stringResource(R.string.comp_scope_general),
+                                checked = selectedGame == null,
+                                detail = stringResource(R.string.comp_scope_general_detail),
+                                focusRequester = first,
+                            ) {
+                                selectedGameKey = null
+                                scopeMenu = false
+                            }
+                            games.sortedBy { it.name.lowercase() }.forEach { game ->
+                                MenuItem(game.name, checked = selectedGameKey == game.profileKey) {
+                                    selectedGameKey = game.profileKey
+                                    scopeMenu = false
+                                }
+                            }
+                        }
+                    }
                 }
-                if (!narrow) {
-                    Spacer(Modifier.width(16.dp))
-                    Box(Modifier.weight(1f).fillMaxHeight()) { detail(layer, false) }
+            }
+
+            if (selectedGame != null) {
+                GameComponentOverrides(
+                    game = selectedGame,
+                    config = environment,
+                    generalFexPreset = generalFexPreset,
+                    generalProton = view?.proton,
+                    protons = views.map { it.proton },
+                    protonId = gameProtonId,
+                    protonChoice = gameProtonChoice,
+                    packages = snapshot?.packages.orEmpty(),
+                    componentChoices = gameComponents,
+                    componentMenu = gameComponentMenu,
+                    protonMenu = gameProtonMenu,
+                    fexMenu = fexMenu,
+                    busy = environmentBusy || profileLoading,
+                    error = environmentError,
+                    notice = profileNotice,
+                    winComponentsRevision = winComponentsRevision,
+                    onFexMenu = { fexMenu = it },
+                    onFexPreset = ::setGameFexPreset,
+                    onProtonMenu = { gameProtonMenu = it },
+                    onProton = ::setGameProton,
+                    onComponentMenu = { gameComponentMenu = it },
+                    onComponent = ::setGameComponent,
+                    onEnvironment = { environmentEditor = true },
+                    onWinComponents = { winComponentsOpen = false },
+                    onReset = {
+                        ask(
+                            ctx.getString(R.string.comp_game_reset_title, selectedGame.name),
+                            ctx.getString(R.string.comp_game_reset_body),
+                            R.string.comp_game_reset,
+                            ::resetGameProfile,
+                        )
+                    },
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                )
+            } else {
+                Row(Modifier.weight(1f).fillMaxWidth()) {
+                    Box(
+                        (if (narrow) Modifier.fillMaxWidth() else Modifier.width(250.dp)).fillMaxHeight()
+                            .onGloballyPositioned { stackAt = it.positionInRoot() }
+                            .focusProperties { enter = { layerFocus.getValue(layer) } }.focusGroup(),
+                    ) {
+                        val tint = rememberUpdatedState(pal.signal)
+                        val local = cardsAt[layer]?.translate(-stackAt)
+                        Stack(
+                            layer, view, gpu, focus = layerFocus, landed = landed, rings = rings,
+                            onPlaced = { l, r -> cardsAt[l] = r },
+                            onFocus = { l -> pick(l) },
+                            onOpen = { l ->
+                                pick(l)
+                                if (narrow) narrowOpen = l
+                                else runCatching { firstRow.requestFocus() }
+                            },
+                        )
+                        ChipGlide(LAYERS.indexOf(layer), local, tint, GlideAxis.Vertical, corner = 12.dp)
+                    }
+                    if (!narrow) {
+                        Spacer(Modifier.width(16.dp))
+                        Box(Modifier.weight(1f).fillMaxHeight()) { detail(layer, false) }
+                    }
                 }
             }
         }
-        // Narrow: the layer's detail over the stack, out of its card.
         narrowShown?.let { l ->
             val from = cardsAt[l]?.let { Origin(it.translate(-pageAt), 12f * density.density) }
             val body: @Composable () -> Unit = {
@@ -588,21 +828,20 @@ fun ComponentsPage(
             }
             if (from == null) body() else PageFlood(from, narrowLeaving) { body() }
         }
-        // The runtime or display driver on its own page.
         driverShown?.let { d ->
             val body: @Composable () -> Unit = {
                 Box(Modifier.fillMaxSize().background(colors.background).pointerInput(Unit) { detectTapGestures { } }) {
-                    if (d == "rt") DriverPage(
+                    if (d == SLOT_RUNTIME) DriverPage(
                         title = stringResource(R.string.comp_runtime_driver), hint = stringResource(R.string.comp_runtime_driver_hint),
                         rows = gpu.linuxRows, selected = gpu.linuxSelected, downloads = gpu.linuxDownloads,
-                        status = gpu.releaseStatus, checking = gpu.checking, importLabel = stringResource(R.string.comp_import_turnip), canRestore = false,
+                        status = gpu.releaseStatus, checking = gpu.checking, checkedAt = gpu.checkedAt, importLabel = stringResource(R.string.comp_import_turnip), canRestore = false,
                         onSelect = gpuActions.onSelectLinux, onDelete = gpuActions.onRemoveLinux, onRefresh = gpuActions.onRefresh,
                         onDownload = gpuActions.onDownloadDriver, onImport = gpuActions.onImportLinux, onRestore = {}, onBack = { driverPage = null },
                     )
                     else DriverPage(
                         title = stringResource(R.string.comp_display_driver), hint = stringResource(R.string.comp_display_driver_hint),
                         rows = gpu.androidRows, selected = gpu.androidSelected, downloads = gpu.androidDownloads,
-                        status = gpu.releaseStatus, checking = gpu.checking, importLabel = stringResource(R.string.comp_import_adrenotools),
+                        status = gpu.releaseStatus, checking = gpu.checking, checkedAt = gpu.checkedAt, importLabel = stringResource(R.string.comp_import_adrenotools),
                         canRestore = gpu.canRestoreBundled,
                         onSelect = gpuActions.onSelectAndroid, onDelete = gpuActions.onRemoveAndroid, onRefresh = gpuActions.onRefresh,
                         onDownload = gpuActions.onDownloadDriver, onImport = gpuActions.onImportAndroid, onRestore = gpuActions.onRestoreBundled,
@@ -614,9 +853,51 @@ fun ComponentsPage(
             if (from == null) body() else PageFlood(from, driverLeaving) { body() }
         }
     }
+    confirm?.let { (body, action) ->
+        AlertDialog(
+            onDismissRequest = { confirm = null },
+            title = { Text(confirmTitle) },
+            text = { Text(body, fontSize = 14.sp) },
+            confirmButton = {
+                val del = confirmVerb == R.string.common_delete || confirmVerb == R.string.comp_game_reset
+                FocusText(stringResource(confirmVerb), if (del) colors.error else pal.signal) { confirm = null; action() }
+            },
+            dismissButton = {
+                val cancelFocus = remember { FocusRequester() }
+                LaunchedEffect(Unit) { runCatching { cancelFocus.requestFocus() } }
+                FocusText(stringResource(R.string.common_cancel), colors.onBackground, modifier = Modifier.focusRequester(cancelFocus)) { confirm = null }
+            },
+        )
+    }
+    if (environmentEditor && selectedGame != null) {
+        GameEnvironmentEditor(
+            byPad = androidx.compose.ui.platform.LocalInputModeManager.current.inputMode == androidx.compose.ui.input.InputMode.Keyboard,
+            initialScope = selectedGame.profileKey,
+        ) {
+            environmentEditor = false
+            coroutine.launch {
+                runCatching { withContext(Dispatchers.IO) { GameEnvironmentStore.read(ctx) } }
+                    .onSuccess { environment = it; environmentError = false }
+                    .onFailure { environmentError = true }
+            }
+        }
+    }
+    val winOpen = winComponentsOpen
+    if (winOpen != null && selectedGame != null) {
+        WinComponentsDialog(
+            selectedGame.profileKey,
+            selectedGame.name,
+            selectedGame.gameFiles,
+            winOpen,
+            compat = selectedGame.protonPrefix,
+            steamAppId = selectedGame.appId.takeIf { selectedGame.library != Library.ADDED },
+        ) {
+            winComponentsOpen = null
+            winComponentsRevision++
+        }
+    }
 }
 
-/** The Installed rows of one component layer for the Proton the page shows. */
 @Composable
 private fun installedFor(l: String, view: ComponentsManager.ProtonView?, snapshot: Snapshot?): List<InstalledItem> {
     view ?: return emptyList()
@@ -635,7 +916,6 @@ private fun installedFor(l: String, view: ComponentsManager.ProtonView?, snapsho
     }
 }
 
-/** The Nightlies of one component layer that are not stored yet. */
 private fun availableFor(l: String, catalog: List<CatalogItem>, snapshot: Snapshot?): List<CatalogItem> {
     val stored = (snapshot?.packages ?: emptyList()).map { it.file }.toSet()
     return catalog.filter { it.comp == l && ComponentsManager.safeName(it.file) !in stored }
@@ -648,14 +928,8 @@ private fun LayerTitle(l: String): String = when (l) {
     else -> ComponentsManager.LABEL[l] ?: l
 }
 
-/** Records where a row sits, for the confirm that steps out of it and the dot that flies from it. */
 private fun Modifier.trackRow(key: String, into: HashMap<String, Rect>): Modifier = onGloballyPositioned { into[key] = it.boundsInRoot() }
 
-/**
- * The stack: a heading over the Proton and the three layers that belong to it (indented, on a
- * line), then a heading over the GPU drivers that every Proton shares. Each card is a layer's name
- * and what it is set to; a dot marks a layer swapped away from its original.
- */
 @Composable
 private fun Stack(
     layer: String, view: ComponentsManager.ProtonView?, gpu: GpuDriversState,
@@ -670,7 +944,7 @@ private fun Stack(
         LayerCard(
             title = LayerTitle(l),
             value = when (l) {
-                GPU_TAB -> if (gpu.auto) auto else gpu.activePair?.name ?: gpu.activeBundle ?: auto
+                GPU_TAB -> gpuCardValue(gpu, auto)
                 PROTON_TAB -> (view?.proton?.name ?: "") + " ▾"
                 else -> st?.let { if (it.activeFile == null) original else it.inUse } ?: ""
             },
@@ -682,6 +956,9 @@ private fun Stack(
         )
     }
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        StackHeading(stringResource(R.string.comp_this_device))
+        card(GPU_TAB)
+        Spacer(Modifier.height(6.dp))
         StackHeading(stringResource(R.string.comp_this_proton))
         card(PROTON_TAB)
         Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
@@ -690,9 +967,6 @@ private fun Stack(
                 card("dxvk"); card("vkd3d"); card("fex")
             }
         }
-        Spacer(Modifier.height(6.dp))
-        StackHeading(stringResource(R.string.comp_every_proton))
-        card(GPU_TAB)
     }
 }
 
@@ -704,7 +978,6 @@ private fun StackHeading(text: String) {
     )
 }
 
-/** One layer: 40dp to see, 44 to touch; its name, what it is set to, and a dot when it is swapped. */
 @Composable
 private fun LayerCard(
     title: String, value: String, swapped: Boolean, selected: Boolean, landed: Int, ring: Int,
@@ -714,14 +987,16 @@ private fun LayerCard(
     val pal = LocalPalette.current
     val src = remember { MutableInteractionSource() }
     val hot = rememberHot(src)
+    val under = selected && androidx.compose.ui.platform.LocalInputModeManager.current.inputMode != androidx.compose.ui.input.InputMode.Keyboard
     Box(Modifier.fillMaxWidth().heightIn(min = 44.dp), contentAlignment = Alignment.Center) {
         Row(
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = modifier.fillMaxWidth().height(40.dp)
                 .landingPop(landed).pulseRing(ring, pal.signal)
                 .clip(LAYER_SHAPE)
-                .background(if (selected) Color.Transparent else colors.surface)
-                .glideBorder(hot, LAYER_SHAPE, pal.signal, if (selected) Color.Transparent else pal.line)
+                .background(if (under) Color.Transparent else colors.surface)
+                .shownBar(selected, pal.signal, vertical = true)
+                .glideBorder(hot, LAYER_SHAPE, pal.signal, if (under) Color.Transparent else pal.line)
                 .onFocusChanged { if (it.isFocused) onFocus() }
                 .hoverable(src).clickable(interactionSource = src, indication = null, role = Role.Tab, onClick = onClick)
                 .controllerConfirm(onClick = onClick)
@@ -730,7 +1005,6 @@ private fun LayerCard(
             if (swapped) Box(Modifier.size(7.dp).clip(CircleShape).background(pal.signal))
             Text(title, fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = if (selected || hot) colors.onBackground else colors.onSurfaceVariant, maxLines = 1)
             Spacer(Modifier.weight(1f))
-            // The value ticks over as a swap lands.
             AnimatedContent(
                 value,
                 transitionSpec = { (slideInVertically(Motion.tw(260)) { it / 2 } + fadeIn(Motion.tw(260))) togetherWith (slideOutVertically(Motion.tw(160)) { -it / 2 } + fadeOut(Motion.tw(160))) },
@@ -740,7 +1014,6 @@ private fun LayerCard(
     }
 }
 
-/** What is in use for the layer: a dot (green, or amber while a change waits), a sentence, and a note or Cancel. */
 @Composable
 private fun InUseBar(queued: Boolean, sentence: String, note: String, onCancel: (() -> Unit)? = null) {
     val colors = MaterialTheme.colorScheme
@@ -757,7 +1030,6 @@ private fun InUseBar(queued: Boolean, sentence: String, note: String, onCancel: 
     }
 }
 
-/** A titled column of rows. */
 @Composable
 private fun RowGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
     val colors = MaterialTheme.colorScheme
@@ -774,6 +1046,253 @@ private fun RowGroup(title: String, content: @Composable ColumnScope.() -> Unit)
 @Composable
 private fun EmptyLine(text: String) {
     Text(text, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp))
+}
+
+@Composable
+private fun GameComponentOverrides(
+    game: Library.SteamGame,
+    config: GameEnvironment.Config?,
+    generalFexPreset: String,
+    generalProton: ComponentsManager.Proton?,
+    protons: List<ComponentsManager.Proton>,
+    protonId: String?,
+    protonChoice: ProtonDefault.GameChoice?,
+    packages: List<ComponentsManager.Package>,
+    componentChoices: Map<String, String>,
+    componentMenu: String?,
+    protonMenu: Boolean,
+    fexMenu: Boolean,
+    busy: Boolean,
+    error: Boolean,
+    notice: String?,
+    winComponentsRevision: Int,
+    onFexMenu: (Boolean) -> Unit,
+    onFexPreset: (String?) -> Unit,
+    onProtonMenu: (Boolean) -> Unit,
+    onProton: (String?) -> Unit,
+    onComponentMenu: (String?) -> Unit,
+    onComponent: (String, String?) -> Unit,
+    onEnvironment: () -> Unit,
+    onWinComponents: () -> Unit,
+    onReset: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val override = config?.let { GameEnvironment.gameFexPreset(it, game.profileKey) }
+    val proton = protons.firstOrNull { it.id == protonId }
+    val effectiveProton = if (protonChoice == null) generalProton else proton
+    val picks = remember(game.profileKey, winComponentsRevision) { WinComponents.picks(context, game.profileKey) }
+    Column(
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+        modifier = modifier.verticalScroll(rememberScrollState()).padding(top = 14.dp, bottom = 16.dp),
+    ) {
+        Text(
+            stringResource(R.string.comp_game_hint),
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        SettingsGroup(stringResource(R.string.fex_preset_title)) {
+            SettingsRow(
+                stringResource(R.string.comp_game_fex),
+                stringResource(if (override == null) R.string.comp_game_fex_inherited else R.string.comp_game_fex_override),
+            ) {
+                FexPresetChip(
+                    preset = override ?: generalFexPreset,
+                    inherited = override == null,
+                    open = fexMenu,
+                    enabled = config != null && !busy,
+                    allowInheritance = true,
+                    onToggle = { onFexMenu(!fexMenu) },
+                    onDismiss = { onFexMenu(false) },
+                    onPick = onFexPreset,
+                )
+            }
+            GamePackageRow(
+                comp = "fex",
+                packages = packages,
+                selectedFile = componentChoices["fex"],
+                open = componentMenu == "fex",
+                busy = busy,
+                onMenu = onComponentMenu,
+                onPick = onComponent,
+            )
+        }
+        SettingsGroup(stringResource(R.string.comp_game_compatibility)) {
+            SettingsRow(
+                stringResource(R.string.comp_proton),
+                stringResource(if (protonChoice == null) R.string.comp_game_proton_inherited else R.string.comp_game_proton_override),
+            ) {
+                Box {
+                    ValueChip(
+                        proton?.name ?: protonChoice?.dir ?: stringResource(R.string.comp_game_use_general),
+                        protonMenu,
+                        enabled = protons.isNotEmpty() && !busy,
+                        modifier = Modifier.widthIn(max = 280.dp),
+                    ) { onProtonMenu(!protonMenu) }
+                    AnchoredMenu(
+                        protonMenu,
+                        onDismiss = { onProtonMenu(false) },
+                        title = stringResource(R.string.comp_proton),
+                    ) { first ->
+                        MenuItem(
+                            stringResource(R.string.comp_game_use_general),
+                            checked = protonChoice == null,
+                            focusRequester = first,
+                        ) { onProton(null); onProtonMenu(false) }
+                        protons.forEach { option ->
+                            MenuItem(option.name, checked = proton?.id == option.id) {
+                                onProton(option.id)
+                                onProtonMenu(false)
+                            }
+                        }
+                    }
+                }
+            }
+            GamePackageRow(
+                comp = "dxvk",
+                packages = packages,
+                selectedFile = componentChoices["dxvk"],
+                open = componentMenu == "dxvk",
+                busy = busy,
+                proton = effectiveProton,
+                onMenu = onComponentMenu,
+                onPick = onComponent,
+                onRuntimeOptions = onEnvironment,
+            )
+            GamePackageRow(
+                comp = "vkd3d",
+                packages = packages,
+                selectedFile = componentChoices["vkd3d"],
+                open = componentMenu == "vkd3d",
+                busy = busy,
+                proton = effectiveProton,
+                onMenu = onComponentMenu,
+                onPick = onComponent,
+                onRuntimeOptions = onEnvironment,
+            )
+            SettingsRow(
+                stringResource(R.string.game_env_title),
+                stringResource(R.string.comp_game_environment_other_hint),
+            ) {
+                SecondaryButton(stringResource(R.string.game_env_edit), enabled = !busy, onClick = onEnvironment)
+            }
+            SettingsRow(
+                stringResource(R.string.wincomp_title),
+                if (picks.isEmpty()) stringResource(R.string.wincomp_card_none)
+                else picks.joinToString(", ") { com.droiddeck.launcher.session.WinComponentNames.of(it) },
+            ) {
+                SecondaryButton(stringResource(R.string.game_env_edit), onClick = onWinComponents)
+            }
+        }
+        notice?.let {
+            Text(
+                it,
+                fontSize = 13.sp,
+                color = if (error) MaterialTheme.colorScheme.error else LocalPalette.current.good,
+            )
+        }
+        if (error && notice == null) Text(stringResource(R.string.game_env_error), fontSize = 13.sp, color = MaterialTheme.colorScheme.error)
+        if (!busy) {
+            FocusText(
+                stringResource(R.string.comp_game_reset),
+                MaterialTheme.colorScheme.error,
+                onClick = onReset,
+            )
+        }
+        if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+    }
+}
+
+@Composable
+private fun GamePackageRow(
+    comp: String,
+    packages: List<ComponentsManager.Package>,
+    selectedFile: String?,
+    open: Boolean,
+    busy: Boolean,
+    proton: ComponentsManager.Proton? = null,
+    onMenu: (String?) -> Unit,
+    onPick: (String, String?) -> Unit,
+    onRuntimeOptions: (() -> Unit)? = null,
+) {
+    val choices = packages.filter { it.comp == comp }
+    val selected = choices.firstOrNull { it.file == selectedFile }
+    val title = ComponentsManager.LABEL[comp] ?: comp
+    SettingsRow(
+        title,
+        if (selected == null) {
+            if (proton == null) stringResource(R.string.comp_game_component_general)
+            else stringResource(R.string.comp_game_component_runtime, proton.name)
+        } else stringResource(R.string.comp_game_component_override, selected.version),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box {
+                ValueChip(
+                    selected?.version ?: stringResource(R.string.comp_game_use_general),
+                    open,
+                    enabled = !busy,
+                    modifier = Modifier.widthIn(max = 240.dp),
+                ) { onMenu(if (open) null else comp) }
+                AnchoredMenu(open, onDismiss = { onMenu(null) }, title = title) { first ->
+                    MenuItem(
+                        stringResource(R.string.comp_game_use_general),
+                        checked = selected == null,
+                        focusRequester = first,
+                    ) { onPick(comp, null); onMenu(null) }
+                    choices.forEach { option ->
+                        MenuItem(option.version, checked = option.file == selectedFile, detail = option.description) {
+                            onPick(comp, option.file)
+                            onMenu(null)
+                        }
+                    }
+                }
+            }
+            if (onRuntimeOptions != null) {
+                SecondaryButton(stringResource(R.string.comp_game_runtime_options), enabled = !busy, onClick = onRuntimeOptions)
+            }
+        }
+    }
+}
+
+@Composable
+internal fun FexPresetChip(
+    preset: String,
+    inherited: Boolean,
+    open: Boolean,
+    enabled: Boolean,
+    onToggle: () -> Unit,
+    onDismiss: () -> Unit,
+    onPick: (String?) -> Unit,
+    allowInheritance: Boolean = false,
+    modifier: Modifier = Modifier,
+) {
+    val chosen = FexPreset.all.firstOrNull { it.id == preset }
+    val label = when {
+        preset == GameEnvironment.CUSTOM_FEX_PRESET -> stringResource(R.string.comp_game_fex_custom)
+        chosen == null -> stringResource(FexPreset.byId("").label)
+        inherited -> stringResource(R.string.comp_game_use_general)
+        else -> stringResource(chosen.label)
+    }
+    Box {
+        ValueChip(label, open, enabled = enabled, modifier = modifier.widthIn(max = 260.dp), onClick = onToggle)
+        AnchoredMenu(open && enabled, onDismiss = onDismiss, title = stringResource(R.string.fex_preset_title)) { first ->
+            if (allowInheritance) {
+                MenuItem(
+                    stringResource(R.string.comp_game_use_general),
+                    checked = inherited,
+                    focusRequester = first,
+                ) { onPick(null); onDismiss() }
+            }
+            FexPreset.all.forEachIndexed { index, option ->
+                MenuItem(
+                    stringResource(option.label),
+                    checked = !inherited && option.id == preset,
+                    detail = stringResource(option.detail),
+                    focusRequester = if (index == 0 && !allowInheritance) first else null,
+                ) { onPick(option.id); onDismiss() }
+            }
+        }
+    }
 }
 
 @Composable
@@ -795,10 +1314,6 @@ internal fun ToolIcon(icon: ImageVector, description: String, busy: Boolean = fa
     }
 }
 
-/**
- * A small button. Resting: grey outline (blue text when [accent]). Focused or hovered: a solid blue
- * fill with an outline in the text colour - unmistakable in a column of identical buttons.
- */
 @Composable
 private fun SmallButton(text: String, enabled: Boolean = true, accent: Boolean = false, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
@@ -843,10 +1358,6 @@ private fun Tag(text: String) {
     )
 }
 
-/**
- * One installed choice: a radio for the one in use, its name and detail, and a trash at the right
- * of the ones that can go. [progress] shows a download for it in place of the tag.
- */
 @Composable
 private fun ChoiceLine(
     name: String, detail: String, selected: Boolean, removable: Boolean,
@@ -883,10 +1394,8 @@ private fun ChoiceLine(
                 }
                 DetailLine(detail, badge)
             }
-            // The radio says which is in use; a download in flight shows where a tag would.
             if (progress != null) ProgressBit(progress)
         }
-        // The trash column is always there (empty when the row can't be deleted) so rows line up.
         if (!removable) Spacer(Modifier.padding(end = 6.dp).size(44.dp))
         else {
             val delSrc = remember { MutableInteractionSource() }
@@ -904,11 +1413,10 @@ private fun ChoiceLine(
     Box(Modifier.fillMaxWidth().height(1.dp).background(pal.line))
 }
 
-/** One thing not installed yet: its name and detail, and Get - its download shown in the row once started. */
 @Composable
 private fun GetLine(
     name: String, detail: String, progress: Int?, enabled: Boolean,
-    badge: String? = null, stage: String? = null, onCancel: (() -> Unit)? = null, onGet: () -> Unit,
+    badge: String? = null, stage: String? = null, onCancel: (() -> Unit)? = null, action: String? = null, onGet: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     val pal = LocalPalette.current
@@ -923,13 +1431,12 @@ private fun GetLine(
         if (progress != null) ProgressBit(progress)
         else {
             if (onCancel != null) FocusText(stringResource(R.string.proton_cancel_queued), pal.signal, onClick = onCancel)
-            SmallButton(stringResource(R.string.comp_get), enabled = enabled, accent = true, onClick = onGet)
+            SmallButton(action ?: stringResource(R.string.comp_get), enabled = enabled, accent = true, onClick = onGet)
         }
     }
     Box(Modifier.fillMaxWidth().height(1.dp).background(pal.line))
 }
 
-/** A row's second line, led by [badge] (Recommended) in green when there is one. */
 @Composable
 private fun DetailLine(detail: String, badge: String?) {
     val colors = MaterialTheme.colorScheme
@@ -957,16 +1464,12 @@ private fun ProgressBit(progress: Int) {
     }
 }
 
-/**
- * The GPU and how far it is supported, as a chip: a green dot and "<GPU> · tested", amber when it
- * is not. A steps the device's full details out of it, with the copy for a bug report.
- */
 @Composable
 private fun DeviceChip(s: GpuDriversState) {
     val colors = MaterialTheme.colorScheme
     val pal = LocalPalette.current
-    val tint = if (s.supported && !s.unsupported) pal.good else AttentionAmber
-    val label = stringResource(
+    val tint = if (s.supported && !s.unsupported && !s.display.pending) pal.good else AttentionAmber
+    val label = if (s.display.pending) stringResource(R.string.gpu_chip_restart, s.gpuName) else stringResource(
         when {
             s.unsupported -> R.string.comp_device_unsupported
             s.supported -> R.string.comp_device_tested
@@ -1001,7 +1504,6 @@ private fun DeviceChip(s: GpuDriversState) {
     ) { face() }
 }
 
-/** What the Proton layer installs: the Protons DroidDeck can download, and one being installed. */
 class ProtonsState(
     val rows: List<ProtonRow> = emptyList(),
     val busyId: String? = null,
@@ -1014,8 +1516,21 @@ class ProtonsState(
 class ProtonsActions(
     val onInstall: (String) -> Unit = {},
     val onCancel: (String) -> Unit = {},
-    val onRemove: (String) -> Unit = {},
+    val onRemove: (String, String) -> Unit = { _, _ -> },
+    val onRemoveOlder: (String) -> Unit = {},
 )
 
-/** A Proton DroidDeck can install, and the folder it is installed as (null when it is not). */
-class ProtonRow(val id: String, val name: String, val installed: String?, val queued: Boolean)
+class ProtonRow(
+    val id: String, val name: String, val installed: String?, val queued: Boolean,
+    val installedAll: List<String> = listOfNotNull(installed), val update: String? = null,
+)
+
+@Composable
+private fun gpuCardValue(gpu: GpuDriversState, auto: String): String {
+    val value = when (gpu.mode) {
+        GPU_MODE_AUTO -> gpu.activePair?.name?.let { stringResource(R.string.drivers_summary, auto, it) } ?: auto
+        else -> gpu.activePair?.name?.takeIf { gpu.mode == GPU_MODE_PAIR }
+            ?: if (gpu.display.name == gpu.runtime.name) gpu.display.name else stringResource(R.string.gpu_summary_mix, gpu.display.name, gpu.runtime.name)
+    }
+    return if (gpu.display.pending) stringResource(R.string.gpu_summary_restart, value) else value
+}
