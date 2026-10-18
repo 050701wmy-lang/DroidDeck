@@ -131,4 +131,124 @@ class SessionLogShareTest {
         assertTrue("steam/console_log.txt" in names)
         assertFalse("steam/cef_log.previous.txt" in names)
     }
+
+    @Test fun streamingComparisonPreservesUnchangedFileAndReplacesChangedFile() {
+        val folder = tmp.newFolder("2026-10-06-08-steam")
+        val unchanged = File(folder, "unchanged.log")
+        unchanged.bufferedWriter().use { out -> repeat(5000) { out.write("safe diagnostic $it\n") } }
+        val originalModified = 1_600_000_000_000L
+        assertTrue(unchanged.setLastModified(originalModified))
+        val changed = File(folder, "changed.log")
+        changed.bufferedWriter().use { out ->
+            repeat(5000) { out.write("safe diagnostic $it\n") }
+            out.write("$secret\n")
+        }
+
+        assertTrue(SessionArtifacts.scrubAndMark(folder))
+
+        assertEquals(originalModified, unchanged.lastModified())
+        assertFalse(changed.readText().contains(leaked))
+        assertTrue(changed.readText().contains("sessionid=<redacted:token>"))
+    }
+
+    @Test fun historicalScrubDefersWithoutLeavingMarkersAndResumes() {
+        val folder = tmp.newFolder("2026-10-06-09-steam")
+        val log = File(folder, "session.log").apply { writeText("$secret\n") }
+        val rulesMarker = File(folder, ".scrubbed-r${LogRedactor.RULES_VERSION}").apply { writeText("stale\n") }
+        val treeMarker = File(folder, SessionArtifacts.SCRUBBED_TREE_MARKER).apply { writeText("rules ${LogRedactor.RULES_VERSION}\n") }
+
+        SessionState.running = true
+        try {
+            assertFalse(SessionArtifacts.scrubAndMark(folder, stopWhenSessionStarts = true))
+        } finally {
+            SessionState.running = false
+        }
+        assertFalse(rulesMarker.exists())
+        assertFalse(treeMarker.exists())
+        assertTrue(log.readText().contains(leaked))
+
+        assertTrue(SessionArtifacts.scrubAndMark(folder, stopWhenSessionStarts = true))
+        assertFalse(log.readText().contains(leaked))
+        assertTrue(File(folder, ".scrubbed-r${LogRedactor.RULES_VERSION}").isFile)
+    }
+
+    @Test fun recoveryRetryKeepsItsSteamLogsWhenALaterSessionLeftNoFolder() {
+        val context: android.content.Context = RuntimeEnvironment.getApplication()
+        val folder = File(com.droiddeck.launcher.runtime.LinuxRuntime.logDir(context), "2026-10-08-01-steam").apply { mkdirs() }
+        val saved = File(folder, "steam/console_log.txt").apply {
+            parentFile!!.mkdirs()
+            writeText("session A\n")
+        }
+        File(folder, "ended-without-teardown.txt").writeText("recovery attempted before session B\n")
+        val runtime = File(com.droiddeck.launcher.runtime.LinuxRuntime.rootDir(context), "root/.local/share/Steam/logs/console_log.txt").apply {
+            parentFile!!.mkdirs()
+            writeText("session B\n")
+        }
+
+        SessionArtifacts.finishAbandoned(context)
+
+        assertEquals("session A\n", saved.readText())
+        assertEquals("session B\n", runtime.readText())
+        assertTrue(File(folder, SessionArtifacts.COMPLETE_MARKER).isFile)
+    }
+
+    @Test fun abandonedRecoveryDoesNotCopyLogsFromANewerCompletedSession() {
+        val context: android.content.Context = RuntimeEnvironment.getApplication()
+        val logs = com.droiddeck.launcher.runtime.LinuxRuntime.logDir(context)
+        val folder = File(logs, "2026-10-08-02-steam").apply { mkdirs() }
+        val saved = File(folder, "steam/console_log.txt").apply {
+            parentFile!!.mkdirs()
+            writeText("session A\n")
+        }
+        File(logs, "2026-10-08-03-steam").apply { mkdirs() }
+            .resolve(SessionArtifacts.COMPLETE_MARKER).writeText("finished session B\n")
+        File(com.droiddeck.launcher.runtime.LinuxRuntime.rootDir(context), "root/.local/share/Steam/logs/console_log.txt").apply {
+            parentFile!!.mkdirs()
+            writeText("session B\n")
+        }
+
+        SessionArtifacts.finishAbandoned(context)
+
+        assertEquals("session A\n", saved.readText())
+        assertTrue(File(folder, SessionArtifacts.COMPLETE_MARKER).isFile)
+    }
+
+    @Test fun startupRecoveryRunsBeforeVacMarkerArmWhileOrdinaryCleanupDefers() {
+        val context: android.content.Context = RuntimeEnvironment.getApplication()
+        val root = com.droiddeck.launcher.runtime.LinuxRuntime.rootDir(context)
+        val folder = File(com.droiddeck.launcher.runtime.LinuxRuntime.logDir(context), "2999-12-31-99-startup-recovery")
+        val marker = File(root, "root/.droiddeck-vac-diagnostics")
+        val launches = File(root, "root/.droiddeck-vac-launches")
+        val runtimeSteamLog = File(SessionPrefs.steamRoot(context, "arm64"), "logs/startup-recovery-vac.log")
+        val previousRunning = SessionState.running
+        val previousPhase = SessionState.phase
+        try {
+            folder.deleteRecursively()
+            folder.mkdirs()
+            SessionArtifacts.recordClient(folder, "arm64")
+            marker.apply { parentFile!!.mkdirs(); writeText("0\narm64\n") }
+            launches.writeText("startup VAC evidence\n")
+            runtimeSteamLog.apply { parentFile!!.mkdirs(); writeText("startup VAC evidence\n") }
+            SessionState.running = true
+            SessionState.phase = SessionPhase.STARTING_GUEST
+
+            SessionArtifacts.finishAbandoned(context)
+
+            assertFalse(File(folder, "ended-without-teardown.txt").exists())
+            assertFalse(File(folder, SessionArtifacts.COMPLETE_MARKER).exists())
+
+            SessionArtifacts.finishAbandoned(context, beforeGuestStart = true)
+
+            assertEquals("startup VAC evidence\n", File(folder, "steam/startup-recovery-vac.log").readText())
+            assertTrue(File(folder, "vac.txt").readText().contains("startup VAC evidence"))
+            assertTrue(File(folder, SessionArtifacts.COMPLETE_MARKER).isFile)
+        } finally {
+            SessionState.running = previousRunning
+            SessionState.phase = previousPhase
+            folder.deleteRecursively()
+            runtimeSteamLog.delete()
+            marker.delete()
+            launches.delete()
+        }
+    }
 }
