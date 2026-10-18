@@ -52,19 +52,35 @@ public final class Downloader {
     /** Verify each candidate before accepting it, so a bad mirror can fall back. */
     public static boolean downloadFile(String url, File destination, boolean resume, String expectedSha256,
                                        java.util.function.Consumer<Float> progress) {
+        return downloadFile(url, destination, resume, expectedSha256, null, progress);
+    }
+
+    /** {@code cancelled} is polled while bytes arrive; a cancel stops at once and leaves the partial file for the caller. */
+    public static boolean downloadFile(String url, File destination, boolean resume, String expectedSha256,
+                                       java.util.function.BooleanSupplier cancelled,
+                                       java.util.function.Consumer<Float> progress) {
         if (expectedSha256 != null && !expectedSha256.matches("(?i)[0-9a-f]{64}"))
             throw new IllegalArgumentException("Expected SHA-256 must be 64 hex characters");
-        return downloadCandidates(url, DownloadSource.INSTANCE.candidates(url), destination, resume, expectedSha256, progress);
+        return downloadCandidates(url, DownloadSource.INSTANCE.candidates(url), destination, resume, expectedSha256, cancelled, progress);
     }
 
     // Package-private for the local multi-source HTTP test.
     static boolean downloadCandidates(String original, List<String> sources, File destination, boolean resume,
                                       String expectedSha256, java.util.function.Consumer<Float> progress) {
+        return downloadCandidates(original, sources, destination, resume, expectedSha256, null, progress);
+    }
+
+    static boolean downloadCandidates(String original, List<String> sources, File destination, boolean resume,
+                                      String expectedSha256, java.util.function.BooleanSupplier cancelled,
+                                      java.util.function.Consumer<Float> progress) {
         Identity identity = loadIdentity(destination, resume, expectedSha256);
         for (int i = 0; i < sources.size(); i++) {
             String source = sources.get(i);
+            if (isCancelled(cancelled)) return false;
             if (i > 0) Log.i(TAG, "retrying " + original + " via " + source);
-            Outcome outcome = attempt(source, destination, resume, identity, expectedSha256, progress);
+            Outcome outcome = attempt(source, destination, resume, identity, expectedSha256, cancelled, progress);
+            // A cancel is not a source failure: no other mirror, and no DownloadSource.failed().
+            if (outcome == Outcome.CANCELLED) return false;
             if (outcome == Outcome.DONE) {
                 if (expectedSha256 != null && !expectedSha256.equalsIgnoreCase(Hashes.sha256(destination))) {
                     Log.w(TAG, "checksum mismatch from " + source + "; trying another source");
@@ -82,7 +98,11 @@ public final class Downloader {
         return false;
     }
 
-    private enum Outcome { DONE, RETRY, FATAL }
+    private enum Outcome { DONE, RETRY, FATAL, CANCELLED }
+
+    private static boolean isCancelled(java.util.function.BooleanSupplier cancelled) {
+        return cancelled != null && cancelled.getAsBoolean();
+    }
 
     private static final class Identity {
         private String source;
@@ -150,7 +170,8 @@ public final class Downloader {
     }
 
     private static Outcome attempt(String url, File destination, boolean resume, Identity identity,
-                                   String expectedSha256, java.util.function.Consumer<Float> progress) {
+                                   String expectedSha256, java.util.function.BooleanSupplier cancelled,
+                                   java.util.function.Consumer<Float> progress) {
         HttpURLConnection connection = null;
         long have = resume && destination.isFile() ? destination.length() : 0;
         try {
@@ -168,7 +189,7 @@ public final class Downloader {
             if (have > 0 && code == HTTP_RANGE_NOT_SATISFIABLE) {
                 connection.disconnect();
                 if (!discardPartial(destination, identity)) return Outcome.RETRY;
-                return attempt(url, destination, false, identity, expectedSha256, progress);
+                return attempt(url, destination, false, identity, expectedSha256, cancelled, progress);
             }
             if (code / 100 != 2) {
                 Log.w(TAG, url + " -> HTTP " + code);
@@ -179,13 +200,13 @@ public final class Downloader {
             if (appending && !rangeStartsAt(connection.getHeaderField("Content-Range"), have)) {
                 connection.disconnect();
                 if (!discardPartial(destination, identity)) return Outcome.RETRY;
-                return attempt(url, destination, false, identity, expectedSha256, progress);
+                return attempt(url, destination, false, identity, expectedSha256, cancelled, progress);
             }
             String etag = connection.getHeaderField("ETag");
             if (have > 0 && appending && (!strongETag(etag) || !etag.equals(identity.etag))) {
                 connection.disconnect();
                 if (!discardPartial(destination, identity)) return Outcome.RETRY;
-                return attempt(url, destination, false, identity, expectedSha256, progress);
+                return attempt(url, destination, false, identity, expectedSha256, cancelled, progress);
             }
             if (!appending && have > 0) {
                 // If-Range may legitimately return full 200 when representation changed.
@@ -209,6 +230,7 @@ public final class Downloader {
                 for (int read = in.read(buffer); read > 0; read = in.read(buffer)) {
                     out.write(buffer, 0, read);
                     written += read;
+                    if (isCancelled(cancelled)) return Outcome.CANCELLED;
                     if (progress != null && written - lastReport > (1 << 20)) {
                         lastReport = written;
                         progress.accept(total > 0 ? written / (float) total : -1f);

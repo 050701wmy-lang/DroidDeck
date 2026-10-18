@@ -402,6 +402,13 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
             finish()
             return
         }
+        // A cancelled install keeps its thread until the download stops; a new launch would reuse its stop flag and close itself.
+        if (savedInstanceState == null && SessionState.installing != null && !SessionState.running) {
+            runtimeRemovalBlocked = true
+            android.widget.Toast.makeText(this, R.string.main_wait_desktop_install, android.widget.Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
         if (!SessionState.running && SessionState.phase in setOf(SessionPhase.IDLE, SessionPhase.FAILED)) {
             val mode = intent.getStringExtra(SessionService.EXTRA_MODE) ?: SessionService.MODE_STEAM
             SessionState.programArgs = intent.getStringArrayExtra(SessionService.EXTRA_PROGRAM_ARGS)?.toList().orEmpty()
@@ -1319,11 +1326,10 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     }
 
 
-    @Volatile private var installingRuntime = false
+    private val installingRuntime get() = SessionState.installing != null
 
     private fun installThenStart(runtime: Boolean, desktop: Boolean, proton: Boolean = false) {
         if (SessionState.stopRequested) return
-        installingRuntime = true
         SessionState.installing = if (runtime) "runtime" else if (desktop) "desktop" else "proton"
         SessionEvents.transition(
             SessionPhase.INSTALLING_RUNTIME,
@@ -1354,7 +1360,6 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                 else SessionEvents.record("proton.skipped", mapOf("reason" to protonProblem))
             }
             uiHandler.post {
-                installingRuntime = false
                 SessionState.installing = null
                 if (SessionState.stopRequested) {
                     SessionState.stopRequested = false
@@ -1423,7 +1428,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     private fun installDesktop(): String? {
         uiHandler.post { loading.percent = -1; loading.say(getString(DESKTOP_LINES.downloading), DESKTOP_LINES.topic, readable = true) }
         val entry = com.droiddeck.launcher.runtime.DesktopCatalog.desktopEntry(this)
-        val problem = com.droiddeck.launcher.runtime.DesktopCatalog.install(this, entry,
+        val problem = com.droiddeck.launcher.runtime.DesktopCatalog.install(this, entry, { SessionState.stopRequested },
             progressFor(DESKTOP_LINES, entry.size / 1_000_000))
         return problem?.let { getString(R.string.session_desktop_install_failed, it) }
     }
@@ -1433,7 +1438,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         val catalog = com.droiddeck.launcher.runtime.DesktopCatalog
         val entry = catalog.fetch(catalog.STEAM_SEED_URL)?.firstOrNull { it.id == catalog.PROTON_SEED_ID }
             ?: return "catalog unreachable"
-        return catalog.install(this, entry, progressFor(PROTON_LINES, entry.size / 1_000_000))
+        return catalog.install(this, entry, { SessionState.stopRequested }, progressFor(PROTON_LINES, entry.size / 1_000_000))
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {

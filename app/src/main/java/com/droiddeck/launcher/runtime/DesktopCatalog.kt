@@ -82,7 +82,11 @@ object DesktopCatalog {
     fun removeDesktop(context: Context, listener: LinuxRuntimeInstaller.ProgressListener): String? =
         DesktopRemoval.remove(context, listener)
 
-    fun install(context: Context, entry: Entry, listener: LinuxRuntimeInstaller.ProgressListener?): String? {
+    fun install(context: Context, entry: Entry, listener: LinuxRuntimeInstaller.ProgressListener?): String? =
+        install(context, entry, { false }, listener)
+
+    /** A cancel stops the download and is checked once more before anything on disk changes; extraction itself runs to the end. */
+    fun install(context: Context, entry: Entry, cancelled: () -> Boolean, listener: LinuxRuntimeInstaller.ProgressListener?): String? {
         val root = LinuxRuntime.rootDir(context)
         if (!root.isDirectory) return context.getString(R.string.deskpkg_runtime_missing)
         if (entry.sha256.isEmpty()) return context.getString(R.string.deskpkg_no_checksum, entry.name)
@@ -90,13 +94,14 @@ object DesktopCatalog {
         try {
             val downloading = context.getString(R.string.user_apps_downloading, entry.name)
             listener?.onProgress(LinuxRuntimeInstaller.Step.DOWNLOADING, downloading, 0)
-            val ok = Downloader.downloadFile(entry.url, download, true, entry.sha256) { f ->
+            val ok = Downloader.downloadFile(entry.url, download, true, entry.sha256, { cancelled() }) { f ->
                 listener?.onProgress(LinuxRuntimeInstaller.Step.DOWNLOADING, downloading, if (f < 0) -1 else Math.round(f * 100f))
             }
             if (!ok) return context.getString(R.string.user_apps_download_failed)
             listener?.onProgress(LinuxRuntimeInstaller.Step.VERIFYING, context.getString(R.string.rtinst_verifying), -1)
             val actual = Hashes.sha256(download)
             if (!entry.sha256.equals(actual, ignoreCase = true)) return context.getString(R.string.deskpkg_checksum_mismatch)
+            if (cancelled()) return context.getString(R.string.deskpkg_install_failed)
             listener?.onProgress(context.getString(R.string.deskpkg_installing, entry.name), -1)
             when (entry.kind) {
                 "appimage" -> {

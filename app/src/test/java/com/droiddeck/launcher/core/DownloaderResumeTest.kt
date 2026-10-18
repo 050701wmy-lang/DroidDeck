@@ -167,4 +167,24 @@ class DownloaderResumeTest {
         assertEquals(listOf(catalog), DownloadSource.candidates(catalog))
     }
 
+
+    @Test fun cancelStopsTheTransferWithoutTryingAnotherSource() {
+        val first = "http://127.0.0.1:${server.localPort}/first"
+        val second = "http://127.0.0.1:${server.localPort}/second"
+        val target = File(dir, "runtime.tar.zst")
+        misbehave = true
+        val polls = java.util.concurrent.atomic.AtomicInteger()
+        // the first poll is before the request; every later one is after a chunk was written
+        val cancelled = java.util.function.BooleanSupplier { polls.incrementAndGet() > 1 }
+        assertFalse(Downloader.downloadCandidates(first, listOf(first, second), target, true, null, cancelled, null))
+        assertEquals("a cancel must not fall back to the next source", listOf<String?>(null), requests.toList())
+        assertTrue("the transfer stopped early (kept=${target.length()})", target.length() in 1 until data.size)
+    }
+
+    @Test fun aCancelBeforeTheFirstRequestSendsNothing() {
+        val url = "http://127.0.0.1:${server.localPort}/runtime.tar.zst"
+        val target = File(dir, "runtime.tar.zst")
+        assertFalse(Downloader.downloadFile(url, target, true, null, { true }, null))
+        assertEquals(emptyList<String?>(), requests.toList())
+    }
 }
