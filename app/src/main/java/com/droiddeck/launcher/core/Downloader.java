@@ -172,6 +172,7 @@ public final class Downloader {
     private static Outcome attempt(String url, File destination, boolean resume, Identity identity,
                                    String expectedSha256, java.util.function.BooleanSupplier cancelled,
                                    java.util.function.Consumer<Float> progress) {
+        if (isCancelled(cancelled)) return Outcome.CANCELLED;
         HttpURLConnection connection = null;
         long have = resume && destination.isFile() ? destination.length() : 0;
         try {
@@ -237,6 +238,7 @@ public final class Downloader {
                     }
                 }
             }
+            if (isCancelled(cancelled)) return Outcome.CANCELLED;
             if (total > 0 && written < total) return Outcome.RETRY;
             return Outcome.DONE;
         } catch (Exception e) {

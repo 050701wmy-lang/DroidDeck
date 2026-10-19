@@ -1326,10 +1326,14 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     }
 
 
-    private val installingRuntime get() = SessionState.installing != null
+    private var localInstalling = false
+    private val installingRuntime get() = localInstalling || SessionState.installing != null
 
     private fun installThenStart(runtime: Boolean, desktop: Boolean, proton: Boolean = false) {
         if (SessionState.stopRequested) return
+        val worker = Any()
+        activeInstallWorker = worker
+        localInstalling = true
         SessionState.installing = if (runtime) "runtime" else if (desktop) "desktop" else "proton"
         SessionEvents.transition(
             SessionPhase.INSTALLING_RUNTIME,
@@ -1347,22 +1351,26 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                 if (problem == null) SessionEvents.record("runtime.ready") else failedComponent = "runtime"
             }
             if (problem == null && desktop && !SessionState.stopRequested) {
-                SessionState.installing = "desktop"
+                if (activeInstallWorker === worker) SessionState.installing = "desktop"
                 SessionEvents.transition(SessionPhase.INSTALLING_RUNTIME, "desktop.installing", mapOf("component" to "desktop"))
                 problem = installDesktop()
                 if (problem == null) SessionEvents.record("desktop.ready") else failedComponent = "desktop"
             }
             if (problem == null && proton && !SessionState.stopRequested) {
-                SessionState.installing = "proton"
+                if (activeInstallWorker === worker) SessionState.installing = "proton"
                 SessionEvents.transition(SessionPhase.INSTALLING_RUNTIME, "proton.installing", mapOf("component" to "proton"))
                 val protonProblem = installProton()
                 if (protonProblem == null) SessionEvents.record("proton.ready")
                 else SessionEvents.record("proton.skipped", mapOf("reason" to protonProblem))
             }
             uiHandler.post {
-                SessionState.installing = null
+                localInstalling = false
+                if (activeInstallWorker === worker) {
+                    activeInstallWorker = null
+                    SessionState.installing = null
+                }
                 if (SessionState.stopRequested) {
-                    SessionState.stopRequested = false
+                    if (activeInstallWorker == null) SessionState.stopRequested = false
                     SessionEvents.transition(SessionPhase.IDLE, "session.cancelled")
                     collectStartArtifacts("session start cancelled")
                     finish()
@@ -3195,6 +3203,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         private const val LEAVE_TIMEOUT_MS = 1_500L
         private const val TAG = "SessionActivity"
         private var startedScreens = 0
+        @Volatile private var activeInstallWorker: Any? = null
         private const val FEX_MISSING = "droiddeck-fex: x86 Linux programs need"
         private const val UNBUFFERED_SOURCES = InputDevice.SOURCE_CLASS_JOYSTICK or InputDevice.SOURCE_CLASS_TRACKBALL or InputDevice.SOURCE_CLASS_POSITION
         private const val CURSOR_PAD_HOLD_MS = 1200L
