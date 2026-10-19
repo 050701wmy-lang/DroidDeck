@@ -1533,11 +1533,12 @@ class MainActivity : ComponentActivity() {
     private fun removePackage(id: String) {
         val entry = catalog?.firstOrNull { it.id == id } ?: return
         if (busy || LinuxRuntimeInstaller.isBusy() || pkgStage != null || SessionState.running) return
-        pkgId = id; pkgStage = getString(if (entry.kind == "appimage") R.string.main_removing_named else R.string.main_forgetting_named, entry.name); pkgPercent = -1
+        pkgId = id; pkgStage = getString(R.string.main_removing_named, entry.name); pkgPercent = -1
         Thread({
-            DesktopCatalog.remove(this, entry)
+            val error = runCatching { DesktopCatalog.remove(this, entry) }.exceptionOrNull()
             ui.post {
                 pkgStage = null; pkgId = null
+                if (error != null) android.widget.Toast.makeText(this, error.message, android.widget.Toast.LENGTH_LONG).show()
                 refreshPackages()
                 refresh()
             }

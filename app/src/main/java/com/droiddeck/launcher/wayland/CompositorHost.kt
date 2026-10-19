@@ -13,11 +13,13 @@ object CompositorHost {
 
     @Volatile
     private var vsyncRunning = false
+    private var choreographer: Choreographer? = null
 
     private val vsync = object : Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
+            if (!vsyncRunning) return
             WaylandCompositor.nativeVsync(frameTimeNanos)
-            if (vsyncRunning) Choreographer.getInstance().postFrameCallback(this)
+            if (vsyncRunning) choreographer?.postFrameCallback(this)
         }
     }
 
@@ -33,7 +35,7 @@ object CompositorHost {
         refreshHz: Float,
         fpsLimit: Int,
     ): Boolean {
-        pace(refreshHz, fpsLimit)
+        updateRefreshRate(refreshHz, fpsLimit)
         if (!SessionState.running) WaylandCompositor.nativeSetOutputSize(outputWidth, outputHeight)
         if (started) {
             attached = surface
@@ -51,16 +53,17 @@ object CompositorHost {
         return true
     }
 
-    private fun pace(refreshHz: Float, fpsLimit: Int) {
+    fun updateRefreshRate(refreshHz: Float, fpsLimit: Int = SessionState.fpsLimit) {
+        if (!refreshHz.isFinite() || refreshHz <= 1f) return
+        SessionState.refreshHz = refreshHz
+        WaylandCompositor.nativeSetOutputRefreshRate(refreshHz)
         WaylandCompositor.nativeSetFpsLimit(fpsLimit)
         WaylandCompositor.nativeSetLayerFrameRate(if (fpsLimit > 0) fpsLimit.toFloat() else refreshHz)
-        WaylandCompositor.nativeSetOutputRefreshRate(refreshHz)
-        SessionState.refreshHz = refreshHz
     }
 
     @Synchronized
     fun updatePacing(refreshHz: Float, fpsLimit: Int) {
-        if (started) pace(refreshHz, fpsLimit)
+        if (started) updateRefreshRate(refreshHz, fpsLimit)
     }
 
     @Synchronized
@@ -103,11 +106,13 @@ object CompositorHost {
     private fun resumeVsync() {
         if (vsyncRunning) return
         vsyncRunning = true
-        Choreographer.getInstance().postFrameCallback(vsync)
+        choreographer = Choreographer.getInstance()
+        choreographer?.postFrameCallback(vsync)
     }
 
     private fun pauseVsync() {
         vsyncRunning = false
+        choreographer?.removeFrameCallback(vsync)
     }
 
     fun newSession() {

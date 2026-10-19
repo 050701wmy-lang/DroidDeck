@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hud_presented">%1$.0f fps · P95 %2$.1f ms</string>
+    <string name="hud_latched">%1$.0f fps · 合成 P95 %2$.1f ms</string>
+    <string name="hud_submitted">%1$s · 提交</string>
+</resources>

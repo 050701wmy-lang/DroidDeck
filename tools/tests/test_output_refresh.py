@@ -143,6 +143,22 @@ int main(void) {
 
 @unittest.skipUnless(sys.platform.startswith('linux'), 'needs Linux nonblocking pipes')
 class OutputRefreshTest(unittest.TestCase):
+    def test_live_wayland_refresh_does_not_become_an_implicit_fps_limit(self):
+        source = (ROOT / 'tools/linuxfs/overlay/usr/local/bin/droiddeck-session').read_text()
+        start = source.index('  args=(--backend wayland')
+        end = source.index('  [ "$mode" = steam ]', start)
+        script = 'width=3040; height=1904; nested=$width\n' + source[start:end] + '\nprintf "%s\\n" "${args[@]}"\n'
+        for fps, refresh in ((0, 60), (0, 120), (0, 165), (60, 165), (120, 165)):
+            with self.subTest(fps=fps, refresh=refresh):
+                result = subprocess.run(['bash', '-c', script], capture_output=True, text=True,
+                                        env=dict(os.environ, BL_FPS=str(fps), BL_REFRESH=str(refresh)))
+                self.assertEqual(0, result.returncode, result.stderr)
+                args = result.stdout.splitlines()
+                if fps:
+                    self.assertEqual(str(fps), args[args.index('-r') + 1])
+                else:
+                    self.assertNotIn('-r', args)
+
     def test_refresh_notifications_preserve_client_pacing_without_resizing(self):
         compiler = shutil.which(os.environ.get('CC', 'cc'))
         if compiler is None:

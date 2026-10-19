@@ -222,10 +222,9 @@ if [ -z "${BL_INSIDE:-}" ]; then
   fi
   args=(--backend wayland --expose-wayland -f -W "$width" -H "$height" -w "$nested" -h "$height")
   [ "$nested" != "$width" ] && args+=(-S stretch) && export BL_STRETCHED=1
+  # Wayland reports live refresh; -r would freeze the launch-time snapshot.
   if [ "${BL_FPS:-0}" -gt 0 ]; then
     args+=(-r "$BL_FPS")
-  elif [ "${BL_REFRESH:-0}" -gt 0 ]; then
-    args+=(-r "$BL_REFRESH")
   fi
   [ "$mode" = steam ] && [ "${BL_STEAM_UI:-}" != desktop ] && args+=(-e)
   if [ "$mode" = steam ] && [ "${BL_XWAYLAND_COUNT:-2}" -gt 1 ]; then
@@ -1119,19 +1118,23 @@ BUSCONF
         fi
       fi
       step "starting the Steam client${BL_STEAM_UI:+ ($BL_STEAM_UI UI)}"
-      desktop_ui_pid=
+      steam_ui_pid=
       if [ "${BL_STEAM_UI:-}" = desktop ]; then
         /usr/local/bin/droiddeck-steam-desktop-ui &
-        desktop_ui_pid=$!
+      else
+        /usr/local/bin/droiddeck-agent --steam-touch-scroll &
       fi
+      steam_ui_pid=$!
       steam_started=$SECONDS
       "${steam_client[@]}" "${_bl_ui[@]}" "${_bl_cdp[@]}" "${_bl_lang[@]}" -clientbeta "$steam_channel" \
         -no-cef-sandbox -cef-ozone-platform=x11 "${_bl_cef[@]}" "$@"
       rc=$?
       steam_ran=$((SECONDS - steam_started))
-      if [ -n "$desktop_ui_pid" ]; then
-        kill "$desktop_ui_pid" 2>/dev/null || true
-        wait "$desktop_ui_pid" 2>/dev/null || true
+      if [ -n "$steam_ui_pid" ]; then
+        if jobs -pr | grep -Fxq "$steam_ui_pid"; then
+          kill "$steam_ui_pid" 2>/dev/null || true
+        fi
+        wait "$steam_ui_pid" 2>/dev/null || true
       fi
       echo "== steam exited rc=$rc"
       collect_steam_logs

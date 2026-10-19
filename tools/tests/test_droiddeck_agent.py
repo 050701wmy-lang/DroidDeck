@@ -78,6 +78,25 @@ class FakeDevTools(threading.Thread):
 
 
 class AgentTest(unittest.TestCase):
+    def test_touch_scroll_waits_for_gamepad_document_and_stops_after_installation(self):
+        with patch.object(agent, 'cdp_eval', side_effect=[agent.AgentError('NO_TARGET', 'loading'),
+                                                        {'value': False}, {'value': True}]) as evaluate, \
+             patch.object(agent.time, 'monotonic', side_effect=[0, 0, 0.5, 1]), \
+             patch.object(agent.time, 'sleep'):
+            self.assertTrue(agent.enable_steam_touch_scroll(Path('/session/agent'), timeout=2))
+        self.assertEqual(3, evaluate.call_count)
+        for call in evaluate.call_args_list:
+            self.assertEqual('browserType=4', call.kwargs['target'])
+            self.assertFalse(call.kwargs['await_promise'])
+            self.assertLessEqual(call.kwargs['timeout'], 2)
+
+    def test_missing_touch_scroll_document_has_a_bounded_wait(self):
+        with patch.object(agent, 'cdp_eval', return_value={'value': False}) as evaluate, \
+             patch.object(agent.time, 'monotonic', side_effect=[0, 0, 1]), \
+             patch.object(agent.time, 'sleep'):
+            self.assertFalse(agent.enable_steam_touch_scroll(Path('/session/agent'), timeout=1))
+        self.assertEqual(1, evaluate.call_count)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

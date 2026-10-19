@@ -61,7 +61,7 @@ void AHardwareBuffer_release(AHardwareBuffer *);
             binary = work / 'test-presentation'
             subprocess.run(['cc', '-std=c11', '-O1', '-g', '-Wall', '-Wextra',
                             '-Wno-unused-parameter', '-Wno-unused-function',
-                            '-ffunction-sections', '-fdata-sections', '-Wl,--gc-sections',
+                            '-ffunction-sections', '-fdata-sections', '-Wl,--gc-sections', '-Wl,--wrap=ioctl',
                             '-fsanitize=address,undefined', f'-I{work}',
                             f'-I{ROOT}/app/src/main/cpp/waylandcomp/prebuilt/include',
                             str(ROOT / 'tools/quest/test_presentation.c'), '-ldl', '-pthread',

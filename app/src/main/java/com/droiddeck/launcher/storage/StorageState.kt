@@ -160,6 +160,12 @@ object StorageState {
         error == null
     })
 
+    fun uninstallDesktopApp(context: Context, id: String) = act(context, "desktop-$id", { app, fresh ->
+        if (fresh.desktopApps.none { it.first.id == id }) return@act false
+        com.droiddeck.launcher.runtime.DesktopApps.remove(app, id)
+        true
+    })
+
     fun pruneFlatpak(context: Context) = act(context, "flatpak-prune", { app, _ ->
         val error = FlatpakManager.prune(app) { step, _ -> main.post { progress = step } }
         if (error != null) main.post { lastError = error }

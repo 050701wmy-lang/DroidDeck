@@ -221,7 +221,7 @@ private fun Overview(report: StorageReport, sessionRunning: Boolean, onCleanUp: 
         },
         { m ->
             BucketCard(Bucket.DESKTOP, Icons.Outlined.Monitor, stringResource(R.string.storage_desktop),
-                pluralStringResource(R.plurals.storage_desktop_apps, report.flatpakApps.size, report.flatpakApps.size) +
+                pluralStringResource(R.plurals.storage_desktop_apps, report.flatpakApps.size + report.desktopApps.size, report.flatpakApps.size + report.desktopApps.size) +
                     " · " + stringResource(R.string.storage_desktop_shared, gb(report.flatpakRuntimes + report.flatpakCache)),
                 report.buckets.getValue(Bucket.DESKTOP), m) { onOpen("desktop") }
         },
@@ -832,11 +832,21 @@ private fun DesktopView(report: StorageReport, sessionRunning: Boolean, onBack: 
     val busy = sessionRunning || StorageState.cleaning
     var confirm by remember { mutableStateOf<com.droiddeck.launcher.storage.FlatpakUsage?>(null) }
     var confirmPrune by remember { mutableStateOf(false) }
-    SubHeader(stringResource(R.string.storage_desktop), stringResource(R.string.storage_desktop_detail, gb(report.flatpak)), onBack) {
+    var confirmEmulator by remember { mutableStateOf<Pair<com.droiddeck.launcher.runtime.DesktopApps.App, Long>?>(null) }
+    SubHeader(stringResource(R.string.storage_desktop), stringResource(R.string.storage_desktop_detail, gb(report.buckets[Bucket.DESKTOP] ?: 0)), onBack) {
         PrimaryButton(stringResource(R.string.storage_desktop_prune), compact = true, enabled = !busy && report.flatpakRuntimes + report.flatpakCache >= ONE_MB) { confirmPrune = true }
     }
     ActionStatus()
     if (sessionRunning) { Note(stringResource(R.string.storage_session_running)); Spacer(Modifier.height(4.dp)) }
+    if (report.desktopApps.isNotEmpty()) {
+        SectionTitle(stringResource(R.string.storage_emulators), null)
+        ListCard {
+            report.desktopApps.forEachIndexed { i, item ->
+                ItemRow(item.first.name, item.first.id, item.second, i == report.desktopApps.lastIndex,
+                    action = { SecondaryButton(stringResource(R.string.storage_uninstall), compact = true, enabled = !busy) { confirmEmulator = item } })
+            }
+        }
+    }
     SectionTitle(stringResource(R.string.storage_desktop_apps_title), null)
     ListCard {
         if (report.flatpakApps.isEmpty()) Text(stringResource(R.string.storage_desktop_none), fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
@@ -853,6 +863,10 @@ private fun DesktopView(report: StorageReport, sessionRunning: Boolean, onBack: 
     confirm?.let { app ->
         ConfirmDialog(stringResource(R.string.storage_uninstall_title, app.name), stringResource(R.string.storage_flatpak_uninstall_body, gb(app.bytes)),
             stringResource(R.string.storage_uninstall), onConfirm = { StorageState.uninstallFlatpak(ctx, app.id) }, onDismiss = { confirm = null })
+    }
+    confirmEmulator?.let { item ->
+        ConfirmDialog(stringResource(R.string.storage_uninstall_title, item.first.name), stringResource(R.string.storage_emulators_remove, gb(item.second)),
+            stringResource(R.string.storage_uninstall), onConfirm = { StorageState.uninstallDesktopApp(ctx, item.first.id) }, onDismiss = { confirmEmulator = null })
     }
     if (confirmPrune) ConfirmDialog(stringResource(R.string.storage_desktop_prune), stringResource(R.string.storage_desktop_prune_body),
         stringResource(R.string.storage_desktop_prune), danger = false, onConfirm = { StorageState.pruneFlatpak(ctx) }, onDismiss = { confirmPrune = false })

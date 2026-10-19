@@ -186,6 +186,7 @@ public final class WaylandCompositor {
     public static native void nativeSetNoRenderNode(boolean on);
 
     public static native void nativeSetLayerFrameRate(float hz);
+    public static native float[] nativePresentationStats();
 
     private static volatile java.io.File sessionLogFile;
 

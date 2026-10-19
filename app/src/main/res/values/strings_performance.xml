@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hud_presented">%1$.0f fps · P95 %2$.1f ms</string>
+    <string name="hud_latched">%1$.0f fps · latch P95 %2$.1f ms</string>
+    <string name="hud_submitted">%1$s · submitted</string>
+</resources>

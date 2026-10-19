@@ -532,6 +532,32 @@ def cdp_eval(agent_dir, expression, target=None, await_promise=True, timeout=15)
         ws.close()
 
 
+STEAM_TOUCH_SCROLL = """(() => {
+    if (!document.head) return false;
+    const id = 'droiddeck-touch-scroll';
+    if (!document.getElementById(id)) {
+        const style = document.createElement('style');
+        style.id = id;
+        style.textContent = '.ReactVirtualized__Grid[style*="overflow: auto hidden"] { pointer-events: auto !important; }';
+        document.head.appendChild(style);
+    }
+    return true;
+})()"""
+
+
+def enable_steam_touch_scroll(agent_dir, timeout=45):
+    deadline = time.monotonic() + timeout
+    while (remaining := deadline - time.monotonic()) > 0:
+        try:
+            if cdp_eval(agent_dir, STEAM_TOUCH_SCROLL, target="browserType=4", await_promise=False,
+                        timeout=min(3, remaining)).get("value") is True:
+                return True
+        except (AgentError, OSError, ValueError):
+            pass
+        time.sleep(min(0.5, remaining))
+    return False
+
+
 def steam_selection(agent_dir, timeout=5):
     result = cdp_eval(
         agent_dir,
@@ -897,6 +923,12 @@ def main(argv):
     if not base:
         print("BL_LAUNCH_DIR is not set", file=sys.stderr)
         return 2
+    if argv == ["--steam-touch-scroll"]:
+        if enable_steam_touch_scroll(Path(base) / "agent"):
+            print("droiddeck-agent: horizontal Steam lists accept touches between recycled cards")
+            return 0
+        print("droiddeck-agent: Steam touch-scroll compatibility was not applied", file=sys.stderr)
+        return 1
     if argv and argv[0] == "--wait-steam-shortcut-overview":
         if len(argv) not in (2, 3):
             print("usage: droiddeck-agent --wait-steam-shortcut-overview <cgameid> [timeout-seconds]", file=sys.stderr)

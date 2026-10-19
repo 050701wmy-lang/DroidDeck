@@ -3,12 +3,14 @@
 #include "ahb_swapchain.h"
 #include "droiddeck_color.h"
 #include "vk_present.h"
+#include "present_history.h"
 #include <android/hardware_buffer.h>
 #include <android/native_window.h>
 #include <android/rect.h>
 #include <dlfcn.h>
 #include <errno.h>
 #include <math.h>
+#include <linux/sync_file.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdatomic.h>
@@ -57,6 +59,8 @@ static struct {
     void (*reparent)(ASurfaceTransaction *, ASurfaceControl *, ASurfaceControl *);
     void (*setOnComplete)(ASurfaceTransaction *, void *, sc_complete_fn);
     int (*prevReleaseFence)(ASurfaceTransactionStats *, ASurfaceControl *);
+    int (*presentFence)(ASurfaceTransactionStats *);
+    int64_t (*latchTime)(ASurfaceTransactionStats *);
     void (*setFrameRate)(ASurfaceTransaction *, ASurfaceControl *, float, int8_t);
     void (*setFrameRateStrategy)(ASurfaceTransaction *, ASurfaceControl *, float, int8_t, int8_t);
     void (*setBufferDataSpace)(ASurfaceTransaction *, ASurfaceControl *, int32_t);
@@ -99,6 +103,8 @@ static int load_api(void) {
     SYM(reparent, "ASurfaceTransaction_reparent");
     SYM(setOnComplete, "ASurfaceTransaction_setOnComplete");
     SYM(prevReleaseFence, "ASurfaceTransactionStats_getPreviousReleaseFenceFd");
+    SYM(presentFence, "ASurfaceTransactionStats_getPresentFenceFd");
+    SYM(latchTime, "ASurfaceTransactionStats_getLatchTime");
     SYM(setFrameRate, "ASurfaceTransaction_setFrameRate");
     SYM(setFrameRateStrategy, "ASurfaceTransaction_setFrameRateWithChangeStrategy");
     SYM(setBufferDataSpace, "ASurfaceTransaction_setBufferDataSpace");
@@ -160,6 +166,7 @@ struct layer {
     int alloc_tier;
     uint64_t pool_modifier;
     int first_logged;
+    uint64_t overlay_serial;
     int64_t drop_logged_ns;
     unsigned drops_unlogged;
 
@@ -187,6 +194,15 @@ static int g_two_logged;
 static AHardwareBuffer *g_blank;
 static ASurfaceControl *g_base_sc;
 static int g_base_w, g_base_h, g_base_shown;
+static struct present_history g_present_history;
+static uint64_t g_present_epoch;
+static int g_present_active, g_present_valid;
+static int g_present_error_logged;
+static int g_present_fds[64];
+static unsigned g_present_fd_count;
+static uint64_t g_source_frame, g_last_present_source;
+
+void sc_layer_set_source_frame(uint64_t frame) { g_source_frame = frame; }
 
 static void layers_init(void) {
     if (g_layers_ready) return;
@@ -212,6 +228,8 @@ struct complete_ctx {
     int prev_slot;
     void *prev_token;
     int retire;
+    int present;
+    uint64_t epoch;
 };
 
 static int64_t now_ns(void) {
@@ -219,9 +237,84 @@ static int64_t now_ns(void) {
     return (int64_t)ts.tv_sec * 1000000000LL + ts.tv_nsec;
 }
 
+static int64_t present_fence_time(int fd) {
+    struct sync_file_info info = {0};
+    struct sync_fence_info fences[16];
+    if (ioctl(fd, SYNC_IOC_FILE_INFO, &info) != 0 || info.status < 0) return -1;
+    if (info.status == 0) return 0;
+    if (!info.num_fences || info.num_fences > 16) return -1;
+    info.sync_fence_info = (uint64_t)(uintptr_t)fences;
+    if (ioctl(fd, SYNC_IOC_FILE_INFO, &info) != 0) return -1;
+    int64_t time = 0;
+    for (unsigned i = 0; i < info.num_fences; i++) {
+        if (fences[i].status <= 0) return fences[i].status < 0 ? -1 : 0;
+        if ((int64_t)fences[i].timestamp_ns > time) time = (int64_t)fences[i].timestamp_ns;
+    }
+    return time > 0 ? time : -1;
+}
+
+static void collect_present_fences(void) {
+    for (unsigned i = 0; i < g_present_fd_count;) {
+        int64_t time = present_fence_time(g_present_fds[i]);
+        if (!time) { i++; continue; }
+        if (time > 0 && g_present_valid != 2) { present_history_record(&g_present_history, time); g_present_valid = 1; }
+        close(g_present_fds[i]);
+        g_present_fds[i] = g_present_fds[--g_present_fd_count];
+    }
+}
+
+static void reset_present_stats(int active) {
+    pthread_mutex_lock(&g_lock);
+    for (unsigned i = 0; i < g_present_fd_count; i++) close(g_present_fds[i]);
+    g_present_fd_count = 0;
+    g_present_history = (struct present_history){.since_ns = now_ns()};
+    g_present_epoch++;
+    g_last_present_source = UINT64_MAX;
+    g_present_active = active;
+    g_present_valid = 0;
+    g_present_error_logged = 0;
+    pthread_mutex_unlock(&g_lock);
+}
+
+void sc_layer_presentation_stats(float out[3]) {
+    pthread_mutex_lock(&g_lock);
+    collect_present_fences();
+    present_history_snapshot(&g_present_history, now_ns(), out);
+    out[2] = g_present_active ? g_present_valid : 0;
+    pthread_mutex_unlock(&g_lock);
+}
+
 static void on_complete(void *context, ASurfaceTransactionStats *stats) {
     struct complete_ctx *ctx = context;
     pthread_mutex_lock(&g_lock);
+    if (ctx->present && ctx->epoch == g_present_epoch && g_present_active) {
+        collect_present_fences();
+        if (g_present_valid == 2) {
+            int64_t time = stats && api.latchTime ? api.latchTime(stats) : -1;
+            if (time > 0) present_history_record(&g_present_history, time);
+        } else {
+            int fd = stats && api.presentFence ? api.presentFence(stats) : -1;
+            int64_t time = fd >= 0 ? present_fence_time(fd) : -1;
+            if (time > 0) { present_history_record(&g_present_history, time); g_present_valid = 1; }
+            else if (!time && g_present_fd_count < 64) {
+                g_present_fds[g_present_fd_count++] = fd;
+                fd = -1;
+            } else if (!g_present_valid) {
+                int64_t latch = stats && api.latchTime ? api.latchTime(stats) : -1;
+                if (latch > 0) {
+                    present_history_record(&g_present_history, latch);
+                    g_present_valid = 2;
+                }
+                if (!g_present_error_logged) {
+                    g_present_error_logged = 1;
+                    droiddeck_log("perf", "present fence unavailable (fd %d, result %lld): %s", fd, (long long)time,
+                                  g_present_valid == 2 ? "counting completed frames by unique latch time; P95 is latch timing"
+                                                       : "HUD uses submitted fps until a completed frame is measurable");
+                }
+            }
+            if (fd >= 0) close(fd);
+        }
+    }
     if (ctx->layer >= 0 && ctx->layer < SC_LAYER_COUNT && ctx->prev_slot >= 0 && ctx->prev_slot < POOL_MAX) {
         struct slot *s = &g_layers[ctx->layer].slots[ctx->prev_slot];
         int fd = (stats && ctx->sc) ? api.prevReleaseFence(stats, ctx->sc) : -1;
@@ -240,12 +333,15 @@ static void on_complete(void *context, ASurfaceTransactionStats *stats) {
 }
 
 static int add_complete_on(ASurfaceTransaction *tx, struct layer *l, ASurfaceControl *sc,
-                           int prev_slot, void *prev_token, int retire) {
+                           int prev_slot, void *prev_token, int retire, int present) {
     struct complete_ctx *ctx = calloc(1, sizeof(*ctx));
     if (!ctx) return -1;
     ctx->sc = sc; ctx->layer = (int)(l - g_layers); ctx->prev_slot = prev_slot;
     ctx->prev_token = prev_token; ctx->retire = retire;
     pthread_mutex_lock(&g_lock);
+    ctx->present = present && l == &g_layers[SC_LAYER_GAME] && g_source_frame != g_last_present_source;
+    if (ctx->present) g_last_present_source = g_source_frame;
+    ctx->epoch = g_present_epoch;
     g_pending_cb++;
     pthread_mutex_unlock(&g_lock);
     api.setOnComplete(tx, ctx, on_complete);
@@ -253,7 +349,7 @@ static int add_complete_on(ASurfaceTransaction *tx, struct layer *l, ASurfaceCon
 }
 
 static int add_complete(ASurfaceTransaction *tx, struct layer *l, int prev_slot, void *prev_token, int retire) {
-    return add_complete_on(tx, l, l->sc, prev_slot, prev_token, retire);
+    return add_complete_on(tx, l, l->sc, prev_slot, prev_token, retire, 0);
 }
 
 static AHardwareBuffer *blank_buffer(void) {
@@ -702,6 +798,7 @@ static int present_slot(struct layer *l, int idx, const int r[8], const struct d
     ASurfaceTransaction *tx = api.txCreate();
     if (!tx) return -1;
     ASurfaceControl *old = swap_sc_begin(l);
+    if (l == &g_layers[SC_LAYER_GAME] && (!l->shown || old)) reset_present_stats(1);
     if (old) api.setZOrder(tx, l->sc, l->z);
     api.setBuffer(tx, l->sc, s->ahb, -1);
     api.setBufferTransparency(tx, l->sc,
@@ -711,7 +808,7 @@ static int present_slot(struct layer *l, int idx, const int r[8], const struct d
     apply_colour(tx, l, color);
     if (!l->shown) api.setVisibility(tx, l->sc, ASC_VISIBILITY_SHOW);
     if (old) retire_ops(tx, old);
-    if (add_complete_on(tx, l, old ? old : l->sc, l->cur_slot, l->cur_token, old ? 1 : 0) != 0 && old)
+    if (add_complete_on(tx, l, old ? old : l->sc, l->cur_slot, l->cur_token, old ? 1 : 0, 1) != 0 && old)
         api.release(old);
     pthread_mutex_lock(&g_lock);
     s->busy = 1;
@@ -766,6 +863,7 @@ int sc_layer_present_ahb(AHardwareBuffer *ahb, int w, int h, int acquire_fd, voi
     ASurfaceTransaction *tx = api.txCreate();
     if (!tx) goto unavailable;
     ASurfaceControl *old = swap_sc_begin(l);
+    if (!l->shown || old) reset_present_stats(1);
     if (old) api.setZOrder(tx, l->sc, l->z);
     api.setBuffer(tx, l->sc, ahb, acquire_fd);
     api.setBufferTransparency(tx, l->sc, ASC_TRANSPARENCY_OPAQUE);
@@ -775,7 +873,7 @@ int sc_layer_present_ahb(AHardwareBuffer *ahb, int w, int h, int acquire_fd, voi
     if (!l->shown) api.setVisibility(tx, l->sc, ASC_VISIBILITY_SHOW);
     if (old) retire_ops(tx, old);
     if (add_complete_on(tx, l, old ? old : l->sc, l->cur_slot,
-                        l->cur_token == token ? NULL : l->cur_token, old ? 1 : 0) != 0) {
+                        l->cur_token == token ? NULL : l->cur_token, old ? 1 : 0, 1) != 0) {
         api.txDelete(tx);
         if (old) api.release(old);
         l->ds_applied = -1; l->md_applied = 0; l->hr_applied = -1.0f;
@@ -924,11 +1022,19 @@ int sc_layer_overlay_affordable(void) {
     return ok;
 }
 
-int sc_layer_present_overlay(struct vkp_image *src, const int geo[8], int translucent) {
+int sc_layer_present_overlay(struct vkp_image *src, const int geo[8], int translucent, uint64_t content_serial) {
     struct layer *l = layer_of(SC_LAYER_OVERLAY);
     if (!src || !geo) return -1;
     if (!sc_layer_overlay_affordable()) return -1;
     if (ensure_sc(l) != 0) return -1;
+    if (content_serial && l->shown && l->overlay_serial == content_serial) {
+        ASurfaceTransaction *tx = api.txCreate();
+        if (!tx) return -1;
+        apply_geometry(tx, l, geo);
+        api.setBufferTransparency(tx, l->sc, translucent ? ASC_TRANSPARENCY_TRANSLUCENT : ASC_TRANSPARENCY_OPAQUE);
+        api.txApply(tx); api.txDelete(tx);
+        return 0;
+    }
     int sw = vkp_image_width(src), sh = vkp_image_height(src);
     if (sw <= 0 || sh <= 0) return -1;
     int wait_fd;
@@ -936,6 +1042,7 @@ int sc_layer_present_overlay(struct vkp_image *src, const int geo[8], int transl
     if (idx < 0) { log_drop(l); return 0; }
     if (vkp_blit_image(src, l->slots[idx].img, wait_fd) != 0) return -1;
     if (present_slot(l, idx, geo, NULL, translucent) != 0) return -1;
+    l->overlay_serial = content_serial;
     if (!l->first_logged) {
         l->first_logged = 1;
         log_layer_count();
@@ -955,6 +1062,7 @@ static void hide_layer(struct layer *l) {
 }
 
 void sc_layer_hide(void) {
+    if (g_present_active) reset_present_stats(0);
     layers_init();
     int said = g_layers[SC_LAYER_GAME].shown || g_layers[SC_LAYER_OVERLAY].sc;
     if (g_layers[SC_LAYER_OVERLAY].sc) sc_layer_hide_overlay();
@@ -973,6 +1081,7 @@ void sc_layer_hide_overlay(void) {
 }
 
 void sc_layer_window_gone(void) {
+    reset_present_stats(0);
     base_hide(1); /* the backdrop belongs to the old window, just like GAME and OVERLAY */
     if (api.state != 1) return;
     layers_init();

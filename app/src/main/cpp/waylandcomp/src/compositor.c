@@ -204,6 +204,7 @@ struct surface {
     struct dmabuf_buffer *dmabuf_buf;
     struct wl_listener dmabuf_destroy;
     int buf_w, buf_h, has_content;
+    uint64_t content_serial;
     int buf_alpha;
     int opaque[4], pending_opaque[4], pending_opaque_set;
     int src_set, dst_set;
@@ -256,6 +257,7 @@ static struct wl_event_source *g_render_idle, *g_frame_timer;
 static int g_dirty;
 static int64_t g_last_vsync_ns;
 static int64_t g_tick_vsync_ns;
+static int64_t g_previous_frame_ns;
 static int64_t g_refresh_ns = 16666667;
 static struct wl_event_source *g_fallback_timer;
 static int g_fallback_armed;
@@ -661,6 +663,7 @@ static struct surface *g_hud_surface;
 static int64_t g_hud_last_ns, g_hud_alive_ns;
 static int g_hud_fresh;
 static uint64_t g_game_frames;
+static uint64_t g_content_serial;
 extern void droiddeck_on_game_surface(const char *window, const char *gpu);
 extern void droiddeck_on_game_frame(void);
 extern void droiddeck_on_game_program(int pid, const char *program);
@@ -697,7 +700,7 @@ static void take_dmabuf(struct surface *s, struct dmabuf_buffer *b, struct wl_re
     s->buf_h = b->height;
     s->buf_alpha = (b->format & 0xff) == 'A';
     s->has_content = b->img != NULL;
-    if (!repeat) g_stat_dmabuf++;
+    if (!repeat) { g_stat_dmabuf++; s->content_serial = ++g_content_serial; }
     const int announced_now = !s->announced_vulkan;
     if (!s->announced_vulkan) {
         char name[160];
@@ -1816,6 +1819,7 @@ static void hdr_count_copied(const struct draw_list *dl, const char *reason) {
 }
 
 static void render_scene(void) {
+    sc_layer_set_source_frame(g_game_frames);
     struct draw_list dl = {0};
     struct surface *s;
     int w, h;
@@ -1924,8 +1928,11 @@ static void render_scene(void) {
         if (r == 0) {
             if (ls) ls->drawn = 1;
             int go[8], ov = 0;
-            if (over == 1 && li >= 0 && vkp_map_draw(&dl.d[li + 1], go))
-                ov = sc_layer_present_overlay(dl.d[li + 1].img, go, dl.d[li + 1].blend) == 0 ? 1 : -1;
+            if (over == 1 && li >= 0 && vkp_map_draw(&dl.d[li + 1], go)) {
+                struct surface *os = surface_for_image(dl.d[li + 1].img);
+                ov = sc_layer_present_overlay(dl.d[li + 1].img, go, dl.d[li + 1].blend,
+                                             os ? os->content_serial : 0) == 0 ? 1 : -1;
+            }
             if (ov <= 0) sc_layer_hide_overlay();
             if (ov < 0) {
                 sc_layer_hide();
@@ -2002,11 +2009,15 @@ static int scene_waits_for_game(int64_t now) {
 
 static void on_vsync(int64_t frame_time_ns) {
     int64_t now = now_ns();
+    if (frame_time_ns <= g_previous_frame_ns) return;
     g_perf.ticks++;
-    if (g_last_vsync_ns) {
-        int64_t d = now - g_last_vsync_ns;
+    if (g_output_refresh_mhz > 1000) {
+        g_refresh_ns = 1000000000000LL / g_output_refresh_mhz;
+    } else if (g_previous_frame_ns) {
+        int64_t d = frame_time_ns - g_previous_frame_ns;
         if (d > 3000000LL && d < 40000000LL) g_refresh_ns = (g_refresh_ns * 7 + d) / 8;
     }
+    g_previous_frame_ns = frame_time_ns;
     g_last_vsync_ns = now;
     g_tick_vsync_ns = frame_time_ns;
     if (vkp_apply_window_request()) g_dirty = 1;

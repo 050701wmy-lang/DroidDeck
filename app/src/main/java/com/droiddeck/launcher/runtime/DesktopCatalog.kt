@@ -151,6 +151,11 @@ object DesktopCatalog {
     }
 
     fun remove(context: Context, entry: Entry) {
+        if (entry.id == "emulators" || DesktopApps.installed(context).any { it.id == entry.id }) {
+            DesktopApps.remove(context, entry.id)
+            return
+        }
+        check(entry.kind == "appimage") { "This package does not have a removal inventory" }
         val root = LinuxRuntime.rootDir(context)
         if (entry.kind == "appimage") {
             File(root, "opt/appimages/${entry.id}.AppImage").delete()

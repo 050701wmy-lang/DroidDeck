@@ -2,6 +2,9 @@
 #include "../../app/src/main/cpp/waylandcomp/src/sc_layer.c"
 #include "../../app/src/main/cpp/waylandcomp/src/quest_device.h"
 #include <assert.h>
+#include <stdarg.h>
+#include <fcntl.h>
+#include <sys/eventfd.h>
 
 struct AHardwareBuffer { unsigned char pixels[20 * 16 * 4]; };
 static struct AHardwareBuffer buffer;
@@ -54,6 +57,100 @@ static void reparent(ASurfaceTransaction *t, ASurfaceControl *s, ASurfaceControl
     (void)t; (void)s; assert(parent==NULL); retirements++;
 }
 static void release(ASurfaceControl *s) { assert(s); }
+static int pending_present_fd = -1;
+static int64_t fence_time;
+static sc_complete_fn completion;
+static void *completion_context;
+void ahb_swapchain_layer_released(void *token, int fd) { (void)token; (void)fd; assert(0); }
+int __wrap_ioctl(int fd, unsigned long request, ...) {
+    (void)fd;
+    if (request != SYNC_IOC_FILE_INFO) return -1;
+    va_list args; va_start(args, request);
+    struct sync_file_info *info = va_arg(args, struct sync_file_info *);
+    va_end(args);
+    info->status = fence_time > 0 ? 1 : fence_time < 0 ? -1 : 0;
+    info->num_fences = 1;
+    if (info->sync_fence_info) {
+        struct sync_fence_info *fence = (void *)(uintptr_t)info->sync_fence_info;
+        *fence = (struct sync_fence_info){.status = info->status, .timestamp_ns = fence_time};
+    }
+    return 0;
+}
+static int present_fence(ASurfaceTransactionStats *stats) {
+    assert(stats); int fd = pending_present_fd; pending_present_fd = -1; return fd;
+}
+static int64_t latch_time(ASurfaceTransactionStats *stats) { assert(stats); return fence_time; }
+static void on_complete_set(ASurfaceTransaction *tx, void *context, sc_complete_fn fn) {
+    assert(tx); completion = fn; completion_context = context;
+}
+static void complete_frame(void) {
+    completion(completion_context, (ASurfaceTransactionStats *)1);
+    completion_context = NULL;
+}
+static void test_presentation_stats(void) {
+    float stats[3];
+    layers_init();
+    api.presentFence = present_fence;
+    api.setOnComplete = on_complete_set;
+    reset_present_stats(1);
+    sc_layer_set_source_frame(1);
+    assert(add_complete_on((ASurfaceTransaction *)2, &g_layers[SC_LAYER_GAME], NULL, -1, NULL, 0, 1) == 0);
+    assert(((struct complete_ctx *)completion_context)->present);
+    int fd = pending_present_fd = eventfd(0, EFD_CLOEXEC);
+    assert(fd >= 0);
+    fence_time = 0;
+    complete_frame();
+    assert(g_present_fd_count == 1 && fcntl(fd, F_GETFD) >= 0);
+    fence_time = now_ns();
+    sc_layer_presentation_stats(stats);
+    assert(g_present_fd_count == 0 && g_present_history.count == 1 && stats[2] == 1);
+    assert(fcntl(fd, F_GETFD) == -1 && errno == EBADF);
+
+    assert(add_complete_on((ASurfaceTransaction *)2, &g_layers[SC_LAYER_GAME], NULL, -1, NULL, 0, 1) == 0);
+    assert(!((struct complete_ctx *)completion_context)->present);
+    complete_frame();
+    sc_layer_set_source_frame(2);
+    assert(add_complete_on((ASurfaceTransaction *)2, &g_layers[SC_LAYER_GAME], NULL, -1, NULL, 0, 1) == 0);
+    pending_present_fd = eventfd(0, EFD_CLOEXEC);
+    complete_frame();
+    assert(g_present_history.count == 1);
+
+    sc_layer_set_source_frame(3);
+    assert(add_complete_on((ASurfaceTransaction *)2, &g_layers[SC_LAYER_GAME], NULL, -1, NULL, 0, 1) == 0);
+    reset_present_stats(0);
+    complete_frame();
+    sc_layer_presentation_stats(stats);
+    assert(g_present_history.count == 0 && stats[2] == 0);
+
+    reset_present_stats(1);
+    assert(add_complete_on((ASurfaceTransaction *)2, &g_layers[SC_LAYER_OVERLAY], NULL, -1, NULL, 0, 1) == 0);
+    assert(!((struct complete_ctx *)completion_context)->present);
+    complete_frame();
+    assert(add_complete_on((ASurfaceTransaction *)2, &g_layers[SC_LAYER_GAME], NULL, -1, NULL, 0, 1) == 0);
+    complete_frame();
+    sc_layer_presentation_stats(stats);
+    assert(stats[2] == 0);
+    sc_layer_set_source_frame(4);
+    assert(add_complete_on((ASurfaceTransaction *)2, &g_layers[SC_LAYER_GAME], NULL, -1, NULL, 0, 1) == 0);
+    pending_present_fd = eventfd(0, EFD_CLOEXEC);
+    fence_time = now_ns();
+    complete_frame();
+    sc_layer_presentation_stats(stats);
+    assert(stats[2] == 1 && g_present_history.count == 1);
+    reset_present_stats(1);
+    api.latchTime = latch_time;
+    fence_time = now_ns();
+    assert(add_complete_on((ASurfaceTransaction *)2, &g_layers[SC_LAYER_GAME], NULL, -1, NULL, 0, 1) == 0);
+    complete_frame();
+    sc_layer_presentation_stats(stats);
+    assert(stats[2] == 2 && g_present_history.count == 1);
+    sc_layer_set_source_frame(5);
+    assert(add_complete_on((ASurfaceTransaction *)2, &g_layers[SC_LAYER_GAME], NULL, -1, NULL, 0, 1) == 0);
+    complete_frame();
+    assert(g_present_history.count == 1);
+    api.latchTime = NULL;
+    reset_present_stats(0);
+}
 static void reset(void) {
     base_hide(1); g_blank=NULL;
     fail_alloc=fail_lock=fail_unlock=fail_tx=0;
@@ -99,5 +196,6 @@ int main(void) {
     assert(sc_layer_base_black(1920,1080)==-1 && allocs==0);
     window=(ANativeWindow *)1;
     assert(sc_layer_base_black(0,1080)==-1 && allocs==0);
+    test_presentation_stats();
     puts("PASS: Quest backdrop initialization, padding, reuse, resize, retire and failure recovery");
 }

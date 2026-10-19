@@ -326,6 +326,16 @@ Java_com_droiddeck_launcher_wayland_WaylandCompositor_nativeSetLayerFrameRate(JN
     sc_layer_set_frame_rate((float)hz);
 }
 
+JNIEXPORT jfloatArray JNICALL
+Java_com_droiddeck_launcher_wayland_WaylandCompositor_nativePresentationStats(JNIEnv *env, jclass clazz) {
+    (void)clazz;
+    float values[3];
+    sc_layer_presentation_stats(values);
+    jfloatArray out = (*env)->NewFloatArray(env, 3);
+    if (out) (*env)->SetFloatArrayRegion(env, out, 0, 3, values);
+    return out;
+}
+
 JNIEXPORT void JNICALL
 Java_com_droiddeck_launcher_wayland_WaylandCompositor_nativeSetOutputRefreshRate(JNIEnv *env, jclass clazz, jfloat hz) {
     droiddeck_wayland_set_output_refresh_rate(hz > 1.0f ? (int)(hz * 1000.0f + 0.5f) : 0);

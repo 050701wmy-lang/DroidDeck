@@ -33,7 +33,7 @@ void sc_layer_set_frame_rate(float fps);
 
 int sc_layer_overlay_affordable(void);
 
-int sc_layer_present_overlay(struct vkp_image *src, const int geo[8], int translucent);
+int sc_layer_present_overlay(struct vkp_image *src, const int geo[8], int translucent, uint64_t content_serial);
 
 void sc_layer_hide(void);
 int sc_layer_base_black(int width, int height);
@@ -44,5 +44,7 @@ void sc_layer_window_gone(void);
 
 unsigned sc_layer_frames_take(void);
 unsigned sc_layer_drops_take(void);
+void sc_layer_presentation_stats(float out[3]);
+void sc_layer_set_source_frame(uint64_t frame);
 
 #endif

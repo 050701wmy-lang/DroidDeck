@@ -61,6 +61,7 @@ class StorageReport(
     val flatpakRuntimes: Long,
     val otherPrefixes: Long,
     val leftoversChecked: Boolean,
+    val desktopApps: List<Pair<com.droiddeck.launcher.runtime.DesktopApps.App, Long>> = emptyList(),
 ) {
     val droiddeck: Long get() = buckets.values.sum()
     val installedShaders: Long get() = games.sumOf { it.shaders }
@@ -263,9 +264,11 @@ object StorageScan {
         val stores = m(File(rootfs, "root/Games"))
         val flatpak = m(File(rootfs, "root/.local/share/flatpak"))
         val rootfsBytes = m(rootfs)
+        val desktopApps = com.droiddeck.launcher.runtime.DesktopApps.installed(context).map { app -> app to app.files.sumOf { m(it) } }
+        val emulatorBytes = desktopApps.sumOf { it.second }
         val privateBytes = privateRoots.sumOf { m(it) }
         val system = rootfsBytes - installs - inApps("compatdata") - inApps("shadercache") - workshop -
-            compatTools - stores - flatpak
+            compatTools - stores - flatpak - emulatorBytes
         val componentBytes = m(componentsDir)
         val droiddeck = m(files) + m(context.cacheDir) - rootfsBytes - privateBytes - componentBytes +
             (privateBytes - toolsPrivate - privatePrefixes - privateShaders)
@@ -278,13 +281,13 @@ object StorageScan {
                 Bucket.TOOLS to toolsInApps + toolsPrivate + compatTools,
                 Bucket.COMPONENTS to componentBytes,
                 Bucket.STORES to stores,
-                Bucket.DESKTOP to flatpak,
+                Bucket.DESKTOP to flatpak + emulatorBytes,
                 Bucket.SYSTEM to system.coerceAtLeast(0),
                 Bucket.DROIDDECK to droiddeck.coerceAtLeast(0),
             ),
             prefixes, shaders, workshop, flatpak,
             games.sortedByDescending { it.total }, tools.values.toList(), leftovers, logs, logBytes,
-            components, flatpakApps, flatpakRuntimes, otherPrefixes, everyLibraryRead,
+            components, flatpakApps, flatpakRuntimes, otherPrefixes, everyLibraryRead, desktopApps,
         )
     }
 }

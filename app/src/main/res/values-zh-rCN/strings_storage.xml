@@ -127,7 +127,7 @@
     <string name="storage_tag_in_use">使用中</string>
     <string name="storage_components_note">使用中的组件不可移除。请在组件页面选择版本；此处移除的内容可在那里重新下载。</string>
     <string name="storage_component_confirm">释放 %1$s。你自行导入的组件包无法重新下载。</string>
-    <string name="storage_desktop_detail">Flatpak 应用及共享内容占用 %1$s</string>
+    <string name="storage_desktop_detail">模拟器、Flatpak 应用及共享内容占用 %1$s</string>
     <string name="storage_desktop_apps_title">应用</string>
     <string name="storage_desktop_none">没有已安装的 Flatpak 应用。</string>
     <string name="storage_desktop_shared_title">应用共享内容</string>

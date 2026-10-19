@@ -1563,12 +1563,9 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     private fun refreshHz(): Float {
         glassesScreen?.hz?.takeIf { it > 1f }?.let { return it }
         val display = if (Build.VERSION.SDK_INT >= 30) display else windowManager.defaultDisplay
-        val wanted = window.attributes.preferredDisplayModeId
-        val hz = display?.supportedModes?.firstOrNull { wanted != 0 && it.modeId == wanted }?.refreshRate
-            ?: display?.refreshRate ?: 60f
+        val hz = display?.refreshRate ?: 60f
         val mirrorCap = mirrorRefreshLimit().takeIf { it > 0 }?.toFloat() ?: Float.POSITIVE_INFINITY
-        val capped = minOf(hz, PerfMode.peakRefreshCap(this), mirrorCap)
-        return if (capped > 1f) capped else 60f
+        return if (hz > 1f) minOf(hz, mirrorCap) else 60f
     }
 
     private fun mirrorRefreshLimit(): Int =

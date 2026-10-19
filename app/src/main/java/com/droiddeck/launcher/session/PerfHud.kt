@@ -64,18 +64,25 @@ class PerfHud(context: Context) {
         lastTick = SystemClock.elapsedRealtime()
         frames.set(0)
         WaylandCompositor.setGameListener(listener)
-        handler.post(tick)
+        handler.postDelayed(tick, 1000)
     }
 
     fun stop() {
         running = false
+        handler.removeCallbacks(tick)
         WaylandCompositor.clearGameListener(listener)
         text = ""
     }
 
     private fun line(base: Float): String {
         val mode = FrameGen.mode(context)
-        if (mode.engine == FrameGen.ENGINE_OFF) return fps(base)
+        if (mode.engine == FrameGen.ENGINE_OFF) {
+            val presented = WaylandCompositor.nativePresentationStats()
+            if (presented != null && presented.size >= 3 && presented[2] > 0f)
+                return context.getString(if (presented[2] == 2f) R.string.hud_latched else R.string.hud_presented,
+                    presented[0], presented[1])
+            return context.getString(R.string.hud_submitted, fps(base))
+        }
         val lsfg = mode.engine == FrameGen.ENGINE_LSFG
         val name = if (lsfg) "LSFG" else "Win-FG"
         val label = FrameGen.label(context, mode)
@@ -85,8 +92,9 @@ class PerfHud(context: Context) {
         return when {
             problem == 1 -> context.getString(R.string.hud_fg_unsupported, name)
             problem == 2 -> context.getString(R.string.hud_fg_failed, name)
-            stats != null && stats[3] > 1f -> String.format(Locale.US, "%s  %.0f → %.0f fps", label, base, stats[3])
-            else -> context.getString(R.string.hud_fg_starting, label, fps(base))
+            stats != null && stats[3] > 1f -> context.getString(R.string.hud_submitted,
+                String.format(Locale.US, "%s  %.0f → %.0f fps", label, base, stats[3]))
+            else -> context.getString(R.string.hud_fg_starting, label, context.getString(R.string.hud_submitted, fps(base)))
         }
     }
 
