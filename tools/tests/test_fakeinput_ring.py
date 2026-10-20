@@ -147,6 +147,74 @@ int main(void)
     return 0;
 }
 """
+READV_DESTINATION_CHECKS = r"""
+#include <errno.h>
+#include <fcntl.h>
+#include <linux/input.h>
+#include <stdio.h>
+#include <sys/mman.h>
+#include <sys/uio.h>
+#include <unistd.h>
+
+int main(int argc, char **argv)
+{
+    struct input_event events[64];
+    int fd = open("/dev/input/event16", O_RDONLY | O_NONBLOCK);
+    if (fd < 0)
+        return 1;
+    if (argc > 1)
+        while (read(fd, events, sizeof(events)) > 0)
+            ;
+    puts("ready");
+    fflush(stdout);
+    char go;
+    if (read(0, &go, 1) != 1)
+        return 2;
+    long page = sysconf(_SC_PAGESIZE);
+    char *area = mmap(NULL, 2 * page, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (area == MAP_FAILED || mprotect(area + page, page, PROT_NONE))
+        return 3;
+    struct iovec vector = {area + page, sizeof(struct input_event)};
+    if (readv(fd, &vector, 1) != -1 || errno != EFAULT)
+        return 4;
+    if (read(fd, vector.iov_base, vector.iov_len) != -1 || errno != EFAULT)
+        return 5;
+    if (mprotect(area, page, PROT_READ))
+        return 6;
+    vector.iov_base = area;
+    if (readv(fd, &vector, 1) != -1 || errno != EFAULT)
+        return 7;
+    if (mprotect(area, page, PROT_READ | PROT_WRITE) || munmap(area + page, page))
+        return 8;
+    vector.iov_base = area + page;
+    if (readv(fd, &vector, 1) != -1 || errno != EFAULT)
+        return 9;
+    vector.iov_base = area + page - 1;
+    if (readv(fd, &vector, 1) != -1 || errno != EFAULT)
+        return 15;
+    vector.iov_base = area + page - sizeof(struct input_event);
+    vector.iov_len = 2 * sizeof(struct input_event);
+    if (readv(fd, &vector, 1) != sizeof(struct input_event))
+        return 10;
+    struct input_event *first = vector.iov_base;
+    if (first->type != EV_KEY || first->code != BTN_A)
+        return 11;
+    struct iovec parts[2] = {{events, sizeof(struct input_event)}, {NULL, sizeof(struct input_event)}};
+    if (readv(fd, parts, 2) != sizeof(struct input_event))
+        return 12;
+    if (events[0].type != (argc > 1 ? EV_ABS : EV_KEY) || events[0].code != (argc > 1 ? ABS_Y : BTN_B))
+        return 13;
+    vector.iov_base = events;
+    vector.iov_len = sizeof(events);
+    ssize_t got = readv(fd, &vector, 1);
+    if (got != (argc > 1 ? 1 : 18) * sizeof(struct input_event) ||
+        events[0].type != (argc > 1 ? EV_SYN : EV_KEY) || events[0].code != (argc > 1 ? SYN_REPORT : BTN_X))
+        return 14;
+    munmap(area, page);
+    puts("ok");
+    return 0;
+}
+"""
 OVERLAY_READ = r"""
 #include <sys/uio.h>
 #include <unistd.h>
@@ -199,8 +267,9 @@ class FakeinputRingTest(unittest.TestCase):
         subprocess.run(["gcc", bits, "-o", str(binary), str(self.tmp / (name + ".c"))], check=True)
         return library, binary
 
-    def read_through(self, bits, vectors=None, overlay=False, virtual=True):
-        program = READER if virtual else READER.replace("event16", "event0")
+    def read_through(self, bits, vectors=None, overlay=False, virtual=True, program=READER):
+        if not virtual:
+            program = program.replace("event16", "event0")
         library, reader = self.build(bits, program, "reader")
         hooks, path = self.ring(virtual=virtual)
         env = dict(os.environ, LD_PRELOAD=str(library), FAKE_EVDEV_DIR=str(hooks))
@@ -261,6 +330,15 @@ class FakeinputRingTest(unittest.TestCase):
                              env=dict(os.environ, LD_PRELOAD=str(library), FAKE_EVDEV_DIR=str(hooks)))
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(run.stdout, "ok\n")
+
+    def test_readv_keyframes_handle_destination_faults_and_partial_progress(self):
+        self.assertEqual(self.read_through("-m64", program=READV_DESTINATION_CHECKS), "ok\n")
+
+    def test_readv_ring_events_handle_destination_faults_and_partial_progress(self):
+        self.assertEqual(self.read_through("-m64", vectors=1, program=READV_DESTINATION_CHECKS), "ok\n")
+
+    def test_a_32_bit_guest_handles_readv_destination_faults(self):
+        self.assertEqual(self.read_through("-m32", program=READV_DESTINATION_CHECKS), "ok\n")
 
     def test_an_event_node_rejects_joydev_requests_so_sdl_reads_its_id(self):
         library, probe = self.build("-m64", PROBE, "probe")
