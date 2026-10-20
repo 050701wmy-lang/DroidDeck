@@ -91,6 +91,7 @@ READV_CHECKS = r"""
 #include <linux/input.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/uio.h>
 #include <unistd.h>
 
@@ -120,6 +121,22 @@ int main(void)
         return 7;
     if (invoke(fd, NULL, 1) != -1 || errno != EFAULT)
         return 8;
+    long page = sysconf(_SC_PAGESIZE);
+    void *area = mmap(NULL, 2 * page, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (area == MAP_FAILED)
+        return 10;
+    struct iovec *boundary = (struct iovec *)((char *)area + page - sizeof(struct iovec));
+    *boundary = vector;
+    if (mprotect((char *)area + page, page, PROT_NONE))
+        return 11;
+    if (invoke(fd, boundary, 2) != -1 || errno != EFAULT)
+        return 12;
+    if (invoke(fd, boundary + 1, 1) != -1 || errno != EFAULT)
+        return 13;
+    if (munmap(area, 2 * page))
+        return 14;
+    if (invoke(fd, boundary, 1) != -1 || errno != EFAULT)
+        return 15;
     int pipefd[2];
     char text[5] = {0};
     struct iovec parts[2] = {{text, 1}, {text + 1, 3}};
