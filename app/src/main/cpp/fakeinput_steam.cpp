@@ -3588,7 +3588,6 @@ static ssize_t copy_input_events(void *buf, const struct input_event *events, si
   if (copied < 0) return -1;
   if (copied != static_cast<ssize_t>(bytes)) {
     errno = EFAULT;
-    // evdev reads only report complete input_event records.
     copied -= copied % sizeof(struct input_event);
     if (!copied) return -1;
   }
@@ -3728,7 +3727,6 @@ EXPORT ssize_t readv(int fd, const struct iovec *iov, int iovcnt) {
     size += iov[i].iov_len;
   }
 
-  // evdev's readv calls its read handler per vector; Steam's ARM64 overlay uses this path too.
   ssize_t total = 0;
   for (int i = 0; i < iovcnt; ++i) {
     if (!iov[i].iov_len) continue;
@@ -4175,10 +4173,10 @@ EXPORT int __fxstat64(int version, int fd, struct stat64 *buf) {
 using dlsym_fn = void *(*)(void *, const char *);
 
 static const char *const interposed_names[] = {
-    "open", "open64", "openat", "openat64", "close", "read", "write", "writev", "ioctl", "poll",
-    "ppoll", "select", "stat", "stat64", "fstat", "fstat64", "__xstat", "__xstat64", "__fxstat",
-    "__fxstat64", "statx", "statfs", "statfs64", "fstatfs", "fstatfs64", "access", "faccessat",
-    "opendir", "scandir", "inotify_add_watch",
+    "open", "open64", "openat", "openat64", "close", "read", "readv", "write", "writev", "ioctl",
+    "poll", "ppoll", "select", "stat", "stat64", "fstat", "fstat64", "__xstat", "__xstat64",
+    "__fxstat", "__fxstat64", "statx", "statfs", "statfs64", "fstatfs", "fstatfs64", "access",
+    "faccessat", "opendir", "scandir", "inotify_add_watch",
 };
 
 static dlsym_fn next_dlsym() {
