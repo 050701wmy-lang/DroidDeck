@@ -151,6 +151,7 @@ fun FileManagerScreen(
     var conflictChoice by remember { mutableStateOf<ConflictChoice?>(null) }
     var conflictApplyToAll by remember { mutableStateOf(false) }
     var operationJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    var cancelledJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     var pendingBulkDelete by remember { mutableStateOf<List<File>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
     val visibleEntries = if (searchQuery.isBlank()) entries
@@ -258,7 +259,7 @@ fun FileManagerScreen(
 
     fun performPaste() {
         val sources = clipboardFiles
-        if (sources.isEmpty()) return
+        if (sources.isEmpty() || isOperationRunning || operationJob?.isActive == true || cancelledJob?.isCompleted == false) return
         val dstDir = currentDir
         val cut = isCutOperation
 
@@ -850,7 +851,7 @@ fun FileManagerScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-                    .clickable { performPaste() }
+                    .clickable(enabled = !isOperationRunning) { performPaste() }
                     .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
                 Icon(Icons.Filled.ContentPaste, stringResource(R.string.fm_paste), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
@@ -886,6 +887,7 @@ fun FileManagerScreen(
                     )
                     if (operationJob != null) {
                         TextButton(onClick = {
+                            cancelledJob = operationJob
                             operationJob?.cancel()
                             operationJob = null
                             isOperationRunning = false
