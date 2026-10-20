@@ -319,22 +319,39 @@ public final class PadBridge {
         boolean wired = wiredXboxLayout(event);
         pad.rightX = rightX(event, wired);
         pad.rightY = rightY(event, wired);
-        float lt = leftTrigger(event, wired);
-        float rt = rightTrigger(event, wired);
-        pad.leftTrigger = lt;
-        pad.rightTrigger = rt;
-        float hatX = event.getAxisValue(MotionEvent.AXIS_HAT_X);
-        float hatY = event.getAxisValue(MotionEvent.AXIS_HAT_Y);
-        pad.up = hatY < -0.5f;
-        pad.right = hatX > 0.5f;
-        pad.down = hatY > 0.5f;
-        pad.left = hatX < -0.5f;
+        int source = event.getSource();
+        float lt = 0f;
+        float rt = 0f;
+        if (wired || hasAxis(device, source, MotionEvent.AXIS_LTRIGGER, MotionEvent.AXIS_BRAKE)) {
+            lt = leftTrigger(event, wired);
+            pad.leftTrigger = lt;
+        }
+        if (wired || hasAxis(device, source, MotionEvent.AXIS_RTRIGGER, MotionEvent.AXIS_GAS)) {
+            rt = rightTrigger(event, wired);
+            pad.rightTrigger = rt;
+        }
+        if (hasAxis(device, source, MotionEvent.AXIS_HAT_X)) {
+            float hatX = event.getAxisValue(MotionEvent.AXIS_HAT_X);
+            pad.right = hatX > 0.5f;
+            pad.left = hatX < -0.5f;
+        }
+        if (hasAxis(device, source, MotionEvent.AXIS_HAT_Y)) {
+            float hatY = event.getAxisValue(MotionEvent.AXIS_HAT_Y);
+            pad.up = hatY < -0.5f;
+            pad.down = hatY > 0.5f;
+        }
         if (Math.max(Math.max(Math.abs(pad.leftX), Math.abs(pad.leftY)), Math.max(Math.abs(pad.rightX), Math.abs(pad.rightY))) > 0.5f
                 || lt > 0.5f || rt > 0.5f || pad.up || pad.right || pad.down || pad.left) {
             notePlayerInput();
         }
         publish(slot);
         return true;
+    }
+
+    static boolean hasAxis(InputDevice device, int source, int... axes) {
+        if (device == null) return false;
+        for (int axis : axes) if (device.getMotionRange(axis, source) != null) return true;
+        return false;
     }
 
     public interface TouchRoute {
