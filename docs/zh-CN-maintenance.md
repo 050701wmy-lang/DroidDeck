@@ -18,6 +18,8 @@ git switch zh-CN
 
 ## 跟随预览版
 
+2026-10-20 完成 `main-ac25283`（`ac25283f04e94a1a2924950c5b7a2027388aa73b`）同步，版本 0.5.0（14）。保留本地帧呈现、性能 HUD、桌面存储修复和实际刷新率逻辑，纳入 DD-FG 3×/4× 更新。应用名为 `DroidDeck`，包名及签名不变。42 项本地原生/会话回归与中文、加速检查通过，Release 构建和 lintVital 通过。
+
 2026-10-17 同步至 `main-abd89f9`（`abd89f99544593a36f02a1963ddc54d007d08799`）。合并存储管理、Quest XR 和成就页修复，补齐存储及 VR 中文资源，保留中文默认、字体、GitHub 加速、Steam 下载重试和 Albion 修复。载荷复用同提交已验证官方预览 APK。
 
 2026-10-16 同步至 `main-0a72690`（`0a72690631b3eeabf6450f62c12699f370dd6357`）。修复 PRoot 丢失 fork 事件时的会话退出，合并触控、驱动和封面搜索更新，补齐 19 项中文。保留中文默认、字体、GitHub 加速、Steam 下载重试与 Albion 修复，全部原生载荷复用同提交官方预览 APK。
@@ -109,3 +111,9 @@ Fork 不会自动继承上游的 Release、签名密钥或 Actions secrets。首
 ## 显示名称
 
 2026-10-17 按用户要求，应用显示名称统一为 `DroidDeck`，不再添加“中文版”。使用上游的 `app_name`，本地构建不再加入 `.gradle/install/chinese-res` 名称覆盖。包名仍为 `com.droiddeck.launcher.zh`，签名、默认简体中文、GitHub 加速及其他修复不变。后续同步和构建须保留此名称要求。
+
+## 包含本地原生修改的发布构建
+
+ac25283 的基础载荷来自 SHA-256 为 `5fe45888db172b3b92fa4f494feeb612daf543184bcffa8a24a5e1fdbb40efb0` 的官方预览 APK。使用 WSL NDK 25c 从合并后的源码重建 `libdroiddeckwayland.so`（LSFG 和 DD-FG 均保留）；其余运行载荷沿用同提交官方产物。会话脚本使用当前合并源码的 LF 文件，保留本地下载和触控修复。来源及所有文件摘要记录在本机 `.gradle/install/ac25283-payload-verification.json`，构建前执行校验，构建后逐项比对 APK；不再使用旧实验构建的“跳过 attestation”流程。
+
+构建命令使用 `.gradle/install/build-chinese.gradle`、`build/frame-pacing-tools/local-dependencies.gradle` 及 `.gradle/install/preview-opencv.gradle`。后者只路由已按 Maven 官方摘要校验的本地 OpenCV 4.13.0 缓存，不改变源码依赖版本。新版 APK 完成签名、包名、版本、195 项载荷、Android 原生依赖和商店 JNI 接口验证。未执行新版设备游戏测试，不能仅凭构建通过宣称改善 Kingdom Rush 兼容性。
