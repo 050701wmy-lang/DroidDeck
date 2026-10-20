@@ -3577,7 +3577,7 @@ EXPORT int close(int fd) {
 static constexpr int kMaxRingWaitMs = 2;
 static constexpr int kLowLatencyRingWaitUs = 250;
 
-EXPORT ssize_t read(int fd, void *buf, size_t count) {
+static ssize_t read_input(int fd, void *buf, size_t count) {
   if (!watched(fd)) return syscall(SYS_read, fd, buf, count);
   std::unique_lock<std::recursive_mutex> guard(controller_mutex());
   auto controller = controller_map().find(fd);
@@ -3671,6 +3671,45 @@ EXPORT ssize_t read(int fd, void *buf, size_t count) {
     if (low_latency(LATENCY_CONTROLLER)) backoff_ns = kLowLatencyRingWaitUs * 1000;
     else if (backoff_ns < kMaxRingWaitMs * 1000 * 1000) backoff_ns *= 2;
   }
+}
+
+EXPORT ssize_t read(int fd, void *buf, size_t count) {
+  return read_input(fd, buf, count);
+}
+
+EXPORT ssize_t readv(int fd, const struct iovec *iov, int iovcnt) {
+  if (!is_fake_input_fd(fd)) return syscall(SYS_readv, fd, iov, iovcnt);
+  if (iovcnt < 0 || iovcnt > IOV_MAX) {
+    errno = EINVAL;
+    return -1;
+  }
+  if (iovcnt && !iov) {
+    errno = EFAULT;
+    return -1;
+  }
+  size_t size = 0;
+  for (int i = 0; i < iovcnt; ++i) {
+    if (iov[i].iov_len > static_cast<size_t>(SSIZE_MAX) - size) {
+      errno = EINVAL;
+      return -1;
+    }
+    size += iov[i].iov_len;
+    if (iov[i].iov_len && !iov[i].iov_base) {
+      errno = EFAULT;
+      return -1;
+    }
+  }
+
+  // evdev's readv calls its read handler per vector; Steam's ARM64 overlay uses this path too.
+  ssize_t total = 0;
+  for (int i = 0; i < iovcnt; ++i) {
+    if (!iov[i].iov_len) continue;
+    ssize_t got = read_input(fd, iov[i].iov_base, iov[i].iov_len);
+    if (got < 0) return total ? total : -1;
+    total += got;
+    if (static_cast<size_t>(got) != iov[i].iov_len) break;
+  }
+  return total;
 }
 
 EXPORT ssize_t write(int fd, const void *buf, size_t count) {
