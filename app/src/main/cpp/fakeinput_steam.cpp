@@ -3687,6 +3687,18 @@ EXPORT ssize_t readv(int fd, const struct iovec *iov, int iovcnt) {
     errno = EFAULT;
     return -1;
   }
+  std::vector<struct iovec> copied_iov(static_cast<size_t>(iovcnt));
+  if (iovcnt) {
+    size_t bytes = copied_iov.size() * sizeof(struct iovec);
+    struct iovec local = {copied_iov.data(), bytes};
+    struct iovec remote = {const_cast<struct iovec *>(iov), bytes};
+    ssize_t copied = syscall(SYS_process_vm_readv, getpid(), &local, 1, &remote, 1, 0);
+    if (copied != static_cast<ssize_t>(bytes)) {
+      errno = EFAULT;
+      return -1;
+    }
+  }
+  iov = copied_iov.data();
   size_t size = 0;
   for (int i = 0; i < iovcnt; ++i) {
     if (iov[i].iov_len > static_cast<size_t>(SSIZE_MAX) - size) {
