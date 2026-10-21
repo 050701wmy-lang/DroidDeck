@@ -276,8 +276,10 @@ fun ModeSheetRows(s: ModeSettings, a: ModeSettingsActions, tab: String, extras: 
                     SessionPrefs.CONTROLLER_DS4 to stringResource(R.string.mode_controller_ds4),
                     SessionPrefs.CONTROLLER_DUALSENSE to stringResource(R.string.mode_controller_dualsense),
                     SessionPrefs.CONTROLLER_XBOX360 to stringResource(R.string.mode_controller_x360),
+                    SessionPrefs.CONTROLLER_NONE to stringResource(R.string.second_mode_none),
                 ), s.steamController,
-                note = stringResource(R.string.mode_controller_note),
+                note = if (s.steamController == SessionPrefs.CONTROLLER_NONE) stringResource(R.string.common_applies_next_session)
+                else stringResource(R.string.mode_controller_note),
                 onPick = a.onSteamController,
             )
             if (steam && s.unfoldedControls != null) ToggleRow(
