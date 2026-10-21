@@ -119,3 +119,7 @@ Fork 不会自动继承上游的 Release、签名密钥或 Actions secrets。首
 ac25283 的基础载荷来自 SHA-256 为 `5fe45888db172b3b92fa4f494feeb612daf543184bcffa8a24a5e1fdbb40efb0` 的官方预览 APK。使用 WSL NDK 25c 从合并后的源码重建 `libdroiddeckwayland.so`（LSFG 和 DD-FG 均保留）；其余运行载荷沿用同提交官方产物。会话脚本使用当前合并源码的 LF 文件，保留本地下载和触控修复。来源及所有文件摘要记录在本机 `.gradle/install/ac25283-payload-verification.json`，构建前执行校验，构建后逐项比对 APK；不再使用旧实验构建的“跳过 attestation”流程。
 
 构建命令使用 `.gradle/install/build-chinese.gradle`、`build/frame-pacing-tools/local-dependencies.gradle` 及 `.gradle/install/preview-opencv.gradle`。后者只路由已按 Maven 官方摘要校验的本地 OpenCV 4.13.0 缓存，不改变源码依赖版本。新版 APK 完成签名、包名、版本、195 项载荷、Android 原生依赖和商店 JNI 接口验证。未执行新版设备游戏测试，不能仅凭构建通过宣称改善 Kingdom Rush 兼容性。
+
+## 当前包名要求（2026-10-22）
+
+按用户最新要求，后续使用原版包名 com.droiddeck.launcher 和显示名 DroidDeck。此前 .zh 包名仅为历史记录。本地构建不再覆盖 applicationId，保留现有签名、默认中文、字体、GitHub 加速及本地修复。包名变化创建独立数据目录，保留旧 .zh 应用和数据；遇到官方签名包不卸载、不清除、不覆盖。
