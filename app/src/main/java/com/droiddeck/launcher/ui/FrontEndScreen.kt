@@ -134,12 +134,13 @@ class FrontEndState(
     val controller: com.droiddeck.launcher.input.ControllerPrefs.Settings? = null,
     val phantomProcessStatus: PhantomProcessStatus = PhantomProcessStatus.NOT_APPLICABLE,
     val showPhantomGate: Boolean = false,
-    val orientation: Int = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+    val orientation: Int = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
     val launcherFullscreen: Boolean = true,
     val downloadSource: String = DownloadSource.MODE_AUTO,
     val downloadMirror: String = "",
     val downloadPrefix: String = "",
     val animationsEnabled: Boolean = true,
+    val launcherIcon: String = com.droiddeck.launcher.LauncherIcon.DARK,
     val gameStoresEnabled: Boolean = true,
     val gameStoresSpeedTier: String = "fast",
     val storesOpenTab: String = SessionPrefs.STORES_OPEN_LIBRARY,
@@ -166,6 +167,7 @@ class FrontEndActions(
     val onAddedGamesChanged: (folders: List<String>) -> Unit = {},
     val onSteamGameArtChanged: (appId: Int) -> Unit = {},
     val onAddedGameRemoved: (folder: String, appId: Long?, name: String) -> Unit = { _, _, _ -> },
+    val onGameRemoved: (Library.SteamGame) -> Unit = {},
     val onAddedGamesArt: (Boolean) -> Unit = {},
     val onSgdbKey: (String) -> Unit = {},
     val onStopGameFileSync: () -> Unit = {},
@@ -189,6 +191,7 @@ class FrontEndActions(
     val onImportLossless: () -> Unit,
     val onProtons: () -> Unit,
     val onComponents: (focusContent: Boolean) -> Unit,
+    val onGameComponents: (Library.SteamGame) -> Unit = { onComponents(true) },
     val onComponentsTab: (String) -> Unit = {},
     val onSaveImport: (Library.SteamGame) -> Unit = {},
     val onSaveExport: (Library.SteamGame, com.droiddeck.launcher.session.GameSaves.Layout) -> Unit = { _, _ -> },
@@ -208,6 +211,7 @@ class FrontEndActions(
     val onTheme: (String) -> Unit = {},
     val onLanguage: (String) -> Unit = {},
     val onAppScale: (Int) -> Unit = {},
+    val onLauncherIcon: (String) -> Unit = {},
     val onOrientation: (Int) -> Unit = {},
     val onLauncherFullscreen: (Boolean) -> Unit = {},
     val onAnimationsEnabled: (Boolean) -> Unit = {},
@@ -389,6 +393,7 @@ private fun FrontEndScreenBody(s: FrontEndState, a: FrontEndActions, page: (@Com
         when (target) {
             "stores:downloads" -> { com.droiddeck.launcher.stores.StoresState.openDownloads = true; selected = "stores" }
             "components" -> a.onComponents(true)
+            "setup:launcher" -> { SetupTabs.openLauncher = true; selected = "setup" }
             else -> selected = target
         }
         a.onNavigated()
