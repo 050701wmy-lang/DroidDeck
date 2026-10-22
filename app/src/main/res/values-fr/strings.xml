@@ -307,6 +307,8 @@
     <string name="mode_client">Client</string>
     <string name="mode_mangoapp">Superposition de performance</string>
     <string name="mode_mangoapp_hint">Désactivez cette option si les jeux plantent ou affichent un écran noir en mode Deck. Prendra effet à la prochaine session.</string>
+    <string name="mode_return_after_game">Revenir à DroidDeck après un jeu</string>
+    <string name="mode_return_after_game_hint">Quand un jeu lancé depuis DroidDeck ou un autre lanceur se ferme, Steam se ferme proprement (après la synchronisation des sauvegardes cloud) et vous y revenez. Désactivé : vous restez dans Steam.</string>
     <string name="mode_steam_repair">Réparer le client Steam</string>
     <string name="mode_steam_repair_hint">Retélécharge le client Steam au prochain démarrage de Steam. Utile si Steam reste bloqué sur son écran de chargement. Les jeux, la connexion et les paramètres sont conservés.</string>
     <string name="mode_steam_repair_queued">Le client Steam sera retéléchargé au prochain démarrage de Steam.</string>
