@@ -174,8 +174,8 @@ class DownloaderResumeTest {
         val target = File(dir, "runtime.tar.zst")
         misbehave = true
         val polls = java.util.concurrent.atomic.AtomicInteger()
-        // the first poll is before the request; every later one is after a chunk was written
-        val cancelled = java.util.function.BooleanSupplier { polls.incrementAndGet() > 1 }
+        // candidate selection and attempt each check once before the request; later checks follow chunks
+        val cancelled = java.util.function.BooleanSupplier { polls.incrementAndGet() > 2 }
         assertFalse(Downloader.downloadCandidates(first, listOf(first, second), target, true, null, cancelled, null))
         assertEquals("a cancel must not fall back to the next source", listOf<String?>(null), requests.toList())
         assertTrue("the transfer stopped early (kept=${target.length()})", target.length() in 1 until data.size)
