@@ -19,7 +19,8 @@ internal class SessionSuspendController(
     private val nowMillis: () -> Long = { System.nanoTime() / 1_000_000 },
     private val executor: ExecutorService = Executors.newSingleThreadExecutor(),
     private val zramControl: File? = null,
-    private val pagedOut: (processes: Int, residentKb: Long, swapKb: Long, swapBeforeKb: Long, millis: Long) -> Unit = { _, _, _, _, _ -> },
+    private val pagedOut: (processes: Int, unacknowledged: Int, residentKb: Long, swapKb: Long, swapBeforeKb: Long, millis: Long) -> Unit =
+        { _, _, _, _, _, _ -> },
 ) {
     private enum class Role { SESSION_ROOT, SESSION_CHILD, HELPER_ROOT, HELPER_CHILD }
 
@@ -40,9 +41,11 @@ internal class SessionSuspendController(
     private data class TaskIdentity(val process: ProcessRecord, val tid: Int, val started: Long)
 
     @Volatile private var closing = false
+    @Volatile private var cancelled = false
     private var frozen = emptyList<ProcessRecord>()
 
     fun freeze(pageOut: Boolean = false, completion: (Boolean) -> Unit) {
+        cancelled = false
         submit({
             val records = frozen.associateByTo(LinkedHashMap()) { it.pid to it.started }
             var complete = false
@@ -65,14 +68,14 @@ internal class SessionSuspendController(
                 val deadline = nowMillis() + FREEZE_TIMEOUT_MS
                 var previous: Map<TaskIdentity, Long>? = null
                 for (pass in 0 until FREEZE_MAX_PASSES) {
-                    if (closing || nowMillis() >= deadline) break
+                    if (closing || cancelled || nowMillis() >= deadline) break
                     try {
                         if (readProcess(root.pid)?.started != root.started) break
                         addSnapshot(records, root.pid, helpers)
                         if (readProcess(root.pid)?.started != root.started) break
                         stop(records.values.toList())
                         sleep(if (pass == 0) 70L else 35L)
-                        if (closing || nowMillis() >= deadline) break
+                        if (closing || cancelled || nowMillis() >= deadline) break
                         val current = stoppedSnapshot(records.values.toList(), root)
                         if (current != null && current == previous) {
                             complete = true
@@ -98,6 +101,11 @@ internal class SessionSuspendController(
             }
             completion(complete)
         }, { completion(false) })
+    }
+
+    // A freeze still queued or paging out stops before its next SIGSTOP pass and rolls back.
+    fun cancelFreeze() {
+        cancelled = true
     }
 
     fun resume(completion: (Boolean) -> Unit) {
@@ -255,20 +263,28 @@ internal class SessionSuspendController(
             }
         }
         if (targets.isEmpty()) return
+        val acks = targets.associateWith { File(control.parentFile, "${control.name}.ack.${it.pid}") }
+        acks.values.forEach { it.delete() }
         val start = nowMillis()
         val before = memoryKb(targets)
         for (record in targets) send(record, SIGURG)
-        var previous = before.second
-        var steady = 0
-        while (steady < PAGE_OUT_STEADY_POLLS && nowMillis() - start < PAGE_OUT_TIMEOUT_MS) {
+        // A program can replace libblsession's SIGURG handler (PyInstaller's bootloader, the Go runtime);
+        // such a process never creates its ack and is not waited for once the start window has passed.
+        val waiting = targets.toMutableList()
+        while (!closing && !cancelled && nowMillis() - start < PAGE_OUT_TIMEOUT_MS) {
+            val started = nowMillis() - start >= PAGE_OUT_START_MS
+            waiting.removeAll { val ack = acks.getValue(it); ack.length() > 0 || (started && !ack.exists()) || isGone(it) }
+            if (waiting.isEmpty()) break
             sleep(PAGE_OUT_POLL_MS)
-            val swap = memoryKb(targets).second
-            steady = if (swap == previous) steady + 1 else 0
-            previous = swap
         }
+        val unacknowledged = targets.count { acks.getValue(it).length() == 0L && !isGone(it) }
+        acks.values.forEach { it.delete() }
         val after = memoryKb(targets)
-        pagedOut(targets.size, after.first, after.second, before.second, nowMillis() - start)
+        pagedOut(targets.size, unacknowledged, after.first, after.second, before.second, nowMillis() - start)
     }
+
+    private fun isGone(record: ProcessRecord): Boolean =
+        try { readProcess(record.pid)?.started != record.started } catch (_: Exception) { false }
 
     private fun memoryKb(records: List<ProcessRecord>): Pair<Long, Long> {
         var resident = 0L
@@ -365,8 +381,8 @@ internal class SessionSuspendController(
         const val SIGSTOP = 19
         const val SIGCONT = 18
         const val SIGURG = 23
-        const val PAGE_OUT_POLL_MS = 250L
-        const val PAGE_OUT_STEADY_POLLS = 3
+        const val PAGE_OUT_POLL_MS = 100L
+        const val PAGE_OUT_START_MS = 2_000L
         const val PAGE_OUT_TIMEOUT_MS = 12_000L
         const val RESTORE_CHECKS = 80
         const val FREEZE_TIMEOUT_MS = 8_000L

@@ -35,7 +35,43 @@ class SessionSuspendControllerTest {
         assertTrue(fixture.signals.indexOfFirst { it.signal == URG } < fixture.signals.indexOfFirst { it.signal == STOP })
         assertEquals("1", fixture.control.readText())
         assertEquals(listOf(Triple(1, 1_000_000L, 3_000_000L)), fixture.pagedOut)
+        assertEquals(0, fixture.unacknowledged)
         assertTrue(fixture.game.threads.all { it.state == 't' })
+        assertFalse(File(fixture.control.parentFile, ".bl-zram.ack.$GAME").exists())
+    }
+
+    @Test fun unchangedSwapIsNotTakenForAFinishedPageOut() {
+        val fixture = fixture(17)
+        fixture.control.writeText("0")
+        fixture.handlerStalls = true
+        var stoppedEarly = false
+        fixture.afterSleep = {
+            if (fixture.now == 3000L) fixture.handlerStalls = false
+            if (fixture.handlerStalls && fixture.signals.any { it.signal == STOP }) stoppedEarly = true
+        }
+        fixture.controller.freeze(pageOut = true) { assertTrue(it) }
+        assertFalse(stoppedEarly)
+        assertEquals(0, fixture.unacknowledged)
+    }
+
+    @Test fun replacedHandlerIsNotWaitedForPastTheStartWindow() {
+        val fixture = fixture(17)
+        fixture.control.writeText("0")
+        fixture.handlerReplaced = true
+        fixture.controller.freeze(pageOut = true) { assertTrue(it) }
+        assertEquals(1, fixture.unacknowledged)
+        assertTrue(fixture.now in 2000L..3000L)
+    }
+
+    @Test fun cancelledFreezeRollsBackWithoutStopping() {
+        val fixture = fixture(17)
+        fixture.control.writeText("0")
+        fixture.handlerStalls = true
+        fixture.afterSleep = { if (fixture.now >= 500) fixture.controller.cancelFreeze() }
+        fixture.controller.freeze(pageOut = true) { assertFalse(it) }
+        assertFalse(fixture.signals.any { it.signal == STOP })
+        assertTrue(fixture.game.threads.all { it.state == 'S' })
+        assertEquals(1, fixture.audioResumes)
     }
 
     @Test fun noPageOutWithoutTheRequestOrTheControlFile() {
@@ -305,12 +341,18 @@ class SessionSuspendControllerTest {
         private var gameResidentKb = 4_000_000L
         private var gameSwapKb = 0L
         private var pagingOut = false
+        var unacknowledged = -1
+        var handlerStalls = false
+        var handlerReplaced = false
         private var continuing = false
         val controller = SessionSuspendController(
             { rootPid }, { helpers }, { audioSuspends++ }, { audioResumes++ },
             proc, ::signal, ::threadSignal, ::sleep, { now }, executor,
             zramControl = control,
-            pagedOut = { processes, resident, swap, _, _ -> pagedOut += Triple(processes, resident, swap) },
+            pagedOut = { processes, unacknowledged, resident, swap, _, _ ->
+                pagedOut += Triple(processes, resident, swap)
+                this.unacknowledged = unacknowledged
+            },
         )
 
         init { sync() }
@@ -344,9 +386,17 @@ class SessionSuspendControllerTest {
 
         private fun sleep(millis: Long) {
             now += millis
-            if (pagingOut && gameResidentKb > 1_000_000L) {
-                gameResidentKb -= 1_000_000L
-                gameSwapKb += 1_000_000L
+            if (pagingOut && !handlerReplaced) {
+                File(control.parentFile, "${control.name}.ack.$GAME").apply { if (!exists()) writeText("") }
+            }
+            if (pagingOut && !handlerStalls && !handlerReplaced) {
+                if (gameResidentKb > 1_000_000L) {
+                    gameResidentKb -= 1_000_000L
+                    gameSwapKb += 1_000_000L
+                } else {
+                    File(control.parentFile, "${control.name}.ack.$GAME").writeText("1")
+                    pagingOut = false
+                }
             }
             if (root.threads.first().state != 'T' && !continuing) game.threads.forEach {
                 if (it.state != 'Z') { it.state = 'S'; it.cpu++ }

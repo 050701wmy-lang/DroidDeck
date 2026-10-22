@@ -91,6 +91,8 @@ class SessionService : Service() {
     private var suspendOperationPending = false
     private var pipTask = false
     private var suspendAttemptFailed = false
+    private var freezePending = false
+    private var freezeCancelled = false
     private var pendingSteamGameId: String? = null
     private var pendingSteamGameGeneration = -1
     // Bumped to cancel a running game-exit watch (a new launch, or the session ending).
@@ -287,6 +289,7 @@ class SessionService : Service() {
         steamSleepToken = null
         completeNativeSleep()
         suspendOperationPending = false
+        freezePending = false
         suspendAttemptFailed = false
         suspendController = null
         SessionState.suspended = false
@@ -582,12 +585,12 @@ class SessionService : Service() {
                     if (!pulse.setSinkSuspended(false)) Log.w(TAG, "could not resume audio sink")
                 },
                 zramControl = File(filesDir, "${LinuxRuntime.DIR}/tmp/.bl-zram"),
-                pagedOut = { processes, residentKb, swapKb, swapBeforeKb, millis ->
-                    Log.i(TAG, "paged out $processes processes in $millis ms: resident ${residentKb / 1024} MB, " +
-                        "zram ${swapBeforeKb / 1024} -> ${swapKb / 1024} MB")
+                pagedOut = { processes, unacknowledged, residentKb, swapKb, swapBeforeKb, millis ->
+                    Log.i(TAG, "paged out $processes processes ($unacknowledged unacknowledged) in $millis ms: " +
+                        "resident ${residentKb / 1024} MB, zram ${swapBeforeKb / 1024} -> ${swapKb / 1024} MB")
                     mainHandler.post {
                         SessionEvents.record("session.paged_out", mapOf(
-                            "processes" to processes, "residentMb" to residentKb / 1024,
+                            "processes" to processes, "unacknowledged" to unacknowledged, "residentMb" to residentKb / 1024,
                             "swapMb" to swapKb / 1024, "swapBeforeMb" to swapBeforeKb / 1024, "ms" to millis,
                         ))
                     }
@@ -1386,6 +1389,10 @@ class SessionService : Service() {
             SessionPrefs.SUSPEND_MANUAL -> manualPauseRequested && prepared && !downloadsBlockingSuspend
             else -> false
         }
+        if (freezePending && !shouldSuspend && !freezeCancelled) {
+            freezeCancelled = true
+            controller.cancelFreeze()
+        }
         if (suspendOperationPending || suspendAttemptFailed || shouldSuspend == SessionState.suspended) return
         val gen = sessionGen
         suspendOperationPending = true
@@ -1396,12 +1403,15 @@ class SessionService : Service() {
             "nativeSleep" to (nativeSleepToken != null),
         ))
         if (shouldSuspend) {
+            freezePending = true
+            freezeCancelled = false
             controller.freeze(
                 pageOut = steamSleepToken != null || nativeSleepToken != null || !activityVisible || !screenOn,
             ) { success ->
                 mainHandler.post {
                     if (gen != sessionGen || !SessionState.running) return@post
                     suspendOperationPending = false
+                    freezePending = false
                     if (success) {
                         SessionState.suspended = true
                         SessionEvents.transition(SessionPhase.SUSPENDED, "session.suspended")
@@ -1410,8 +1420,12 @@ class SessionService : Service() {
                     } else {
                         completeNativeSleep()
                         completeSteamSleep()
-                        suspendAttemptFailed = true
-                        Log.w(TAG, "could not confirm that the session stopped")
+                        if (freezeCancelled) {
+                            SessionEvents.record("session.suspend_cancelled")
+                        } else {
+                            suspendAttemptFailed = true
+                            Log.w(TAG, "could not confirm that the session stopped")
+                        }
                     }
                     updateSuspendPolicy()
                 }
@@ -1582,6 +1596,7 @@ class SessionService : Service() {
         GameThreadHints.stop()
         SessionEvents.transition(SessionPhase.STOPPING, "session.stopping", mapOf("status" to status))
         suspendOperationPending = false
+        freezePending = false
         launchWatcher?.stopWatching()
         launchWatcher = null
         syncWatcher?.stopWatching()
