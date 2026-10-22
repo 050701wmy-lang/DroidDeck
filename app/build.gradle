@@ -282,6 +282,15 @@ tasks.configureEach { task ->
     if (task.name in ['packageDebug', 'packageRelease']) task.dependsOn(verifyRuntimeInputs)
 }
 
+def verifyReleaseAddonPacks = tasks.register('verifyReleaseAddonPacks') {
+    doLast {
+        addonPacks.each { name, pack ->
+            if (!pack.sha256) throw new GradleException("Release APK requires ${name}.tar.zst: build or restore the verified add-on packs before packaging")
+        }
+    }
+}
+tasks.matching { it.name == 'packageRelease' }.configureEach { dependsOn(verifyReleaseAddonPacks) }
+
 def rustCrateDir = layout.projectDirectory.dir('src/main/rust/stores')
 def rustJniLibsDir = layout.buildDirectory.dir('rustJniLibs')
 def skipRust = (project.findProperty('skipRust')

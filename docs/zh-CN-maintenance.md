@@ -127,3 +127,11 @@ ac25283 的基础载荷来自 SHA-256 为 `5fe45888db172b3b92fa4f494feeb612daf54
 HUD 合并使用上游 `TICK_MS` 常量及帧时间图，保留本地实际呈现统计；默认中文、字体挂载、ICU、GitHub 下载加速和触控修复继续保留。原生合成器由当前合并源码构建，其余原生库来自本次已验证的官方 APK；177 项载荷及源码摘要记录在 `.gradle/install/923ffde-payload-verification.json`。中文资源与加速检查通过；运行脚本及原生检查共 134 项通过、1 项跳过。
 
 用户再次确认保持 `com.droiddeck.launcher` 和名称 `DroidDeck`，现有签名不变；定时维护提示也已按此更新。安装与 APK 验证详情记录在本机 `.gradle/install/preview-state.json`，不将本地签名文件或设备日志提交到仓库。
+
+### 首次安装组件包修复
+
+本地仅复用官方 APK 内的 assets 和原生库，不会自动保留该 APK 的 `BuildConfig.PACK_*` 常量。缺少 `app/build/packs/*.tar.zst` 时，本地构建会生成空的组件包摘要；新设备或更换包名后没有已安装副本，运行环境安装会在 proot 阶段失败。2026-10-22 设备日志确认此问题，存储空间充足。
+
+此预览使用官方提交对应的 Build APK run `39747414228` 的 `droiddeck-packs` 产物，五个包分别与 DroidDeck-Components 的内容寻址发布摘要核验后放入 `app/build/packs`，由 Gradle 生成下载摘要与长度。来源及摘要记录在 `.gradle/install/923ffde-addon-packs.json`；本地载荷验证同时检查这五个包。后续预览必须重新取得对应构建产物，不能沿用旧包。
+
+新增 `verifyReleaseAddonPacks`，发布打包前要求五个组件包都有摘要；调试构建仍可使用上游的设备副本复用机制。用缺包输入确认检查拒绝发布，再恢复完整输入构建。设备的原加速地址返回 403，已将该设备下载设置改为实测可获取官方索引的 `https://gh-proxy.org/`，摘要校验保持启用。
