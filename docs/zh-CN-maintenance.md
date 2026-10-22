@@ -135,3 +135,9 @@ HUD 合并使用上游 `TICK_MS` 常量及帧时间图，保留本地实际呈�
 此预览使用官方提交对应的 Build APK run `39747414228` 的 `droiddeck-packs` 产物，五个包分别与 DroidDeck-Components 的内容寻址发布摘要核验后放入 `app/build/packs`，由 Gradle 生成下载摘要与长度。来源及摘要记录在 `.gradle/install/923ffde-addon-packs.json`；本地载荷验证同时检查这五个包。后续预览必须重新取得对应构建产物，不能沿用旧包。
 
 新增 `verifyReleaseAddonPacks`，发布打包前要求五个组件包都有摘要；调试构建仍可使用上游的设备副本复用机制。用缺包输入确认检查拒绝发布，再恢复完整输入构建。设备的原加速地址返回 403，已将该设备下载设置改为实测可获取官方索引的 `https://gh-proxy.org/`，摘要校验保持启用。
+
+### Steam 首次安装的官方 CDN 回退
+
+同日设备在 Steam 安装清单阶段报 `STEAM_DOWNLOAD_FAILED manifest 35`；三个 `client-update.*.steamstatic.com` 地址均遇到 TLS EOF、连接重置或超时。手机 Linux 诊断会话实测 `https://media.steampowered.com/client` 可获取相同版本清单，真实组件的 SHA-256 与清单一致。Steam 安装脚本优先使用此官方分发地址，原三个 CDN 仍作为回退；不经过 GitHub 代理，不关闭 TLS 或组件摘要校验。
+
+`tools.tests.test_steam_install` 的 10 项检查通过，覆盖官方地址之间的回退、真实 curl 的临时服务错误重试、失败标记、组件校验与修复安装。后续同步须保留此地址及相应测试，或以设备验证过的上游修复替代。

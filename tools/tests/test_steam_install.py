@@ -86,8 +86,8 @@ cp "$TEST_CDN/${url##*/}" "$out"
         self.assertEqual((self.steam / 'linuxarm64').resolve(), (self.home / '.steam/sdkarm64').resolve())
         if expected is None:
             expected = [
-                'https://client-update.steamstatic.com/steam_client_' + channel + '_linuxarm64',
-                'https://client-update.steamstatic.com/' + channel + '.zip',
+                'https://media.steampowered.com/client/steam_client_' + channel + '_linuxarm64',
+                'https://media.steampowered.com/client/' + channel + '.zip',
             ]
         self.assertEqual(expected, self.requests.read_text().splitlines())
 
@@ -135,7 +135,7 @@ cp "$TEST_CDN/${url##*/}" "$out"
         (self.bin / 'curl').write_text(r'''#!/bin/bash
 args=()
 for arg in "$@"; do
-  args+=("${arg/https:\/\/client-update.steamstatic.com/$TEST_URL}")
+  args+=("${arg/https:\/\/media.steampowered.com\/client/$TEST_URL}")
 done
 exec "$REAL_CURL" "${args[@]}"
 ''')
@@ -144,11 +144,11 @@ exec "$REAL_CURL" "${args[@]}"
         self.assertEqual(4, len(requests))
         self.assertTrue((self.steam / 'package/droiddeck-installed').exists())
     def test_a_cdn_that_does_not_answer_hands_over_to_the_next_one(self):
-        akamai = 'https://client-update.akamai.steamstatic.com'
-        self.assert_installed(fail_host='client-update.steamstatic.com', expected=[
-            'https://client-update.steamstatic.com/steam_client_steamdeck_publicbeta_linuxarm64',
-            akamai + '/steam_client_steamdeck_publicbeta_linuxarm64',
-            akamai + '/steamdeck_publicbeta.zip',
+        fallback = 'https://client-update.steamstatic.com'
+        self.assert_installed(fail_host='media.steampowered.com', expected=[
+            'https://media.steampowered.com/client/steam_client_steamdeck_publicbeta_linuxarm64',
+            fallback + '/steam_client_steamdeck_publicbeta_linuxarm64',
+            fallback + '/steamdeck_publicbeta.zip',
         ])
 
     def test_an_install_from_another_branch_is_left_for_steam_to_move(self):

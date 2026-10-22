@@ -1,6 +1,6 @@
 #!/bin/bash
 set -eu
-cdn_list="https://client-update.steamstatic.com https://client-update.akamai.steamstatic.com https://client-update.fastly.steamstatic.com"
+cdn_list="https://media.steampowered.com/client https://client-update.steamstatic.com https://client-update.akamai.steamstatic.com https://client-update.fastly.steamstatic.com"
 steam_channel=steamdeck_publicbeta
 manifest=steam_client_${steam_channel}_linuxarm64
 steam_root=${XDG_DATA_HOME:-$HOME/.local/share}/Steam
