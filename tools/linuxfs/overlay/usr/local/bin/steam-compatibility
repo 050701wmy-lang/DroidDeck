@@ -1190,22 +1190,26 @@ def settle_game_requests(requests, state, current, catalog, missing_is_cleared=F
 
 def settled_game_requests(state, current, catalog, missing_is_cleared=False, directory=None):
     """Reads the app's choices, settles them against the client's picks and stores the result. When the
-    app rewrote the file meanwhile, its newer choices are settled again; they are never overwritten."""
+    app rewrote the file meanwhile, its newer choices are settled again; they are never overwritten.
+    None when the app kept rewriting it: this pass then applies no per-game choice and records nothing."""
     for _ in range(2):
         requests, text = read_game_requests(directory)
         settled, moved = settle_game_requests(requests, state, current, catalog, missing_is_cleared)
         if not moved or write_game_requests(settled, text, directory):
             return settled
-    return settled
+    return None
 
 
 def applied_game_requests(requests, overrides, state):
-    """What the app asked for that is now in the mapping; a tool not installed yet stays unapplied."""
+    """What the app asked for that is now in the mapping. A tool not installed yet stays unapplied, and a
+    game this pass did not handle (the client refused to report it) keeps what was applied before."""
     recorded = state.get("games_applied")
     before = recorded if isinstance(recorded, dict) else {}
-    return {app: request if overrides.get(app) is not DEFERRED_GAME_TOOL else before.get(app)
-            for app, request in requests.items() if app in overrides and
-            (overrides.get(app) is not DEFERRED_GAME_TOOL or app in before)}
+    if requests is None:
+        return dict(before)
+    return {app: request if app in overrides and overrides[app] is not DEFERRED_GAME_TOOL else before[app]
+            for app, request in requests.items()
+            if app in overrides and overrides[app] is not DEFERRED_GAME_TOOL or app in before}
 
 
 def requested_games(requests, catalog, runnable=None):
@@ -1397,7 +1401,7 @@ def register_default(config_path, apps=(), protect=(), default=None, catalog=Non
         steam_root = os.path.dirname(os.path.dirname(os.path.abspath(config_path)))
         # With the client stopped, config.vdf is what it last kept: an app missing from it has no forced tool.
         requests = settled_game_requests(state, current, catalog, not steam_running(), directory)
-        overrides = requested_games(requests, catalog)
+        overrides = requested_games(requests or {}, catalog)
         managed = state.get("auto", {}).keys() if isinstance(state.get("auto"), dict) else ()
         native_choices = state.get("native_choices", ())
         native = native_targets(steam_root, set(apps) | set(picks) | set(managed) | set(native_choices))

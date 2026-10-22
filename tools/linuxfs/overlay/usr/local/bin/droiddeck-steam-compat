@@ -619,7 +619,7 @@ class Helper:
                         current.pop(app, None)
             # The client's pick of a tool the app chose for a game wins once the app's choice was applied.
             requests = COMPAT["settled_game_requests"](state, current, catalog)
-            overrides = COMPAT["requested_games"](requests, catalog, [t["name"] for t in live])
+            overrides = COMPAT["requested_games"](requests or {}, catalog, [t["name"] for t in live])
             overrides = {app: tool for app, tool in overrides.items() if app not in refused}
             changes, auto = COMPAT["plan_mapping"](
                 current, installed, [t["name"] for t in live], default,

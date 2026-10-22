@@ -707,6 +707,32 @@ class ReconcileTest(unittest.TestCase):
         self.assertFalse(COMPAT["write_game_requests"]({}, text))
         self.assertEqual(self.games(), {"10": {"valve": True, "dir": "Proton Experimental (ARM64)"}})
 
+    def test_an_app_the_client_briefly_refuses_keeps_its_applied_choice_live(self):
+        page = FakePage({"0": TOOL, "10": TOOL, "11": TOOL}, [TOOL, TOOL_11, COMPAT["FEX_TOOL"]])
+        self.write_games({"10": {"valve": True, "dir": "Proton 11.0 (ARM64)"}})
+        self.reconcile(page)
+        page.refused = {"10"}
+        state = self.reconcile(page)
+        self.assertEqual(state["games_applied"], {"10": {"valve": True, "dir": "Proton 11.0 (ARM64)"}})
+        page.refused = set()
+        page.sets.clear()
+        page.mapping["10"] = COMPAT["FEX_TOOL"]
+        self.reconcile(page)
+        self.assertEqual(page.sets, [])
+        self.assertEqual(page.mapping["10"], COMPAT["FEX_TOOL"])
+
+    def test_an_app_rewriting_its_choices_during_both_tries_applies_none_of_them_live(self):
+        page = FakePage({"0": TOOL, "10": TOOL, "11": TOOL}, [TOOL, TOOL_11, COMPAT["FEX_TOOL"]])
+        self.write_games({"10": {"valve": True, "dir": "Proton 11.0 (ARM64)"}})
+        self.reconcile(page)
+        page.sets.clear()
+        page.mapping["10"] = COMPAT["FEX_TOOL"]
+        self.write_games({"10": {"valve": True, "dir": "Proton 11.0 (ARM64)"}, "11": None})
+        with mock.patch.dict(COMPAT["settled_game_requests"].__globals__, write_game_requests=lambda *_: False):
+            state = self.reconcile(page)
+        self.assertEqual(page.sets, [])
+        self.assertEqual(state["games_applied"], {"10": {"valve": True, "dir": "Proton 11.0 (ARM64)"}})
+
     def test_a_steam_pick_is_kept_at_the_next_start(self):
         config = self.steam / "config/config.vdf"
         config.parent.mkdir(parents=True)
