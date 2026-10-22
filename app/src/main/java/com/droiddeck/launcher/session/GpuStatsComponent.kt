@@ -63,7 +63,10 @@ class GpuStatsComponent(val dir: File) : SessionPart() {
     // kgsl's gpubusy can read 0 0 straight after a read, so feeds that share a reader share one read.
     private fun refresh() {
         val values = HashMap<() -> Long?, Long?>()
-        for (feed in feeds) values.getOrPut(feed.read) { feed.read() }?.let { write(feed, it) }
+        for (feed in feeds) {
+            if (feed.read !in values) values[feed.read] = feed.read()
+            values[feed.read]?.let { write(feed, it) }
+        }
     }
 
     override fun stop() {
