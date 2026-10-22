@@ -101,7 +101,13 @@ public final class Downloader {
                                        java.util.function.Consumer<Float> progress) {
         if (expectedSha256 != null && !expectedSha256.matches("(?i)[0-9a-f]{64}"))
             throw new IllegalArgumentException("Expected SHA-256 must be 64 hex characters");
-        return downloadCandidates(url, DownloadSource.INSTANCE.candidates(url), destination, resume, expectedSha256, cancelled, progress);
+        return downloadCandidates(url, sources(url, expectedSha256), destination, resume, expectedSha256, cancelled, progress);
+    }
+
+    /** A third-party mirror may only serve bytes that can be checked against a digest from a direct source. */
+    static List<String> sources(String url, String expectedSha256) {
+        return expectedSha256 == null ? java.util.Collections.singletonList(url) : DownloadSource.INSTANCE.candidates(url);
+
     }
 
     // Package-private for the local multi-source HTTP test.
@@ -283,6 +289,7 @@ public final class Downloader {
             if (total > 0 && written < total) return Outcome.RETRY;
             return Outcome.DONE;
         } catch (Exception e) {
+            if (isCancelled(cancelled)) return Outcome.CANCELLED;
             Log.w(TAG, "download " + url, e);
             return Outcome.RETRY;
         } finally {
