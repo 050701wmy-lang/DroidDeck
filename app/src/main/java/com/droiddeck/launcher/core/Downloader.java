@@ -23,6 +23,12 @@ public final class Downloader {
     private static final int CONNECT_TIMEOUT_MS = 10_000;
     private static final int STALL_TIMEOUT_MS = 15_000;
     private static final int HTTP_RANGE_NOT_SATISFIABLE = 416;
+    private static final java.util.concurrent.ExecutorService CANCEL_EXECUTOR =
+            java.util.concurrent.Executors.newCachedThreadPool(r -> {
+                Thread thread = new Thread(r, "download-cancel");
+                thread.setDaemon(true);
+                return thread;
+            });
 
     private Downloader() {}
 
@@ -37,7 +43,13 @@ public final class Downloader {
         public void cancel() {
             cancelled.set(true);
             HttpURLConnection active = connection.get();
-            if (active != null) active.disconnect();
+            if (active != null) disconnectAsync(active);
+        }
+
+        private static void disconnectAsync(HttpURLConnection active) {
+            CANCEL_EXECUTOR.execute(() -> {
+                try { active.disconnect(); } catch (RuntimeException ignored) { }
+            });
         }
 
         @Override public boolean getAsBoolean() {
@@ -46,7 +58,7 @@ public final class Downloader {
 
         private void attach(HttpURLConnection active) {
             connection.set(active);
-            if (getAsBoolean()) active.disconnect();
+            if (getAsBoolean()) disconnectAsync(active);
         }
 
         private void detach(HttpURLConnection active) { connection.compareAndSet(active, null); }

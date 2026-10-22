@@ -201,15 +201,18 @@ class DownloaderResumeTest {
         holdAfterFirstChunk = true
         val cancellation = Downloader.Cancellation()
         val executor = Executors.newSingleThreadExecutor()
+        val cancelExecutor = Executors.newSingleThreadExecutor()
         try {
             val result = executor.submit<Boolean> { Downloader.downloadFile(url, target, true, null, cancellation, null) }
             assertTrue("server sent the first chunk", bodyStarted.await(2, TimeUnit.SECONDS))
-            cancellation.cancel()
+            val cancelled = cancelExecutor.submit { cancellation.cancel() }
+            cancelled.get(2, TimeUnit.SECONDS)
             assertFalse("cancelled download", result.get(2, TimeUnit.SECONDS))
             assertEquals(listOf<String?>(null), requests.toList())
         } finally {
             continueBody.countDown()
             executor.shutdownNow()
+            cancelExecutor.shutdownNow()
         }
     }
 

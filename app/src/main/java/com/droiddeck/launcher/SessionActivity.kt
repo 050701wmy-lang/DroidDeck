@@ -1452,7 +1452,13 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         val catalog = com.droiddeck.launcher.runtime.DesktopCatalog
         val entry = catalog.fetch(catalog.STEAM_SEED_URL)?.firstOrNull { it.id == catalog.PROTON_SEED_ID }
             ?: return "catalog unreachable"
-        return catalog.install(this, entry, { SessionState.stopRequested }, progressFor(PROTON_LINES, entry.size / 1_000_000))
+        val cancellation = com.droiddeck.launcher.core.Downloader.Cancellation { SessionState.stopRequested }
+        SessionState.installCancellation = cancellation
+        return try {
+            catalog.install(this, entry, cancellation, progressFor(PROTON_LINES, entry.size / 1_000_000))
+        } finally {
+            if (SessionState.installCancellation === cancellation) SessionState.installCancellation = null
+        }
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
