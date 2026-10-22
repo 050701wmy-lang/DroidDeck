@@ -22,8 +22,8 @@ object DesktopCatalog {
         val icon: String, val category: String,
     )
 
-    fun fetch(url: String = CATALOG_URL): List<Entry>? {
-        val body = Downloader.downloadString(url) ?: return null
+    fun fetch(url: String = CATALOG_URL, cancelled: java.util.function.BooleanSupplier? = null): List<Entry>? {
+        val body = Downloader.downloadString(url, cancelled) ?: return null
         return try {
             val json = JSONObject(body)
             val arr = json.getJSONArray("packages")

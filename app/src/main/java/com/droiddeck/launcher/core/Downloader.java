@@ -65,10 +65,17 @@ public final class Downloader {
     }
 
     public static String downloadString(String url) {
+        return downloadString(url, null);
+    }
+
+    public static String downloadString(String url, java.util.function.BooleanSupplier cancelled) {
         List<String> sources = DownloadSource.INSTANCE.candidates(url);
         for (int i = 0; i < sources.size(); i++) {
+            if (isCancelled(cancelled)) return null;
             if (i > 0) Log.i(TAG, "retrying " + url + " via " + sources.get(i));
-            Fetch fetch = fetch(sources.get(i));
+            Fetch fetch = fetch(sources.get(i), cancelled);
+            // A cancelled fetch says nothing about the source, so it must not count as a failure.
+            if (isCancelled(cancelled)) return null;
             if (fetch.body != null) {
                 DownloadSource.INSTANCE.succeeded(sources.get(i));
                 return fetch.body;
@@ -325,9 +332,15 @@ public final class Downloader {
     }
 
     private static Fetch fetch(String url) {
+        return fetch(url, null);
+    }
+
+    private static Fetch fetch(String url, java.util.function.BooleanSupplier cancelled) {
         HttpURLConnection connection = null;
+        Cancellation token = cancelled instanceof Cancellation ? (Cancellation) cancelled : null;
         try {
             connection = open(url, STALL_TIMEOUT_MS);
+            if (token != null) token.attach(connection);
             int code = connection.getResponseCode();
             if (code / 100 != 2) {
                 Log.w(TAG, url + " -> HTTP " + code);
@@ -339,10 +352,14 @@ public final class Downloader {
                 return new Fetch(new String(out.toByteArray(), StandardCharsets.UTF_8), false);
             }
         } catch (Exception e) {
+            if (isCancelled(cancelled)) return new Fetch(null, false);
             Log.w(TAG, "GET " + url, e);
             return new Fetch(null, false);
         } finally {
-            if (connection != null) connection.disconnect();
+            if (connection != null) {
+                if (token != null) token.detach(connection);
+                connection.disconnect();
+            }
         }
     }
 
