@@ -37,7 +37,7 @@ class GpuStatsComponent(val dir: File) : SessionPart() {
                 feeds.add(Feed(File(dir, "cur_freq"), clock.source, { clock.read()?.times(1_000_000) }, "%-10d\n"))
             }
             pick("temp", tempSources(), "%6d\n") { milliCelsius(it) }?.let { feeds.add(it) }
-            feeds.forEach { feed -> feed.read()?.let { write(feed, it) } }
+            refresh()
             Log.i(TAG, "hud: kgsl stats from the session's own: " + MANGOHUD_FILES.joinToString { name ->
                 "$name " + (feeds.firstOrNull { it.file.name == name }?.source ?: "none")
             })
@@ -55,9 +55,15 @@ class GpuStatsComponent(val dir: File) : SessionPart() {
             while (running) {
                 try { Thread.sleep(PERIOD_MS) } catch (e: InterruptedException) { break }
                 if (!running) break
-                for (feed in feeds) feed.read()?.let { write(feed, it) }
+                refresh()
             }
         }, "gpu-stats").apply { isDaemon = true; start() }
+    }
+
+    // kgsl's gpubusy can read 0 0 straight after a read, so feeds that share a reader share one read.
+    private fun refresh() {
+        val values = HashMap<() -> Long?, Long?>()
+        for (feed in feeds) values.getOrPut(feed.read) { feed.read() }?.let { write(feed, it) }
     }
 
     override fun stop() {
@@ -69,11 +75,18 @@ class GpuStatsComponent(val dir: File) : SessionPart() {
     private fun loadFeed(): Feed? {
         pick("gpu_busy_percentage", LOAD_SOURCES, "%3d %%\n") { it.coerceIn(0, 100) }?.let { return it }
         val gpubusy = "$KGSL/gpubusy"
+        // gpubusy reads 0 0 between its windows, so one empty read keeps the last load; two in a row mean an idle GPU.
+        var last = 0L
+        var held = false
         val read = {
             runCatching {
                 val parts = File(gpubusy).readText().trim().split(Regex("\\s+"))
                 val total = parts[1].toLong()
-                if (total > 0) (parts[0].toLong() * 100 / total).coerceIn(0, 100) else 0L
+                when {
+                    total > 0 -> (parts[0].toLong() * 100 / total).coerceIn(0, 100).also { last = it; held = false }
+                    !held -> last.also { held = true }
+                    else -> 0L
+                }
             }.getOrNull()
         }
         return if (read() != null) Feed(File(dir, "gpu_busy_percentage"), gpubusy, read, "%3d %%\n") else null
