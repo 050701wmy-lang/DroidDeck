@@ -68,10 +68,6 @@ git switch zh-CN
 
 ```sh
 git fetch upstream
-git switch main
-git pull --ff-only origin main
-git merge --ff-only upstream/main
-git push origin main
 git switch zh-CN
 git merge <catalog-preview-commit>
 python -m unittest tools.tests.test_localization
@@ -80,7 +76,7 @@ git push origin zh-CN
 
 `--ff-only` 在分支已分叉时会停止，避免覆盖已有提交。请检查意外进入 `main` 的改动，再决定如何保留。中文分支合并有冲突时，手动解决冲突，执行 `git add` 和 `git commit`，检查翻译、构建并在设备上验证后推送。无需强制推送。
 
-也可以在 GitHub 的 `main` 页面使用 **Sync fork → Update branch** 同步，然后在本地合并到 `zh-CN`。不要用会丢弃改动的同步选项处理中文分支。
+不要直接合并 `upstream/main` 或使用 GitHub 的 **Sync fork** 作为预览版同步目标；它们可能包含尚未发布的提交。需要更新 fork 的 `main` 时，仅快进到已经核验的 `catalog-preview-commit`。
 
 ## 翻译约定与检查
 
@@ -123,3 +119,11 @@ ac25283 的基础载荷来自 SHA-256 为 `5fe45888db172b3b92fa4f494feeb612daf54
 ## 当前包名要求（2026-10-22）
 
 按用户最新要求，后续使用原版包名 com.droiddeck.launcher 和显示名 DroidDeck。此前 .zh 包名仅为历史记录。本地构建不再覆盖 applicationId，保留现有签名、默认中文、字体、GitHub 加速及本地修复。包名变化创建独立数据目录，保留旧 .zh 应用和数据；遇到官方签名包不卸载、不清除、不覆盖。
+
+## 已发布预览 main-923ffde（2026-10-22）
+
+同步官方 catalog 中的 `923ffde71574130e3871a2c8424c9e080a473217`，官方 APK SHA-256 为 `131848f2ce80233c0f48954cb1a561aa6f98401eb44f998b1c0ac13c5d67b80e`。新增组件 Stable/Nightly 切换、GOG/Epic 安装语言选择、Decky 更新通道和 VR 控制器选项，补齐 29 项缺失中文资源。
+
+HUD 合并使用上游 `TICK_MS` 常量及帧时间图，保留本地实际呈现统计；默认中文、字体挂载、ICU、GitHub 下载加速和触控修复继续保留。原生合成器由当前合并源码构建，其余原生库来自本次已验证的官方 APK；177 项载荷及源码摘要记录在 `.gradle/install/923ffde-payload-verification.json`。中文资源与加速检查通过；运行脚本及原生检查共 134 项通过、1 项跳过。
+
+用户再次确认保持 `com.droiddeck.launcher` 和名称 `DroidDeck`，现有签名不变；定时维护提示也已按此更新。安装与 APK 验证详情记录在本机 `.gradle/install/preview-state.json`，不将本地签名文件或设备日志提交到仓库。
