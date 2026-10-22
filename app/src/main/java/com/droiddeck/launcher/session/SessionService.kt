@@ -1405,6 +1405,8 @@ class SessionService : Service() {
         if (shouldSuspend) {
             freezePending = true
             freezeCancelled = false
+            val freezeSteamToken = steamSleepToken
+            val freezeNativeToken = nativeSleepToken
             controller.freeze(
                 pageOut = steamSleepToken != null || nativeSleepToken != null || !activityVisible || !screenOn,
             ) { success ->
@@ -1418,8 +1420,8 @@ class SessionService : Service() {
                         releaseLocks()
                         refreshNotification()
                     } else {
-                        completeNativeSleep()
-                        completeSteamSleep()
+                        if (nativeSleepToken == freezeNativeToken) completeNativeSleep()
+                        if (steamSleepToken == freezeSteamToken) completeSteamSleep()
                         if (freezeCancelled) {
                             SessionEvents.record("session.suspend_cancelled")
                         } else {
