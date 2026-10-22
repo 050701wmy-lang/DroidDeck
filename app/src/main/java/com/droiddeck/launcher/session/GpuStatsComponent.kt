@@ -43,7 +43,7 @@ class GpuStatsComponent(val dir: File) : SessionPart() {
                 feeds.add(Feed(File(dir, "cur_freq"), clock.source, { clock.read()?.times(1_000_000) }, "%-10d\n"))
             }
             pick("temp", tempSources(), "%6d\n") { milliCelsius(it) }?.let { feeds.add(it) }
-            feeds.forEach { feed -> feed.read()?.let { write(feed, it) } }
+            refresh()
             Log.i(TAG, "hud: kgsl stats from the session's own: " + MANGOHUD_FILES.joinToString { name ->
                 "$name " + (feeds.firstOrNull { it.file.name == name }?.source ?: "none")
             })
@@ -61,9 +61,18 @@ class GpuStatsComponent(val dir: File) : SessionPart() {
             while (running) {
                 try { Thread.sleep(PERIOD_MS) } catch (e: InterruptedException) { break }
                 if (!running) break
-                for (feed in feeds) feed.read()?.let { write(feed, it) }
+                refresh()
             }
         }, "gpu-stats").apply { isDaemon = true; start() }
+    }
+
+    // kgsl's gpubusy can read 0 0 straight after a read, so feeds that share a reader share one read.
+    private fun refresh() {
+        val values = HashMap<() -> Long?, Long?>()
+        for (feed in feeds) {
+            if (feed.read !in values) values[feed.read] = feed.read()
+            values[feed.read]?.let { write(feed, it) }
+        }
     }
 
     override fun stop() {
