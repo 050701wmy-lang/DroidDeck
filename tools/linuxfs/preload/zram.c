@@ -148,8 +148,6 @@ static void zr_child(void) {
 }
 
 __attribute__((constructor)) static void zr_init(void) {
-  const char *name = program_invocation_short_name;
-  if (strcmp(name, "steam") != 0 && strcmp(name, "steamwebhelper") != 0) return;
   void *libc = dlopen("libc.so.6", RTLD_LAZY | RTLD_NOLOAD);
   if (libc == NULL) return;
   zr_sys = (long (*)(long, ...))dlsym(libc, "syscall");

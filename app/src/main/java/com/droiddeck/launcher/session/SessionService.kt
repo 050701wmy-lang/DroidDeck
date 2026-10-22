@@ -581,6 +581,17 @@ class SessionService : Service() {
                 resumeAudio = {
                     if (!pulse.setSinkSuspended(false)) Log.w(TAG, "could not resume audio sink")
                 },
+                zramControl = File(filesDir, "${LinuxRuntime.DIR}/tmp/.bl-zram"),
+                pagedOut = { processes, residentKb, swapKb, swapBeforeKb, millis ->
+                    Log.i(TAG, "paged out $processes processes in $millis ms: resident ${residentKb / 1024} MB, " +
+                        "zram ${swapBeforeKb / 1024} -> ${swapKb / 1024} MB")
+                    mainHandler.post {
+                        SessionEvents.record("session.paged_out", mapOf(
+                            "processes" to processes, "residentMb" to residentKb / 1024,
+                            "swapMb" to swapKb / 1024, "swapBeforeMb" to swapBeforeKb / 1024, "ms" to millis,
+                        ))
+                    }
+                },
             )
             mainHandler.post { updateSuspendPolicy() }
             updateDownloadMonitoring()
@@ -661,8 +672,7 @@ class SessionService : Service() {
         guest.add("BL_SYNC_FALLBACK=" + (if (SessionPrefs.syncFallback(this)) "1" else "0"))
         guest.add("BL_FSYNC_FIRST=" + (if (SessionPrefs.fsyncFirst(this)) "1" else "0"))
         guest.add("BL_GAMESCOPE_REALTIME=" + (if (SessionPrefs.gamescopeRealtime(this)) "1" else "0"))
-        if (SessionState.mode == MODE_STEAM && SessionPrefs.zramCompression(this) &&
-            com.droiddeck.launcher.core.ZramSupport.supported()) guest.add("BL_ZRAM=1")
+        if (com.droiddeck.launcher.core.ZramSupport.supported()) guest.add("BL_ZRAM=1")
         guest.add("BANNER_AUDIO_DIRECT_DECAY=0")
         val extra = extraEnv() + com.droiddeck.launcher.agent.AgentEnv.beginSession(this)
         if (extra.none { it.startsWith("TU_DEBUG=") }) guest.add("$GAME_TU_DEBUG=" + (tuOverride ?: if (tuDriver) "sysmem" else ""))
@@ -1386,7 +1396,9 @@ class SessionService : Service() {
             "nativeSleep" to (nativeSleepToken != null),
         ))
         if (shouldSuspend) {
-            controller.freeze { success ->
+            controller.freeze(
+                pageOut = steamSleepToken != null || nativeSleepToken != null || !activityVisible || !screenOn,
+            ) { success ->
                 mainHandler.post {
                     if (gen != sessionGen || !SessionState.running) return@post
                     suspendOperationPending = false
