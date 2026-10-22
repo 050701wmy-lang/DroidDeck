@@ -82,6 +82,8 @@ class ModeSettings(
     val picturePosition: String? = null,
     val stretch16x9: Boolean? = null,
     val steamClientArch: String? = null,
+    /** Steam only: a game launched from the front end returns there when it closes; null hides the row. */
+    val returnAfterGame: Boolean? = null,
     val steamRepairQueued: Boolean = false,
     val mangoapp: Boolean = true,
     val steamController: String? = null,
@@ -135,6 +137,7 @@ class ModeSettingsActions(
     val onSteamRepair: () -> Unit = {},
     val onSteamClientArch: (String) -> Unit = {},
     val onMangoapp: (Boolean) -> Unit = {},
+    val onReturnAfterGame: (Boolean) -> Unit = {},
     val onSteamController: (String) -> Unit = {},
     val onUnfoldedControls: (Boolean) -> Unit = {},
     val onRunSteamAtStartup: (Boolean) -> Unit = {},
@@ -471,6 +474,11 @@ fun ModeSheetRows(s: ModeSettings, a: ModeSettingsActions, tab: String, extras: 
                 host, "mangoapp", stringResource(R.string.mode_mangoapp),
                 stringResource(R.string.mode_mangoapp_hint),
                 s.mangoapp, onChange = a.onMangoapp,
+            )
+            if (s.returnAfterGame != null) ToggleRow(
+                host, "returnaftergame", stringResource(R.string.mode_return_after_game),
+                stringResource(R.string.mode_return_after_game_hint),
+                s.returnAfterGame, onChange = a.onReturnAfterGame,
             )
             SettingsRow(
                 stringResource(R.string.mode_steam_repair),
