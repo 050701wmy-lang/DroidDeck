@@ -101,6 +101,9 @@ import java.util.Date
 
 private enum class FileManagerNavigation { EXIT, RETURN_TO_START, BACK }
 
+internal fun canNavigateUp(currentDir: File, currentRoot: File): Boolean =
+    currentDir != currentRoot && currentDir.parentFile?.exists() == true
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FileManagerScreen(
@@ -192,6 +195,7 @@ fun FileManagerScreen(
     var listingJob by remember { mutableStateOf<Job?>(null) }
 
     fun loadDirectory(dir: File, resetScroll: Boolean = true) {
+        if (cancellingNavigation) return
         currentDir = dir
         if (pickMode) pickPrefs.edit().putString("lastFilePickerDir", dir.absolutePath).apply()
         listingJob?.cancel()
@@ -216,11 +220,13 @@ fun FileManagerScreen(
     }
 
     fun openDrive(dir: File) {
+        if (cancellingNavigation) return
         currentRoot = dir
         loadDirectory(dir)
     }
 
     fun returnToStart() {
+        if (cancellingNavigation) return
         val dir = launchDir ?: return
         if (!dir.isDirectory) {
             Toast.makeText(context, R.string.fm_start_unavailable, Toast.LENGTH_SHORT).show()
@@ -240,12 +246,13 @@ fun FileManagerScreen(
     val operationActive = isOperationActive()
 
     fun navigate(action: FileManagerNavigation) {
+        if (cancellingNavigation) return
         when (action) {
             FileManagerNavigation.EXIT -> onExit?.invoke()
             FileManagerNavigation.RETURN_TO_START -> returnToStart()
             FileManagerNavigation.BACK -> {
                 if (showFavorites) showFavorites = false
-                else if (canGoUp) currentDir.parentFile?.let { loadDirectory(it) }
+                else if (canNavigateUp(currentDir, currentRoot)) currentDir.parentFile?.let { loadDirectory(it) }
                 else onExit?.invoke()
             }
         }
@@ -284,8 +291,8 @@ fun FileManagerScreen(
                             pendingConflict = null
                             isOperationRunning = false
                             operationDeterminate = false
-                            if (action != FileManagerNavigation.EXIT) loadDirectory(currentDir, resetScroll = false)
                             cancellingNavigation = false
+                            if (action != FileManagerNavigation.EXIT) loadDirectory(currentDir, resetScroll = false)
                             navigate(action)
                         }
                     }
