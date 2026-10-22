@@ -1436,9 +1436,15 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     private fun installDesktop(): String? {
         uiHandler.post { loading.percent = -1; loading.say(getString(DESKTOP_LINES.downloading), DESKTOP_LINES.topic, readable = true) }
         val entry = com.droiddeck.launcher.runtime.DesktopCatalog.desktopEntry(this)
-        val problem = com.droiddeck.launcher.runtime.DesktopCatalog.install(this, entry, { SessionState.stopRequested },
-            progressFor(DESKTOP_LINES, entry.size / 1_000_000))
-        return problem?.let { getString(R.string.session_desktop_install_failed, it) }
+        val cancellation = com.droiddeck.launcher.core.Downloader.Cancellation { SessionState.stopRequested }
+        SessionState.installCancellation = cancellation
+        return try {
+            val problem = com.droiddeck.launcher.runtime.DesktopCatalog.install(this, entry, cancellation,
+                progressFor(DESKTOP_LINES, entry.size / 1_000_000))
+            problem?.let { getString(R.string.session_desktop_install_failed, it) }
+        } finally {
+            if (SessionState.installCancellation === cancellation) SessionState.installCancellation = null
+        }
     }
 
     private fun installProton(): String? {

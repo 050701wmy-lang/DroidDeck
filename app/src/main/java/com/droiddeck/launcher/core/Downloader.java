@@ -15,6 +15,8 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public final class Downloader {
     private static final String TAG = "Downloader";
@@ -23,6 +25,32 @@ public final class Downloader {
     private static final int HTTP_RANGE_NOT_SATISFIABLE = 416;
 
     private Downloader() {}
+
+    public static final class Cancellation implements java.util.function.BooleanSupplier {
+        private final AtomicBoolean cancelled = new AtomicBoolean();
+        private final AtomicReference<HttpURLConnection> connection = new AtomicReference<>();
+        private final java.util.function.BooleanSupplier external;
+
+        public Cancellation() { this(null); }
+        public Cancellation(java.util.function.BooleanSupplier external) { this.external = external; }
+
+        public void cancel() {
+            cancelled.set(true);
+            HttpURLConnection active = connection.get();
+            if (active != null) active.disconnect();
+        }
+
+        @Override public boolean getAsBoolean() {
+            return cancelled.get() || (external != null && external.getAsBoolean());
+        }
+
+        private void attach(HttpURLConnection active) {
+            connection.set(active);
+            if (getAsBoolean()) active.disconnect();
+        }
+
+        private void detach(HttpURLConnection active) { connection.compareAndSet(active, null); }
+    }
 
     public static String downloadString(String url) {
         List<String> sources = DownloadSource.INSTANCE.candidates(url);
@@ -182,6 +210,7 @@ public final class Downloader {
                 have = 0;
             }
             connection = open(url, STALL_TIMEOUT_MS);
+            if (cancelled instanceof Cancellation) ((Cancellation) cancelled).attach(connection);
             if (have > 0) {
                 connection.setRequestProperty("Range", "bytes=" + have + "-");
                 connection.setRequestProperty("If-Range", identity.etag);
@@ -245,7 +274,10 @@ public final class Downloader {
             Log.w(TAG, "download " + url, e);
             return Outcome.RETRY;
         } finally {
-            if (connection != null) connection.disconnect();
+            if (connection != null) {
+                if (cancelled instanceof Cancellation) ((Cancellation) cancelled).detach(connection);
+                connection.disconnect();
+            }
         }
     }
 

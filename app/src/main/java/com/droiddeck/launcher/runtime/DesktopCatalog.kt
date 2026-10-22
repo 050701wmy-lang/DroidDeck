@@ -86,7 +86,10 @@ object DesktopCatalog {
         install(context, entry, { false }, listener)
 
     /** A cancel stops the download and is checked once more before anything on disk changes; extraction itself runs to the end. */
-    fun install(context: Context, entry: Entry, cancelled: () -> Boolean, listener: LinuxRuntimeInstaller.ProgressListener?): String? {
+    fun install(context: Context, entry: Entry, cancelled: () -> Boolean, listener: LinuxRuntimeInstaller.ProgressListener?): String? =
+        install(context, entry, Downloader.Cancellation(cancelled), listener)
+
+    fun install(context: Context, entry: Entry, cancelled: Downloader.Cancellation, listener: LinuxRuntimeInstaller.ProgressListener?): String? {
         val root = LinuxRuntime.rootDir(context)
         if (!root.isDirectory) return context.getString(R.string.deskpkg_runtime_missing)
         if (entry.sha256.isEmpty()) return context.getString(R.string.deskpkg_no_checksum, entry.name)
