@@ -617,7 +617,6 @@ class Helper:
                         current[app] = ""
                     elif not current.get(app):
                         current.pop(app, None)
-            # The client's pick of a tool the app chose for a game wins once the app's choice was applied.
             requests = COMPAT["settled_game_requests"](state, current, catalog)
             overrides = COMPAT["requested_games"](requests or {}, catalog, [t["name"] for t in live])
             overrides = {app: tool for app, tool in overrides.items() if app not in refused}
