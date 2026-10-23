@@ -753,7 +753,7 @@ object ComponentsManager {
 
     fun stored(context: Context): Stored = synchronized(lock) {
         val state = loadState(context)
-        val installed = protons(context).associateBy { it.id }
+        val installed = protons(context).distinctBy { it.id }.associateBy { it.id }
         val used = packagesInUse(state, installed)
         val originals = originalsDir(context).listFiles()?.filter { it.isDirectory }?.flatMap { proton ->
             proton.listFiles()?.filter { it.isDirectory }?.flatMap { version ->
@@ -783,7 +783,7 @@ object ComponentsManager {
     fun deletePackage(context: Context, file: String): String = synchronized(lock) {
         val name = safeName(file)
         val state = loadState(context)
-        val installed = protons(context).associateBy { it.id }
+        val installed = protons(context).distinctBy { it.id }.associateBy { it.id }
         var changed = false
         for (key in listOf("queued", "active")) {
             val byProton = state.sub(key)
@@ -811,8 +811,8 @@ object ComponentsManager {
             }
             if (profile.length() == 0) profiles.remove(scope)
         }
+        check(f.delete()) { name }
         if (changed) saveState(context, state)
-        f.delete()
         context.getString(R.string.cmgr_deleted, name)
     }
 
