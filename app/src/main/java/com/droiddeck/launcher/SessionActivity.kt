@@ -3549,15 +3549,25 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
             }
             return
         }
-        super.finish()
         if (!closeAtOnce && intent.getBooleanExtra(EXTRA_RETURN_HOME, false)) {
             com.droiddeck.launcher.ui.QuitFlood.take()
             com.droiddeck.launcher.ui.LaunchOrigin.flooding = null
-            startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        }
+            closeLinkTasks()
+            super.finishAndRemoveTask()
+        } else super.finish()
         if (quitFlooded) overridePendingTransition(0, 0)
         else overridePendingTransition(R.anim.session_hold, R.anim.session_sink)
+    }
+
+    private fun closeLinkTasks() {
+        val tasks = runCatching { getSystemService(android.app.ActivityManager::class.java)?.appTasks }.getOrNull().orEmpty()
+        for (task in tasks) {
+            runCatching {
+                val base = task.taskInfo.baseIntent
+                if (base.component?.className == FrontEndActivity::class.java.name &&
+                    com.droiddeck.launcher.frontend.GameLaunchIntent.accepts(base.action)) task.finishAndRemoveTask()
+            }
+        }
     }
 
     private fun completeLeave() {
