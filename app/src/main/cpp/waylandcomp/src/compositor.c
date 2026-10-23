@@ -807,12 +807,6 @@ static uint32_t nominal_refresh_ns(void) {
     return (uint32_t)(1000000000000LL / (int64_t)mhz);
 }
 
-/* Gamescope paces from this timestamp (#717). The Choreographer tick is often still
- * slightly ahead of this thread, because the UI thread queues the callback, and that
- * used to throw the tick away (render_ns < tick) and report the draw time instead.
- * Keep a tick within one refresh of the draw, ahead or behind. A missing tick, or one
- * more than a refresh away, falls back to the draw time. Never report the next refresh:
- * gamescope would wake a frame late. */
 static int64_t presented_ns(int64_t render_ns) {
     int64_t tick = g_tick_vsync_ns;
     int64_t refresh = (int64_t)nominal_refresh_ns();
