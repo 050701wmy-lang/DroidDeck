@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="mode_zram">zRAM 压缩</string>
-    <string name="mode_zram_hint">游戏运行时，将 Steam 客户端内存压缩到设备的 zRAM，为游戏腾出更多内存。下次启动 Steam 时生效。</string>
-    <string name="mode_zram_unsupported">不可用：此设备没有 zRAM 或交换空间，或内核版本低于 5.4。</string>
     <string name="stores_target_free_unknown">可用空间未知</string>
     <string name="stores_storage_insufficient">可用空间不足：需要 %1$s，仅剩 %2$s</string>
     <string name="stores_storage_low">空间不足（剩余 %1$s，需要 %2$s）</string>
@@ -65,4 +62,6 @@
     <string name="vr_controllers_buttons_stick">扳机对应扳机，肩键对应抓握，A/B 和 X/Y 对应两侧手部控制器的面板按键，按下摇杆对应摇杆点击，Guide 键打开 SteamVR 菜单。方向键上、下可拉近或推远双手。</string>
     <string name="vr_controllers_buttons_vive">摇杆对应触控板；按 A/X 或按下摇杆可点击触控板。扳机对应扳机，肩键对应抓握，Start 和 Select 对应菜单，Guide 键打开 SteamVR 菜单。</string>
     <string name="vr_controllers_buttons_off">不模拟 VR 双手。支持手柄的游戏和 SteamVR 菜单仍可正常使用手柄。</string>
+    <string name="unfolded_controls_with_controller">连接手柄时保留</string>
+    <string name="unfolded_controls_with_controller_hint">连接手柄时也显示展开状态的控件，适用于夹持手机的手柄。</string>
 </resources>

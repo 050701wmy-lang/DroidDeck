@@ -141,3 +141,11 @@ HUD 合并使用上游 `TICK_MS` 常量及帧时间图，保留本地实际呈�
 同日设备在 Steam 安装清单阶段报 `STEAM_DOWNLOAD_FAILED manifest 35`；三个 `client-update.*.steamstatic.com` 地址均遇到 TLS EOF、连接重置或超时。手机 Linux 诊断会话实测 `https://media.steampowered.com/client` 可获取相同版本清单，真实组件的 SHA-256 与清单一致。Steam 安装脚本优先使用此官方分发地址，原三个 CDN 仍作为回退；不经过 GitHub 代理，不关闭 TLS 或组件摘要校验。
 
 `tools.tests.test_steam_install` 的 10 项检查通过，覆盖官方地址之间的回退、真实 curl 的临时服务错误重试、失败标记、组件校验与修复安装。后续同步须保留此地址及相应测试，或以设备验证过的上游修复替代。
+
+## 已发布预览 main-ffa40a1（2026-10-23）
+
+同步 catalog 发布的 `ffa40a15d5655fb7fb2aa22cdf51d13f7ba95af1`，版本 `0.6.0 (15)`，官方 APK SHA-256 为 `e25e9e82dd8a31582e6cfff2ab2e450e6280e8e88907f41ad58c08dff04f6c79`。更新包括 Wine ARM64 上下文切换与写监控优化、PipeWire 启动修复、CJK 字体注册和可自定义渐变主题；补齐两项控件中文，移除上游已删除的三项 zRAM 选项翻译。保留默认中文、额外字体挂载、GitHub 加速、Steam 官方媒体 CDN、发布缺包检查及本地原生呈现修复。
+
+上游此次重写了历史。旧预览 `923ffde71574130e3871a2c8424c9e080a473217` 与新历史的 `aaa2e40defb1a777811ee20e9d5b068200983cc2` 的源码树均为 `8419d3c89d2b6a5c71d1146e74061ec548e25b8e`。以此相同源码快照为三方合并基线，生成无冲突的合并树，最终合并保留原 fork HEAD 和此次真实预览提交为父提交；未重写 fork 历史、未强制推送。后续正常同步沿新预览提交继续。
+
+官方组件包来自同提交 Build APK run `39910137366`，产物 ZIP SHA-256 为 `9cbc86b2cb2dd9bab198967210acce1461df7d8e697c44e905bd9a46f3e91684`；五个包及 178 项载荷的来源、摘要在本机 `.gradle/install/ffa40a1-addon-packs.json`、`ffa40a1-payload-verification.json`。原生合成器由此次合并源码构建，其余原生库使用本次官方 APK。中文与 GitHub 加速检查通过；相关运行脚本、快速路径、Wine、PipeWire 和原生检查 170 项通过、2 项跳过。APK、设备安装与待安装状态以 `.gradle/install/preview-state.json` 为准。

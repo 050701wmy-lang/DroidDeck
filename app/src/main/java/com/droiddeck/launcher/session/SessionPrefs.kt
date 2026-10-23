@@ -7,7 +7,6 @@ import com.droiddeck.launcher.R
 import com.droiddeck.launcher.core.CpuAllocationDefaults
 import com.droiddeck.launcher.core.GameEnvironment
 import com.droiddeck.launcher.core.TextureFiltering
-import com.droiddeck.launcher.core.ZramSupport
 import com.droiddeck.launcher.gpu.Cardboard
 import com.droiddeck.launcher.gpu.ScreenEffects
 import org.json.JSONObject
@@ -759,6 +758,16 @@ object SessionPrefs {
         prefs(context).edit().putString("theme", id).apply()
     }
 
+    /** The custom Gradient theme's primary and secondary colours (ARGB). */
+    fun gradientColors(context: Context): Pair<Int, Int> = prefs(context).let {
+        it.getInt("gradientPrimary", com.droiddeck.launcher.ui.Themes.DEFAULT_PRIMARY) to
+            it.getInt("gradientSecondary", com.droiddeck.launcher.ui.Themes.DEFAULT_SECONDARY)
+    }
+
+    fun setGradientColors(context: Context, primary: Int, secondary: Int) {
+        prefs(context).edit().putInt("gradientPrimary", primary).putInt("gradientSecondary", secondary).apply()
+    }
+
     private fun customResolution(context: Context, mode: String): Pair<Int, Int>? =
         parseResolution(prefs(context).getString("customRes.$mode", null))
 
@@ -979,6 +988,13 @@ object SessionPrefs {
         prefs(context).edit().putBoolean("unfoldedControls", enabled).apply()
     }
 
+    fun unfoldedControlsWithController(context: Context): Boolean =
+        prefs(context).getBoolean("unfoldedControlsWithController", false)
+
+    fun setUnfoldedControlsWithController(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean("unfoldedControlsWithController", enabled).apply()
+    }
+
     const val SURFACE_STICK = "stick"
     const val SURFACE_TRACKPAD = "trackpad"
 
@@ -1032,15 +1048,6 @@ object SessionPrefs {
                 putString(policyKey, SUSPEND_AUTO)
             }
         }.apply()
-    }
-
-    fun zramCompression(context: Context): Boolean {
-        val prefs = prefs(context)
-        return if (prefs.contains("zramCompression")) prefs.getBoolean("zramCompression", false) else ZramSupport.recommended(context)
-    }
-
-    fun setZramCompression(context: Context, on: Boolean) {
-        prefs(context).edit().putBoolean("zramCompression", on).apply()
     }
 
 

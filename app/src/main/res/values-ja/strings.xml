@@ -287,9 +287,6 @@
     <string name="mode_suspend_steam_note">自動では一時停止し、表示すると再開します。ネイティブでは先にSteamをスリープに備えさせます。手動では「再開」をタップするまで待機します。「しない」では実行し続けます。</string>
     <string name="mode_background_downloads">ダウンロードを継続</string>
     <string name="mode_background_downloads_hint">Steamがダウンロード中は、バックグラウンドでの一時停止を遅らせます。</string>
-    <string name="mode_zram">zRAM 圧縮</string>
-    <string name="mode_zram_hint">ゲームの実行中、Steam クライアントのメモリがデバイスの zram に圧縮され、ゲーム用のメモリが増えます。次回 Steam を起動したときに反映されます。</string>
-    <string name="mode_zram_unsupported">使用できません：このデバイスに zram もしくは swap がないか、カーネルが 5.4 未満です。</string>
     <string name="mode_suspend_note">自動ではバックグラウンドで一時停止し、表示すると再開します。手動では「再開」をタップするまで待機します。「しない」では実行し続けます。</string>
     <string name="mode_startup">起動</string>
     <string name="mode_steam_startup">DroidDeck起動時にSteamを起動</string>
@@ -1392,6 +1389,14 @@
     <string name="theme_icon_blue_detail">黒の背景に白の文字、選択・フォーカス・押下時には青を使用します。</string>
     <string name="theme_electric">エレクトリックネイビー</string>
     <string name="theme_electric_detail">より明るい青を、グレーではなくネイビー寄りの画面に使用します。</string>
+    <string name="theme_gradient">グラデーション</string>
+    <string name="theme_gradient_detail">自分で選んだプライマリとセカンダリの色を、ボタンやハイライトにグラデーションで使います。</string>
+    <string name="theme_gradient_primary">プライマリ</string>
+    <string name="theme_gradient_secondary">セカンダリ</string>
+    <string name="theme_color_hue">色相</string>
+    <string name="theme_color_saturation">彩度</string>
+    <string name="theme_color_brightness">明度</string>
+    <string name="theme_color_hex">16進カラー</string>
     <string name="pckb_key_esc">Esc</string>
     <string name="pckb_key_ins">Ins</string>
     <string name="pckb_key_del">Del</string>
@@ -2476,6 +2481,7 @@
     <string name="glasses_xreal_network_missing">グラスの USB Ethernet 接続を待っています。このスマートフォンでは、アプリがこの接続を利用できない場合があります。</string>
     <string name="glasses_xreal_connection_failed">XREAL との接続が中断されたか、サポートされていない応答が返されました。再試行しています…</string>
     <string name="glasses_xreal_experimental">1S のサポートは試験運用中です。グラスのメニューで Follow モードを使い、安定化をオフにしてください。トラッキングの方向と表示モードは、まだ実機でのテストが必要です。</string>
+    <string name="glasses_pro2_experimental">Pro 2 のヘッドトラッキングは試験運用中です。明るさと音量の調整、および表示モードの切り替えにはまだ対応していません。</string>
     <string name="stores_fact_developer">開発元</string>
     <string name="stores_fact_publisher">パブリッシャー</string>
     <string name="stores_fact_released">発売日</string>
