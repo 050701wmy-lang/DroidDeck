@@ -15,6 +15,15 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class CiChecksTest(unittest.TestCase):
+    def test_pr_cache_writes_and_source_timestamp_policy(self):
+        jobs = yaml.safe_load((ROOT / '.github/workflows/build.yml').read_text())['jobs']
+        cache = next(step for step in jobs['build']['steps']
+                     if step.get('uses') == 'gradle/actions/setup-gradle@v4')['with']
+        self.assertEqual(cache['cache-read-only'],
+                         "${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}")
+        gradle = (ROOT / 'app/build.gradle').read_text()
+        self.assertIn("gitValue(['show', '-s', '--format=%ct', '--end-of-options', sourceCommit])", gradle)
+
     def test_report_comment_lookup_ignores_human_marker(self):
         if not shutil.which('jq'):
             self.skipTest('jq required to execute comment selection')
