@@ -12,9 +12,10 @@
 #include "../../app/src/main/cpp/adrenotools/src/hook/kgsl.h"
 #include "../../app/src/main/cpp/waylandcomp/src/gpu_clock_pin.h"
 
-enum { NONE, OPEN, CONTEXT, CONSTRAINT, MEMORY, MAP, SYNC, SUBMIT, THREAD, WAIT };
+enum { NONE, OPEN, DEVICE, CONTEXT, CONSTRAINT, MEMORY, MAP, SYNC, SUBMIT, THREAD, WAIT };
 static atomic_int failure, descriptors, contexts, memories, mappings, submissions;
 static atomic_bool timeout_wait;
+static bool legacy_core;
 static uint32_t commands[1024];
 
 int __android_log_print(int priority, const char *tag, const char *format, ...) {
@@ -63,6 +64,7 @@ int __wrap_ioctl(int fd, unsigned long request, ...) {
     va_end(args);
     int step = NONE;
     switch ((unsigned int)request) {
+    case IOCTL_KGSL_DEVICE_GETPROPERTY: step = DEVICE; break;
     case IOCTL_KGSL_DRAWCTXT_CREATE: step = CONTEXT; break;
     case IOCTL_KGSL_SETPROPERTY: step = CONSTRAINT; break;
     case IOCTL_KGSL_GPUMEM_ALLOC_ID: step = MEMORY; break;
@@ -72,6 +74,12 @@ int __wrap_ioctl(int fd, unsigned long request, ...) {
     }
     if (step && atomic_load(&failure) == step) { errno = EACCES; return -1; }
     switch ((unsigned int)request) {
+    case IOCTL_KGSL_DEVICE_GETPROPERTY: {
+        struct kgsl_device_getproperty *property = arg;
+        assert(property->type == KGSL_PROP_DEVICE_INFO);
+        ((struct kgsl_devinfo *)property->value)->chip_id = legacy_core ? 0x04030000 : 0x07030000;
+        break;
+    }
     case IOCTL_KGSL_DRAWCTXT_CREATE: {
         struct kgsl_drawctxt_create *context = arg;
         assert(context->flags & KGSL_CONTEXT_PWR_CONSTRAINT);
@@ -102,7 +110,7 @@ int __wrap_ioctl(int fd, unsigned long request, ...) {
         assert(command->context_id == 17 && command->numcmds == 1);
         assert(command->flags & KGSL_CMDBATCH_PWR_CONSTRAINT);
         assert(object->id == 23 && object->gpuaddr == 0x100000 && object->size == 8);
-        assert(commands[0] == 0x70100001 && commands[1] == 0);
+        assert(commands[0] == (legacy_core ? 0xc0001000 : 0x70100001) && commands[1] == 0);
         command->timestamp = atomic_fetch_add(&submissions, 1) + 1;
         break;
     }
@@ -134,6 +142,11 @@ static void assert_released(void) {
 int main(void) {
     assert(gpu_clock_pin_set(false));
     assert_released();
+    legacy_core = true;
+    assert(gpu_clock_pin_set(true));
+    assert(gpu_clock_pin_set(false));
+    assert_released();
+    legacy_core = false;
     for (int step = OPEN; step <= THREAD; ++step) {
         atomic_store(&failure, step);
         assert(!gpu_clock_pin_set(true));

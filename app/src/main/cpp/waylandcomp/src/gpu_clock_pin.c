@@ -24,6 +24,7 @@ struct pin {
     unsigned int memory;
     unsigned int timestamp;
     unsigned long gpuaddr;
+    uint32_t nop;
     void *commands;
     size_t size;
 };
@@ -66,6 +67,15 @@ static bool submit_pin(void) {
 static bool prepare_pin(void) {
     pin.fd = open("/dev/kgsl-3d0", O_RDWR | O_CLOEXEC);
     if (pin.fd < 0) return false;
+    struct kgsl_devinfo info = {0};
+    struct kgsl_device_getproperty device_info = {
+        .type = KGSL_PROP_DEVICE_INFO, .value = &info, .sizebytes = sizeof(info),
+    };
+    if (ioctl(pin.fd, IOCTL_KGSL_DEVICE_GETPROPERTY, &device_info) < 0) return false;
+    unsigned int core = info.chip_id >> 24;
+    if (!core) core = info.gpu_id / 100;
+    if (core < 3) { errno = ENODEV; return false; }
+    pin.nop = core >= 5 ? 0x70100001 : 0xc0001000;
     struct kgsl_drawctxt_create context = {
         .flags = KGSL_CONTEXT_NO_GMEM_ALLOC | KGSL_CONTEXT_PREAMBLE | KGSL_CONTEXT_PWR_CONSTRAINT,
     };
@@ -93,9 +103,9 @@ static bool prepare_pin(void) {
                           (off_t)pin.memory << 12);
     if (commands == MAP_FAILED) return false;
     pin.commands = commands;
-    // Type-7 CP_NOP, one payload dword; both odd-parity bits are zero.
+    // A3xx/A4xx use type-3 CP_NOP; newer cores use type-7 with zero odd-parity bits.
     uint32_t *words = commands;
-    words[0] = 0x70100001;
+    words[0] = pin.nop;
     words[1] = 0;
     struct kgsl_gpumem_sync_cache sync = { .id = pin.memory, .op = KGSL_GPUMEM_CACHE_CLEAN };
     if (ioctl(pin.fd, IOCTL_KGSL_GPUMEM_SYNC_CACHE, &sync) < 0) return false;
