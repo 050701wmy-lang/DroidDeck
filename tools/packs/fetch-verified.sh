@@ -22,6 +22,9 @@ else
     curl -fsSL --retry 4 --retry-all-errors --connect-timeout 15 --max-time 180 --retry-max-time 240 \
         -o "$part" "$url"
     verify "$part" || { echo "Checksum mismatch for $url" >&2; exit 1; }
+    if [ -d "$kept" ]; then
+        rm -rf -- "$kept"
+    fi
     mv -f "$part" "$kept"
     echo "Downloaded and verified pack input: $expected"
 fi

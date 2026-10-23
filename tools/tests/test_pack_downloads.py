@@ -51,6 +51,25 @@ class PackDownloadsTest(unittest.TestCase):
         self.assertEqual(len(self.log.read_text().splitlines()), 2)
         self.assertEqual((self.cache / self.checksum).read_bytes(), b'verified input')
 
+    def test_directory_cache_entry_is_replaced_only_after_verification(self):
+        entry = self.cache / self.checksum
+        entry.mkdir()
+        sentinel = entry / 'old-entry'
+        sentinel.write_bytes(b'preserve until verified')
+        self.remote.write_bytes(b'tampered download')
+        self.assertNotEqual(self.fetch().returncode, 0)
+        self.assertEqual(sentinel.read_bytes(), b'preserve until verified')
+        self.assertFalse(self.destination.exists())
+        self.remote.write_bytes(b'verified input')
+        result = self.fetch()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(entry.is_file())
+        self.assertEqual(entry.read_bytes(), b'verified input')
+        self.assertEqual(self.destination.read_bytes(), b'verified input')
+        self.assertEqual(list(self.cache.iterdir()), [entry])
+        self.assertEqual(self.fetch().returncode, 0)
+        self.assertEqual(len(self.log.read_text().splitlines()), 2)
+
     def test_changed_pin_cannot_reuse_old_bytes(self):
         self.assertEqual(self.fetch().returncode, 0)
         self.remote.write_bytes(b'new approved input')
