@@ -16,9 +16,15 @@ on:
       - 'LICENSE'
       - '.gitignore'
   workflow_dispatch:
+    inputs:
+      rebuild_preloads:
+        description: Rebuild preloads instead of reusing the approved binary snapshot
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+  actions: read
   pull-requests: write
 
 concurrency:
@@ -26,7 +32,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  PRELOAD_CACHE_VERSION: v7
+  PRELOAD_CACHE_VERSION: v8
 
 jobs:
   xbox:
@@ -257,34 +263,43 @@ jobs:
             app/src/main/assets/linuxfs
             !app/src/main/assets/linuxfs/usr/local/lib/droiddeck-comet
             !app/src/main/assets/linuxfs/usr/local/lib/droiddeck-xbox
-          key: preloads-${{ env.PRELOAD_CACHE_VERSION }}-${{ hashFiles('app/src/main/cpp/fakeinput_steam.cpp', 'app/src/main/cpp/adrenotools/src/hook/kgsl.h', 'tools/quest/*', 'tools/linuxfs/preload/*.c', 'tools/linuxfs/build-x86-preloads.sh', 'tools/linuxfs/fex/*', 'tools/linuxfs/clipboard/*.c', 'tools/linuxfs/ssbs/*.c', 'tools/proot/fastpath/*.c', 'tools/linuxfs/overlay/usr/local/bin/*', 'tools/linuxfs/overlay/usr/bin/**', 'tools/linuxfs/desktop/*', 'tools/gamescope/release.env', 'tools/wlroots/release.env', 'tools/linuxfs/uruntime.env', 'tools/linuxfs/licenses/*', 'tools/mangoapp/*', 'tools/msitools/**', 'tools/linuxfs/debian-image.env', 'tools/pipewire/**', 'tools/ci/install-ubuntu-packages.sh', 'tools/vr/**') }}
+            !app/src/main/assets/linuxfs/i386/libblsession.so
+            !app/src/main/assets/linuxfs/i386/libfakeinput.so
+            !app/src/main/assets/linuxfs/i386/libfaultreport.so
+            !app/src/main/assets/linuxfs/libblaudit.so
+            !app/src/main/assets/linuxfs/libblfastpath.so
+            !app/src/main/assets/linuxfs/libblsession.so
+            !app/src/main/assets/linuxfs/libfakeinput.so
+            !app/src/main/assets/linuxfs/libssbs.so
+            !app/src/main/assets/linuxfs/usr/local/bin/droiddeck-clipboard
+            !app/src/main/assets/linuxfs/x86_64/libblsession.so
+            !app/src/main/assets/linuxfs/x86_64/libfakeinput.so
+            !app/src/main/assets/linuxfs/x86_64/libfaultreport.so
+            !app/src/main/assets/linuxfs/x86_64/libvulkan-thunk.so
+            !app/src/main/assets/linuxfs/x86_64/libwebkitinput.so
+          key: preloads-${{ env.PRELOAD_CACHE_VERSION }}-${{ hashFiles('app/src/main/cpp/adrenotools/src/hook/kgsl.h', 'tools/quest/*', 'tools/linuxfs/overlay/usr/local/bin/*', 'tools/linuxfs/overlay/usr/bin/**', 'tools/linuxfs/desktop/*', 'tools/gamescope/release.env', 'tools/wlroots/release.env', 'tools/linuxfs/uruntime.env', 'tools/linuxfs/licenses/*', 'tools/mangoapp/*', 'tools/msitools/**', 'tools/pipewire/**', 'tools/ci/install-ubuntu-packages.sh', 'tools/vr/**') }}
 
-      - name: Build libfakeinput.so and libblsession.so (glibc aarch64)
+      - name: Restore verified preload snapshots
+        id: component-preloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE_PRELOAD_REBUILD: ${{ inputs.rebuild_preloads || 'false' }}
+          COMPONENT_TRUSTED_BASE: ${{ needs.xbox.outputs.base-sha || github.sha }}
+        run: python3 tools/components/preloads.py restore
+
+      - name: Build changed ARM64 preloads
+        if: steps.component-preloads.outputs.arm64 != 'true'
+        run: |
+          bash tools/ci/install-ubuntu-packages.sh gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          bash tools/components/build-arm64-preloads.sh app/src/main/assets/linuxfs
+
+      - name: Prepare remaining Linux runtime assets
         if: steps.preloads.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
           bash tools/ci/install-ubuntu-packages.sh gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libvulkan1 mesa-vulkan-drivers
           D=app/src/main/assets/linuxfs
           mkdir -p "$D"
-          aarch64-linux-gnu-g++ -shared -fPIC -O2 -Wall -Wno-attributes -Wno-nonnull-compare \
-            -pthread -std=c++17 -static-libstdc++ -static-libgcc -Wl,--exclude-libs,ALL \
-            -o "$D/libfakeinput.so" app/src/main/cpp/fakeinput_steam.cpp -ldl
-          aarch64-linux-gnu-strip --strip-unneeded "$D/libfakeinput.so"
-          aarch64-linux-gnu-gcc -shared -fPIC -O2 -Wall -pthread \
-            -o "$D/libblsession.so" tools/linuxfs/preload/*.c -ldl
-          aarch64-linux-gnu-strip --strip-unneeded "$D/libblsession.so"
-          aarch64-linux-gnu-gcc -shared -fPIC -O2 -Wall -pthread \
-            -o "$D/libblfastpath.so" tools/proot/fastpath/fastpath.c -ldl
-          aarch64-linux-gnu-strip --strip-unneeded "$D/libblfastpath.so"
-          aarch64-linux-gnu-gcc -shared -fPIC -O2 -Wall -nostdlib -ffreestanding -fno-stack-protector \
-            -fno-tree-loop-distribute-patterns -Wl,-z,defs -o "$D/libblaudit.so" tools/proot/fastpath/audit.c
-          aarch64-linux-gnu-strip --strip-unneeded "$D/libblaudit.so"
-          aarch64-linux-gnu-gcc -shared -fPIC -O2 -Wall -pthread \
-            -o "$D/libssbs.so" tools/linuxfs/ssbs/ssbs_adapter.c -ldl
-          aarch64-linux-gnu-strip --strip-unneeded "$D/libssbs.so"
-          mkdir -p "$D/usr/local/bin"
-          aarch64-linux-gnu-gcc -O2 -Wall -Wextra -o "$D/usr/local/bin/droiddeck-clipboard" tools/linuxfs/clipboard/clipboard.c -ldl
-          aarch64-linux-gnu-strip --strip-unneeded "$D/usr/local/bin/droiddeck-clipboard"
           VK_INCLUDE=$(ls -d "${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-$ANDROID_NDK_ROOT}}"/toolchains/llvm/prebuilt/*/sysroot/usr/include | head -1) \
             tools/vr/build.sh --native "$D/usr/local/lib/droiddeck-vr"
           for script in tools/linuxfs/overlay/usr/local/bin/droiddeck-* tools/linuxfs/overlay/usr/local/bin/steam-compatibility; do
@@ -366,7 +381,7 @@ jobs:
           ls -lR "$D"
 
       - name: Fetch the Debian image the preloads build in
-        if: steps.preloads.outputs.cache-hit != 'true'
+        if: steps.component-preloads.outputs.x86 != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -389,7 +404,7 @@ jobs:
           docker image ls "$image"
 
       - name: Build the x86 preloads FEX guests load (glibc 2.31)
-        if: steps.preloads.outputs.cache-hit != 'true'
+        if: steps.component-preloads.outputs.x86 != 'true'
         run: |
           set -euo pipefail
           docker run --rm -v "$PWD:/src" -w /src public.ecr.aws/docker/library/debian:bullseye bash -c '
