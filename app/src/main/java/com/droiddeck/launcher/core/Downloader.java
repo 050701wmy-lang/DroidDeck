@@ -35,6 +35,7 @@ public final class Downloader {
     public static final class Cancellation implements java.util.function.BooleanSupplier {
         private final AtomicBoolean cancelled = new AtomicBoolean();
         private final AtomicReference<HttpURLConnection> connection = new AtomicReference<>();
+        private final AtomicReference<InputStream> input = new AtomicReference<>();
         private final java.util.function.BooleanSupplier external;
 
         public Cancellation() { this(null); }
@@ -44,11 +45,19 @@ public final class Downloader {
             cancelled.set(true);
             HttpURLConnection active = connection.get();
             if (active != null) disconnectAsync(active);
+            InputStream activeInput = input.get();
+            if (activeInput != null) closeAsync(activeInput);
         }
 
         private static void disconnectAsync(HttpURLConnection active) {
             CANCEL_EXECUTOR.execute(() -> {
                 try { active.disconnect(); } catch (RuntimeException ignored) { }
+            });
+        }
+
+        private static void closeAsync(InputStream active) {
+            CANCEL_EXECUTOR.execute(() -> {
+                try { active.close(); } catch (IOException ignored) { }
             });
         }
 
@@ -62,6 +71,13 @@ public final class Downloader {
         }
 
         private void detach(HttpURLConnection active) { connection.compareAndSet(active, null); }
+
+        private void attach(InputStream active) {
+            input.set(active);
+            if (getAsBoolean()) closeAsync(active);
+        }
+
+        private void detach(InputStream active) { input.compareAndSet(active, null); }
     }
 
     public static String downloadString(String url) {
@@ -278,7 +294,9 @@ public final class Downloader {
             identity.etag = strongETag(etag) ? etag : null;
             saveIdentity(destination, identity, expectedSha256);
             long written = have;
-            try (InputStream in = new BufferedInputStream(connection.getInputStream(), 1 << 16);
+            InputStream input = connection.getInputStream();
+            if (cancelled instanceof Cancellation) ((Cancellation) cancelled).attach(input);
+            try (InputStream in = new BufferedInputStream(input, 1 << 16);
                  OutputStream out = new FileOutputStream(destination, appending)) {
                 byte[] buffer = new byte[1 << 16];
                 long lastReport = 0;
@@ -291,6 +309,8 @@ public final class Downloader {
                         progress.accept(total > 0 ? written / (float) total : -1f);
                     }
                 }
+            } finally {
+                if (cancelled instanceof Cancellation) ((Cancellation) cancelled).detach(input);
             }
             if (isCancelled(cancelled)) return Outcome.CANCELLED;
             if (total > 0 && written < total) return Outcome.RETRY;
