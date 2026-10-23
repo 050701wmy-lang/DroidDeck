@@ -126,7 +126,6 @@ object SessionArtifacts {
         for (f in files) {
             if (shouldStop()) return false
             if (LogRedactor.isBinary(f)) continue
-            if (!LogRedactor.isText(f)) { record.failed = true; continue }
             when (val result = scrubFile(dir, f, shouldStop)) {
                 is ScrubResult.Done -> record.files[f] = result.scrubbed
                 ScrubResult.Failed -> record.failed = true

@@ -41,7 +41,7 @@ class SessionLogShareZipTest {
                 val entry = archive.getEntry("${session.name}/steam-42.log")!!
                 archive.getInputStream(entry).use { input ->
                     // Only inspect the bounded scrubbed prefix: the pre-fix raw archive is over 64 MiB.
-                    val expected = "${com.droiddeck.launcher.core.LogRedactor.OVERSIZED_LINE}\n"
+                    val expected = "<unsupported or oversized line withheld>\n"
                     val prefix = ByteArray(expected.toByteArray(StandardCharsets.UTF_8).size)
                     var offset = 0
                     while (offset < prefix.size) {

@@ -33,7 +33,7 @@ class SettingsResetTest {
         SessionPrefs.setHdr(app, SessionService.MODE_DESKTOP, true)
         SessionPrefs.setResolutionChoice(app, SessionService.MODE_STEAM, "1280x800")
         SessionPrefs.setGuestHostname(app, "MyDeck")
-        SessionPrefs.setGameDebugLogsEnabled(app, true)
+        assertTrue(SessionPrefs.setGameDebugLogsEnabled(app, true))
         SessionPrefs.setHudShowFps(app, false)
         SessionPrefs.setHudShowBattery(app, false)
         SessionPrefs.setHudShowGraph(app, false)
@@ -68,6 +68,22 @@ class SettingsResetTest {
         assertEquals(AppUiPrefs.DEFAULT_SCALE, AppUiPrefs.scale(app))
         assertEquals(FrameGen.Mode.OFF.engine, FrameGen.engine(app))
         assertFalse(prefs("steam_touch").contains("gyro"))
+    }
+
+    @Test fun aFailedDebugOptOutDoesNotHideTheEnabledPreference() {
+        assertTrue(SessionPrefs.setGameDebugLogsEnabled(app, true))
+        val directory = java.io.File(com.droiddeck.launcher.runtime.LinuxRuntime.rootDir(app),
+            "root/.config/droiddeck")
+        directory.deleteRecursively()
+        directory.writeText("blocks configuration publication")
+        try {
+            assertFalse(SettingsReset.resetAll(app, gameProfiles = false))
+            assertTrue(SessionPrefs.gameDebugLogsEnabled(app))
+        } finally {
+            directory.delete()
+            directory.mkdirs()
+            GameEnvironmentStore.publish(app)
+        }
     }
 
     @Test fun libraryAndRecordsAreKept() {
