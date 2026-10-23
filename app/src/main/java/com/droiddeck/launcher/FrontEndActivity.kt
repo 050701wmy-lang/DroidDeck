@@ -560,9 +560,11 @@ class FrontEndActivity : ComponentActivity() {
                 }, steamSession = true)
     }
 
-    private fun Intent.returnTo(returnHome: Boolean): Intent =
-        putExtra(SessionActivity.EXTRA_RETURN_HOME, returnHome)
-            .putExtra(SessionActivity.EXTRA_LINK_TASK, if (returnHome) taskId else -1)
+    private fun Intent.returnTo(returnHome: Boolean): Intent {
+        val task = taskId
+        return putExtra(SessionActivity.EXTRA_RETURN_HOME, returnHome)
+            .apply { if (returnHome) putExtra(SessionActivity.EXTRA_LINK_TASK, task) }
+    }
 
     private fun launchWithoutSteam(game: Library.SteamGame, returnHome: Boolean): Boolean {
         val app = applicationContext
