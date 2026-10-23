@@ -94,8 +94,8 @@ class AddedGameArtLookupTest {
         assertEquals("build", SteamGridDb.pick("  ", "build"))
         assertEquals("", SteamGridDb.pick("", ""))
         val builtIn = SteamGridDb.builtInKey()
-        assertTrue(builtIn == BuildConfig.SGDB_API_KEY.trim())
-        assertTrue(SteamGridDb.key(app) == builtIn)
+        assertTrue(builtIn == BuildConfig.SGDB_API_KEY)
+        assertTrue(SteamGridDb.key(app) == builtIn.trim())
     }
 
     @Test fun theUsersKeyIsSealedOnDiskAndClears() {
@@ -108,7 +108,7 @@ class AddedGameArtLookupTest {
         assertEquals("abcdef0123456789secretkey", SteamGridDb.key(app))
         SteamGridDb.setUserKey(app, "")
         assertFalse(file.exists())
-        assertTrue(SteamGridDb.key(app) == SteamGridDb.builtInKey())
+        assertTrue(SteamGridDb.key(app) == SteamGridDb.builtInKey().trim())
     }
 
     @Test fun aFailedLookupIsNotRememberedAsNoMatch() {
