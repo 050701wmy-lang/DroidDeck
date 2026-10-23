@@ -472,6 +472,13 @@ object SessionPrefs {
         prefs(context).edit().putBoolean("prootFastPath", on).apply()
     }
 
+    /** gamescope draws the cursor itself. Off by default: on a phone that plane costs frames. */
+    fun cursorComposite(context: Context): Boolean = prefs(context).getBoolean("cursorComposite", false)
+
+    fun setCursorComposite(context: Context, on: Boolean) {
+        prefs(context).edit().putBoolean("cursorComposite", on).apply()
+    }
+
     const val DEFAULT_GUEST_HOSTNAME = "DroidDeck"
 
     @JvmStatic
