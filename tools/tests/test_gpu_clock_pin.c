@@ -13,7 +13,7 @@
 #include "../../app/src/main/cpp/waylandcomp/src/gpu_clock_pin.h"
 
 enum { NONE, OPEN, DEVICE, CONTEXT, CONSTRAINT, MEMORY, MAP, SYNC, SUBMIT, THREAD, WAIT };
-static atomic_int failure, descriptors, contexts, memories, mappings, submissions;
+static atomic_int failure, descriptors, contexts, memories, mappings, submissions, waits;
 static atomic_bool timeout_wait;
 static bool legacy_core;
 static uint32_t commands[1024];
@@ -115,6 +115,7 @@ int __wrap_ioctl(int fd, unsigned long request, ...) {
         break;
     }
     case IOCTL_KGSL_DEVICE_WAITTIMESTAMP_CTXTID:
+        atomic_fetch_add(&waits, 1);
         if (atomic_load(&timeout_wait)) { errno = ETIMEDOUT; return -1; }
         break;
     case IOCTL_KGSL_DRAWCTXT_DESTROY:
@@ -157,7 +158,7 @@ int main(void) {
     atomic_store(&submissions, 0);
     assert(gpu_clock_pin_set(true));
     assert(gpu_clock_pin_set(true));
-    usleep(80000);
+    for (int i = 0; i < 100 && atomic_load(&submissions) < 2; ++i) usleep(10000);
     assert(atomic_load(&submissions) > 1);
     assert(gpu_clock_pin_set(false));
     assert(gpu_clock_pin_set(false));
@@ -165,8 +166,10 @@ int main(void) {
 
     atomic_store(&timeout_wait, true);
     atomic_store(&submissions, 0);
+    atomic_store(&waits, 0);
     assert(gpu_clock_pin_set(true));
-    usleep(80000);
+    for (int i = 0; i < 100 && atomic_load(&waits) < 2; ++i) usleep(10000);
+    assert(atomic_load(&waits) >= 2);
     assert(atomic_load(&submissions) == 1);
     assert(gpu_clock_pin_set(false));
     assert_released();
