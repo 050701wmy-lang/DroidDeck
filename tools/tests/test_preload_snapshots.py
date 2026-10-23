@@ -41,6 +41,9 @@ class PreloadSnapshotTest(unittest.TestCase):
         recipe = 'tools/components/build-arm64-preloads.sh'
         (self.root / recipe).parent.mkdir(parents=True, exist_ok=True)
         (self.root / recipe).write_text((snapshots.ROOT / recipe).read_text())
+        x86 = 'tools/components/recipes/x86-preloads.sh'
+        (self.root / x86).parent.mkdir(parents=True, exist_ok=True)
+        (self.root / x86).write_text((snapshots.ROOT / x86).read_text())
         (self.root / '.github/workflows').mkdir(parents=True)
         (self.root / '.github/workflows/build.yml').write_text((snapshots.ROOT / '.github/workflows/build.yml').read_text())
         self.git('init', '-q')
@@ -52,7 +55,8 @@ class PreloadSnapshotTest(unittest.TestCase):
         self.content = archive(self.binaries)
         self.data = dict(version=1, origin=dict(run=123, commit='abc', artifact=456, artifact_sha256='0' * 64),
                          groups={g: snapshots.source_files(g, self.root) for g in snapshots.INPUTS},
-                         arm64_recipe=snapshots.recipe(self.root), archive_sha256=snapshots.sha(self.content),
+                         arm64_recipe=snapshots.recipe(self.root), x86_recipe=snapshots.x86_recipe(self.root),
+                         archive_sha256=snapshots.sha(self.content),
                          outputs={name: snapshots.sha(value) for name, value in self.binaries.items()})
         (self.root / snapshots.LOCK).write_text(json.dumps(self.data))
         self.git('add', '.')
@@ -106,6 +110,12 @@ class PreloadSnapshotTest(unittest.TestCase):
         text = script.read_text()
         script.write_text(text.replace('-ldl\n', '-ldl ', 1))
         self.assertNotEqual(original, snapshots.recipe(self.root))
+
+    def test_x86_container_recipe_changes_rebuild_x86_only(self):
+        script = self.root / 'tools/components/recipes/x86-preloads.sh'
+        script.write_text(script.read_text().replace('debian:bullseye', 'debian:bookworm'))
+        result, _, _ = self.restore()
+        self.assertEqual(result, dict(arm64=True, x86=False))
 
     def test_new_manifest_requires_main_build_proof(self):
         result, _, prove = self.restore('HEAD~1')

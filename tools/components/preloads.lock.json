@@ -121,5 +121,6 @@
     "arm64": "Ubuntu 24.04 GCC cross compiler; exact build commands pinned by arm64_recipe",
     "x86": "Debian bullseye compiler image and recipe pinned by source inputs"
   },
-  "version": 1
+  "version": 1,
+  "x86_recipe": "36d06d49f7a4bff5ef675c1e03ce5a5b61498df4c36b9d15a938b41564f755cc"
 }

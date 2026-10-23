@@ -91,6 +91,20 @@ def recipe(root=ROOT, commit=None):
     return sha(text.replace('\r\n', '\n').encode())
 
 
+def x86_recipe(root=ROOT, commit=None):
+    path = 'tools/components/recipes/x86-preloads.sh'
+    if commit and not run('git', 'ls-tree', commit, path, root=root):
+        workflow = run('git', 'show', f'{commit}:.github/workflows/build.yml', root=root).decode()
+        section = workflow[workflow.index('      - name: Build the x86 preloads'):]
+        text = section.split('        run: |\n', 1)[1].split('\n      - name:', 1)[0]
+        text = textwrap.dedent(text).rstrip() + '\n'
+    else:
+        text = (run('git', 'show', f'{commit}:{path}', root=root).decode() if commit
+                else (root / path).read_text())
+        text = text.removeprefix('#!/usr/bin/env bash\n')
+    return sha(text.replace('\r\n', '\n').encode())
+
+
 def artifact_bytes(origin, cache):
     build = api(f"actions/runs/{origin['run']}")
     if (build['event'] != 'push' or build['head_branch'] != 'main' or build['conclusion'] != 'success'
@@ -160,6 +174,8 @@ def prove_origin(data, cache, root=ROOT):
                 raise ValueError('Snapshot omits or changes a producing build dependency')
     if recipe(root, commit) != data['arm64_recipe']:
         raise ValueError('Snapshot recipe differs from the producing source')
+    if x86_recipe(root, commit) != data['x86_recipe']:
+        raise ValueError('Snapshot x86 recipe differs from the producing source')
 
 
 def unpack(content, data):
@@ -188,6 +204,7 @@ def restore(root=ROOT):
     validate_lock(data)
     matching = {group: source_files(group, root) == data['groups'][group] for group in INPUTS}
     matching['arm64'] &= recipe(root) == data['arm64_recipe']
+    matching['x86'] &= x86_recipe(root) == data.get('x86_recipe')
     if os.environ.get('FORCE_PRELOAD_REBUILD') == 'true':
         matching = dict.fromkeys(INPUTS, False)
     if any(matching.values()):
@@ -243,7 +260,8 @@ def snapshot(run_id, destination, root=ROOT):
     content = artifact_bytes(origin, root / 'app/build/component-downloads')
     run('git', 'fetch', '--no-tags', 'origin', origin['commit'], root=root)
     data = dict(version=1, origin=origin, groups={g: source_files(g, root, origin['commit']) for g in INPUTS},
-                arm64_recipe=recipe(root, origin['commit']), outputs={name: sha(value) for name, value in content.items()},
+                arm64_recipe=recipe(root, origin['commit']), x86_recipe=x86_recipe(root, origin['commit']),
+                outputs={name: sha(value) for name, value in content.items()},
                 toolchain=dict(arm64='Ubuntu 24.04 GCC cross compiler; exact build commands pinned by arm64_recipe',
                                x86='Debian bullseye compiler image and recipe pinned by source inputs'))
     stream = io.BytesIO()
