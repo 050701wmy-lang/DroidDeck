@@ -1,10 +1,40 @@
-# Verified preload snapshots
+# Runtime component preparation
+
+`recipes.json` owns component source inputs, builders, outputs, package requirements
+and pinned downloads. `prepare.py` runs those recipes, calculates cache identities,
+installs the union of missing tools and verifies the prepared artifact handoff.
+Builders live in `recipes/`; the workflow describes scheduling and gates.
+
+```mermaid
+flowchart LR
+    Source[Pin source tree] --> Components[Prepare verified components]
+    Source --> Xbox[Xbox ARM64 backend]
+    Source --> Tests[Python and native tests]
+    Components --> APK[Compile APK and Android tests]
+    Xbox --> APK
+    APK --> Gate[Compile and test APK gate]
+    Tests --> Gate
+    Gate --> Publish[Main only: signing and publishing]
+```
+
+All workers verify the same source tree. The component artifact records that tree,
+recipe identities and every output hash; the APK worker verifies the inventory
+before building. This handoff verifies consistency within the same CI run. It is
+not independent provenance for arbitrary artifacts. Source policy checks, tests,
+APK content/ABI checks and signing/publication gates remain in place.
+
+`tools/ci/toolchains.env` pins the Android NDK shared by component, APK and native
+test workers. Linux builds use Ubuntu 24.04. Recipe and input changes invalidate
+the relevant component cache; ordinary caches remain performance aids.
+
+## Verified preload snapshots
 
 `preloads.lock.json` pins a small immutable preload archive. It records each
 binary's hash, its producing main CI run, the original APK artifact identity and
 digest, source/header hashes, the ARM64 build recipe and x86 compiler-image inputs.
 It covers core ARM64 preloads and the x86 preload libraries. VR, Android native
-libraries, Comet and Xbox keep their existing preparation paths.
+libraries, Comet and Xbox use their registered recipes and existing release pins
+or component caches.
 
 Every build compares current source inputs, including transitive quoted headers,
 and build recipes with this manifest. Changed groups rebuild from source. A

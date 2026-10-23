@@ -100,6 +100,13 @@ class PreloadSnapshotTest(unittest.TestCase):
         result, _, _ = self.restore()
         self.assertEqual(result, dict(arm64=False, x86=True))
 
+    def test_shell_newline_changes_invalidate_the_recipe(self):
+        script = self.root / 'tools/components/build-arm64-preloads.sh'
+        original = snapshots.recipe(self.root)
+        text = script.read_text()
+        script.write_text(text.replace('-ldl\n', '-ldl ', 1))
+        self.assertNotEqual(original, snapshots.recipe(self.root))
+
     def test_new_manifest_requires_main_build_proof(self):
         result, _, prove = self.restore('HEAD~1')
         self.assertTrue(all(result.values()))
@@ -110,6 +117,18 @@ class PreloadSnapshotTest(unittest.TestCase):
         data['outputs']['libblsession.so'] = 'f' * 64
         with patch.object(snapshots, 'artifact_bytes', return_value=self.binaries):
             with self.assertRaisesRegex(ValueError, 'original main APK'):
+                snapshots.prove_origin(data, self.root / 'cache', self.root)
+
+    def test_modified_input_policy_cannot_omit_producer_dependencies(self):
+        data = copy.deepcopy(self.data)
+        data['origin']['commit'] = self.base
+        omitted = snapshots.COMMON[0]
+        del data['groups']['arm64'][omitted]
+        with patch.object(snapshots, 'artifact_bytes', return_value=self.binaries), \
+                patch.object(snapshots, 'run', return_value=b''), \
+                patch.object(snapshots, 'source_files', side_effect=lambda group, *args: data['groups'][group]), \
+                patch.object(snapshots, 'producer_sources', return_value={omitted: self.data['groups']['arm64'][omitted]}):
+            with self.assertRaisesRegex(ValueError, 'producing build dependency'):
                 snapshots.prove_origin(data, self.root / 'cache', self.root)
 
     def test_non_main_or_unsuccessful_run_cannot_prove_origin(self):
@@ -138,6 +157,18 @@ class PreloadSnapshotTest(unittest.TestCase):
         with patch.dict(os.environ, COMPONENT_TRUSTED_BASE=self.base), \
                 patch.object(snapshots.urllib.request, 'urlopen', side_effect=error):
             self.assertEqual(snapshots.restore(self.root), dict(arm64=False, x86=False))
+
+    def test_transient_download_failure_rebuilds_but_integrity_errors_fail(self):
+        errors = [TimeoutError('network'), snapshots.http.client.IncompleteRead(b'partial'),
+                  snapshots.urllib.error.HTTPError('https://example.test', 503, 'unavailable', {}, None)]
+        for error in errors:
+            with self.subTest(error=type(error).__name__), patch.dict(os.environ, COMPONENT_TRUSTED_BASE=self.base), \
+                    patch.object(snapshots.urllib.request, 'urlopen', side_effect=error):
+                self.assertEqual(snapshots.restore(self.root), dict(arm64=False, x86=False))
+        with patch.dict(os.environ, COMPONENT_TRUSTED_BASE=self.base), \
+                patch.object(snapshots.urllib.request, 'urlopen', return_value=io.BytesIO(b'corrupt')):
+            with self.assertRaisesRegex(ValueError, 'checksum'):
+                snapshots.restore(self.root)
 
     def test_manual_rebuild_does_not_download_snapshot(self):
         with patch.dict(os.environ, FORCE_PRELOAD_REBUILD='true'), \

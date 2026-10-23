@@ -1,6 +1,7 @@
 """Reuse reviewed preload snapshots; changed snapshots must prove their main-build origin."""
 import argparse
 import gzip
+import http.client
 import hashlib
 import io
 import json
@@ -10,6 +11,7 @@ import re
 from pathlib import Path
 import subprocess
 import tarfile
+import textwrap
 import urllib.error
 import urllib.request
 from zipfile import ZipFile
@@ -17,20 +19,12 @@ from zipfile import ZipFile
 ROOT = Path(__file__).resolve().parents[2]
 REPO = 'Droid-Deck/DroidDeck'
 LOCK = 'tools/components/preloads.lock.json'
-COMMON = ['app/src/main/cpp/fakeinput_steam.cpp', 'app/src/main/cpp/adrenotools/src/hook/kgsl.h',
-          'app/src/main/cpp/venc/venc_proto.h', 'tools/linuxfs/preload',
-          'tools/quest/kgsl_compat.c', 'tools/quest/kgsl_compat.h']
-INPUTS = {
-    'arm64': COMMON + ['tools/proot/fastpath', 'tools/linuxfs/ssbs', 'tools/linuxfs/clipboard'],
-    'x86': COMMON + ['tools/linuxfs/fex', 'tools/linuxfs/build-x86-preloads.sh', 'tools/linuxfs/debian-image.env'],
-}
-OUTPUTS = {
-    'arm64': ['libfakeinput.so', 'libblsession.so', 'libblfastpath.so', 'libblaudit.so', 'libssbs.so',
-              'usr/local/bin/droiddeck-clipboard'],
-    'x86': [f'{arch}/{name}.so' for arch in ('x86_64', 'i386')
-            for name in ('libfakeinput', 'libblsession', 'libfaultreport')]
-           + ['x86_64/libwebkitinput.so', 'x86_64/libvulkan-thunk.so'],
-}
+DEFINITIONS = json.loads((ROOT / 'tools/components/recipes.json').read_text())
+INPUTS = {group: DEFINITIONS[name]['source_inputs'] for group, name in
+          [('arm64', 'arm64-preloads'), ('x86', 'x86-preloads')]}
+OUTPUTS = {group: DEFINITIONS[name]['snapshot_outputs'] for group, name in
+           [('arm64', 'arm64-preloads'), ('x86', 'x86-preloads')]}
+COMMON = [name for name in INPUTS['arm64'] if name in INPUTS['x86']]
 FILES = set(sum(OUTPUTS.values(), []))
 
 
@@ -46,12 +40,13 @@ def api(path):
     return json.loads(run('gh', 'api', 'repos/' + REPO + '/' + path))
 
 
-def source_files(group, root=ROOT, commit=None):
+def source_files(group, root=ROOT, commit=None, patterns=None):
+    patterns = patterns if patterns is not None else INPUTS[group]
     if commit:
-        paths = run('git', 'ls-tree', '-r', '--name-only', commit, '--', *INPUTS[group], root=root).decode().splitlines()
+        paths = run('git', 'ls-tree', '-r', '--name-only', commit, '--', *patterns, root=root).decode().splitlines()
         read = lambda path: run('git', 'show', f'{commit}:{path}', root=root)
     else:
-        paths = run('git', 'ls-files', '--cached', '--others', '--exclude-standard', '--', *INPUTS[group], root=root).decode().splitlines()
+        paths = run('git', 'ls-files', '--cached', '--others', '--exclude-standard', '--', *patterns, root=root).decode().splitlines()
         read = lambda path: (root / path).read_bytes()
     paths = [p for p in paths if not p.endswith('.md') and '__pycache__' not in p and not p.endswith('.pyc')]
     if not paths:
@@ -70,7 +65,8 @@ def source_files(group, root=ROOT, commit=None):
             pending.append(posixpath.normpath(posixpath.join(posixpath.dirname(path), include.decode())))
     workflow = (run('git', 'show', f'{commit}:.github/workflows/build.yml', root=root).decode() if commit
                 else (root / '.github/workflows/build.yml').read_text())
-    runner = re.search(r'(?ms)^  build:\n.*?^    runs-on: ([^\n]+)', workflow)
+    job = 'components' if re.search(r'(?m)^  components:', workflow) else 'build'
+    runner = re.search(r'(?ms)^  ' + job + r':\n.*?^    runs-on: ([^\n]+)', workflow)
     if runner is None:
         raise ValueError('APK build runner policy is missing')
     result['@runner'] = sha(runner[1].strip().encode())
@@ -85,14 +81,14 @@ def recipe(root=ROOT, commit=None):
     if commit and run('git', 'ls-tree', commit, script, root=root) == b'':
         workflow = read('.github/workflows/build.yml')
         text = workflow[workflow.index('          aarch64-linux-gnu-g++ -shared'):]
-        text = text[:text.index('          VK_INCLUDE=')]
+        text = textwrap.dedent(text[:text.index('          VK_INCLUDE=')])
     else:
         text = read(script)
         preamble = '#!/usr/bin/env bash\nset -euo pipefail\nD=${1:?output directory}\nmkdir -p "$D"\n'
         if not text.startswith(preamble):
             return sha(text.encode())
         text = text[len(preamble):]
-    return sha(' '.join(text.split()).encode())
+    return sha(text.replace('\r\n', '\n').encode())
 
 
 def artifact_bytes(origin, cache):
@@ -130,6 +126,26 @@ def validate_lock(data):
             raise ValueError('Invalid preload checksum')
 
 
+def producer_sources(group, commit, root=ROOT):
+    config = 'tools/components/recipes.json'
+    if run('git', 'ls-tree', commit, config, root=root):
+        definitions = json.loads(run('git', 'show', f'{commit}:{config}', root=root))
+        name = 'arm64-preloads' if group == 'arm64' else 'x86-preloads'
+        patterns = definitions[name]['source_inputs']
+    else:
+        # Older approved builds kept ARM64 commands inline, before the Vulkan/VR build.
+        if group == 'arm64':
+            text = run('git', 'show', f'{commit}:.github/workflows/build.yml', root=root).decode()
+            text = text[text.index('          aarch64-linux-gnu-g++ -shared'):]
+            text = text[:text.index('          VK_INCLUDE=')]
+        else:
+            text = run('git', 'show', f'{commit}:tools/linuxfs/build-x86-preloads.sh', root=root).decode()
+        patterns = re.findall(r'\b((?:tools|app)/[\w./*+-]+\.(?:cpp|c|h))(?=\s|$)', text)
+        if group == 'x86':
+            patterns += ['tools/linuxfs/fex', 'tools/linuxfs/build-x86-preloads.sh', 'tools/linuxfs/debian-image.env']
+    return source_files(group, root, commit, patterns)
+
+
 def prove_origin(data, cache, root=ROOT):
     content = artifact_bytes(data['origin'], cache)
     if {name: sha(value) for name, value in content.items()} != data['outputs']:
@@ -139,6 +155,9 @@ def prove_origin(data, cache, root=ROOT):
     for group in INPUTS:
         if source_files(group, root, commit) != data['groups'][group]:
             raise ValueError('Snapshot inputs differ from the producing source')
+        for name, checksum in producer_sources(group, commit, root).items():
+            if data['groups'][group].get(name) != checksum:
+                raise ValueError('Snapshot omits or changes a producing build dependency')
     if recipe(root, commit) != data['arm64_recipe']:
         raise ValueError('Snapshot recipe differs from the producing source')
 
@@ -179,14 +198,19 @@ def restore(root=ROOT):
             if result.returncode == 0:
                 approved = json.loads(result.stdout)
         if approved != data:
-            prove_origin(data, root / 'app/build/component-downloads', root)
+            try:
+                prove_origin(data, root / 'app/build/component-downloads', root)
+            except (subprocess.CalledProcessError, OSError, http.client.HTTPException):
+                print('Snapshot origin is unavailable; rebuilding without trusting the snapshot.')
+                matching = dict.fromkeys(INPUTS, False)
+    if any(matching.values()):
         url = (f"https://github.com/Droid-Deck/DroidDeck-Components/releases/download/"
                f"preloads-{data['archive_sha256']}/preloads.tar.gz")
         try:
             with urllib.request.urlopen(url, timeout=60) as response:
                 content = response.read(64 * 1024 * 1024)
-        except urllib.error.HTTPError as error:
-            if error.code != 404:
+        except (OSError, http.client.HTTPException) as error:
+            if isinstance(error, urllib.error.HTTPError) and error.code not in (404, 429) and error.code < 500:
                 raise
             print('Preload snapshot is unavailable; rebuilding from source.')
             matching = dict.fromkeys(INPUTS, False)
