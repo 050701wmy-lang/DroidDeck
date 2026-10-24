@@ -30,3 +30,7 @@ use, so a game looks the same wherever it appears.
 query bumps a generation counter, so a slow answer for an older one is dropped. A game already in the
 library replaces its browse copy on the grid, so Install and the owned markers are right; the detail page
 looks browse results up through `StoresState.detailItem`.
+
+## When a page fails
+
+A fetch that throws or answers with a non-2xx status marks the list as failed but leaves it open. The end of the list then shows a Retry button that asks for the same page again. Scrolling does not retry on its own, so a failing page cannot loop. Only a successful page with no new games ends the list.

@@ -56,6 +56,9 @@ internal fun ItchLoadMore() {
     val count = ItchBrowseState.items.size
     LaunchedEffect(count) { ItchBrowseState.more(ctx) }
     if (ItchBrowseState.loading) LinearProgressIndicator(Modifier.fillMaxWidth().padding(vertical = 12.dp))
+    else if (ItchBrowseState.failed) Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+        BrowseChip(stringResource(R.string.stores_dl_retry), false) { ItchBrowseState.more(ctx, retry = true) }
+    }
     else if (!ItchBrowseState.ended && count > 0) Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
         BrowseChip(stringResource(R.string.stores_itch_load_more), false) { ItchBrowseState.more(ctx) }
     }

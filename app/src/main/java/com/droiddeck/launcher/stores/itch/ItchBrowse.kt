@@ -151,8 +151,9 @@ internal object ItchBrowseState {
         if (active) more(context)
     }
 
-    fun more(context: Context) {
-        if (loading || ended || !active) return
+    /** Asks for the next page. A page that failed is only asked for again when [retry] is set, so scrolling can't loop on it. */
+    fun more(context: Context, retry: Boolean = false) {
+        if (loading || ended || !active || (failed && !retry)) return
         loading = true
         failed = false
         val app = context.applicationContext
@@ -164,13 +165,12 @@ internal object ItchBrowseState {
             StoresState.post {
                 if (mine != generation) return@post
                 loading = false
-                if (answer == null) {
-                    failed = items.isEmpty()
-                    ended = items.isNotEmpty()
+                // A thrown or non-2xx fetch leaves the list open so the same page can be asked for again.
+                if (answer == null || answer.code !in 200..299) {
+                    failed = true
                     return@post
                 }
                 if (answer.items.isEmpty()) {
-                    failed = items.isEmpty() && answer.code !in 200..299
                     ended = true
                     return@post
                 }
