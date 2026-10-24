@@ -105,14 +105,20 @@ fetch() {
       [ "$bad" -lt 3 ] || { echo "droiddeck-steam-install: $part does not match its checksum" >&2; return 1; }
     fi
     before=$(size_of "$dest")
-    exec {fd}< <(curl -fsSL "${limits[@]}" -C - -o "$dest" "$url" && echo 0 || echo $?)
-    until read -r -t 5 -u "$fd" rc; do
+    exec {fd}< <(code=$(curl -fsSL "${limits[@]}" -w '%{http_code}' -C - -o "$dest" "$url") && echo "0 $code" || echo "$? $code")
+    until read -r -t 5 -u "$fd" rc http; do
       if [ $? -le 128 ]; then rc=1; break; fi
       progress "$dest" "$part"
     done
     exec {fd}<&-
     if [ "$rc" = 0 ]; then finished=1; continue; fi
-    [ "$rc" = 33 ] && rm -f "$dest"
+    case "$rc:${http:-}" in
+      22:416 | 33:*) rm -f "$dest" ;;
+      22:4??)
+        echo "droiddeck-steam-install: $part: HTTP $http from ${url%/*}" >&2
+        return 1
+        ;;
+    esac
     if [ "$(size_of "$dest")" -gt "$before" ]; then failures=0; else failures=$((failures + 1)); fi
     if [ "$failures" -gt "${#delays[@]}" ]; then
       echo "droiddeck-steam-install: could not download $part (curl exit $rc); what arrived is kept for the next try" >&2

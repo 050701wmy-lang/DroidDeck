@@ -37,9 +37,13 @@ with open(os.environ['TEST_REQUESTS'], 'a') as log:
     log.write(url + '\\n')
 with open(os.environ['TEST_REQUESTS'] + '.offsets', 'a') as log:
     log.write(f'{name} {offset}\\n')
+def done(status, code='200'):
+    if '-w' in args:
+        sys.stdout.write(code)
+    sys.exit(status)
 host_fail = os.environ.get('TEST_FAIL_HOST')
 if host_fail and host_fail in url:
-    sys.exit(22)
+    done(22, '000')
 action = []
 plan = os.environ.get('TEST_PLAN')
 if plan and os.path.exists(plan):
@@ -51,14 +55,16 @@ if plan and os.path.exists(plan):
             open(plan, 'w').write(''.join(l + '\\n' for l in lines))
             break
 if action[:1] == ['fail']:
-    sys.exit(int(action[1]))
+    done(int(action[1]), '000')
+if action[:1] == ['http']:
+    done(22, action[1])
 if action[:1] == ['norange'] and offset:
-    sys.exit(33)
+    done(33)
 data = open(os.path.join(os.environ['TEST_CDN'], name), 'rb').read()
 end = int(action[1]) if action[:1] == ['cut'] else len(data)
 with open(out, 'ab' if offset else 'wb') as target:
     target.write(data[offset:end])
-sys.exit(28 if end < len(data) else 0)
+done(28 if end < len(data) else 0)
 ''')
         curl.chmod(0o755)
         self.plan = self.root / 'plan'
@@ -354,6 +360,28 @@ sys.exit(28 if end < len(data) else 0)
         result = self.install()
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual([0, 400000, 0], self.offsets(client))
+
+    def test_a_missing_part_hands_over_to_the_next_cdn_at_once(self):
+        files = self.two_parts()
+        client = files['client_linuxarm64_linuxarm64']
+        self.plan_for(client, 'http 404')
+        result = self.install()
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(['https://client-update.steamstatic.com/' + client,
+                          'https://client-update.akamai.steamstatic.com/' + client],
+                         [line for line in self.requests.read_text().splitlines() if line.endswith(client)])
+        self.assertIn('HTTP 404 from https://client-update.steamstatic.com', result.stderr)
+        self.assertNotIn('trying again', result.stdout)
+
+    def test_a_server_error_is_retried_on_the_same_cdn(self):
+        files = self.two_parts()
+        client = files['client_linuxarm64_linuxarm64']
+        self.plan_for(client, 'http 503')
+        result = self.install()
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(['https://client-update.steamstatic.com/' + client] * 2,
+                         [line for line in self.requests.read_text().splitlines() if line.endswith(client)])
+        self.assertIn('interrupted (curl exit 22), trying again in 0 s', result.stdout)
 
     def test_bytes_that_do_not_check_out_are_fetched_again(self):
         files = self.two_parts()
