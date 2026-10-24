@@ -139,7 +139,9 @@ class LoadingState(context: Context, private val steam: Boolean = true) {
             if (done != null && total != null && total > 0) {
                 return "$done / $total MB" to (done * 100 / total).toInt().coerceIn(0, 100)
             }
-            return count.groupValues[1] to count.groupValues[2].toInt() * 100 / maxOf(1, count.groupValues[3].toInt())
+            val part = count.groupValues[2].toIntOrNull() ?: return null
+            val all = count.groupValues[3].toIntOrNull() ?: return null
+            return count.groupValues[1] to part * 100 / maxOf(1, all)
         }
 
         internal fun readableScriptStep(scriptStep: String): Boolean {
