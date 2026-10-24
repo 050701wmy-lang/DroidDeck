@@ -34,7 +34,6 @@ import com.droiddeck.launcher.R
 import com.droiddeck.launcher.stores.itch.ItchBrowse
 import com.droiddeck.launcher.stores.itch.ItchBrowseState
 
-/** Sort and price chips above the itch Store tab; picking anything but the defaults swaps the shelves for results. */
 @Composable
 internal fun ItchBrowseBar() {
     val ctx = LocalContext.current
@@ -49,12 +48,10 @@ internal fun ItchBrowseBar() {
     }
 }
 
-/** The end of the result list: it asks for the next page as it scrolls into view. */
 @Composable
 internal fun ItchLoadMore() {
     val ctx = LocalContext.current
     val count = ItchBrowseState.items.size
-    // Keyed on nothing that changes with a page, so appending games never re-fires it while this end item stays composed; scrolling it back into view does.
     LaunchedEffect(Unit) { ItchBrowseState.more(ctx) }
     if (ItchBrowseState.loading) LinearProgressIndicator(Modifier.fillMaxWidth().padding(vertical = 12.dp))
     else if (ItchBrowseState.failed) Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {

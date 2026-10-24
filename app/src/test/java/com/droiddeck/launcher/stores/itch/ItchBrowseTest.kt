@@ -5,7 +5,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Every address here was copied from itch.io's own links, not worked out. */
 class ItchBrowseTest {
     private fun path(sort: String = ItchBrowse.SORT_POPULAR, price: String = ItchBrowse.PRICE_ANY, platforms: Set<String> = emptySet(), tags: List<String> = emptyList()) =
         ItchBrowse.path(BrowseQuery(sort, price, platforms, tags))
