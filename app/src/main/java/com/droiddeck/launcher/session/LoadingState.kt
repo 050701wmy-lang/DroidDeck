@@ -141,7 +141,7 @@ class LoadingState(context: Context, private val steam: Boolean = true) {
             }
             val part = count.groupValues[2].toIntOrNull() ?: return null
             val all = count.groupValues[3].toIntOrNull() ?: return null
-            return count.groupValues[1] to part * 100 / maxOf(1, all)
+            return count.groupValues[1] to (part.toLong() * 100 / maxOf(1, all)).coerceIn(0L, 100L).toInt()
         }
 
         internal fun readableScriptStep(scriptStep: String): Boolean {
