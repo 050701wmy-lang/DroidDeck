@@ -3555,6 +3555,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
             com.droiddeck.launcher.ui.QuitFlood.take()
             com.droiddeck.launcher.ui.LaunchOrigin.flooding = null
             closeLinkTasks()
+            if (!isTaskRoot) moveTaskToBack(true)
             super.finishAndRemoveTask()
         } else super.finish()
         if (quitFlooded) overridePendingTransition(0, 0)
