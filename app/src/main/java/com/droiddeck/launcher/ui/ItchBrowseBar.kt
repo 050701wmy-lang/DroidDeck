@@ -54,7 +54,8 @@ internal fun ItchBrowseBar() {
 internal fun ItchLoadMore() {
     val ctx = LocalContext.current
     val count = ItchBrowseState.items.size
-    LaunchedEffect(count) { ItchBrowseState.more(ctx) }
+    // Keyed on nothing that changes with a page, so appending games never re-fires it while this end item stays composed; scrolling it back into view does.
+    LaunchedEffect(Unit) { ItchBrowseState.more(ctx) }
     if (ItchBrowseState.loading) LinearProgressIndicator(Modifier.fillMaxWidth().padding(vertical = 12.dp))
     else if (ItchBrowseState.failed) Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
         BrowseChip(stringResource(R.string.stores_dl_retry), false) { ItchBrowseState.more(ctx, retry = true) }
