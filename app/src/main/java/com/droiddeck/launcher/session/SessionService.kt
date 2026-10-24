@@ -335,6 +335,9 @@ class SessionService : Service() {
         suspendAttemptFailed = false
         suspendController = null
         SessionState.suspended = false
+        SessionState.resumeRequested = false
+        SessionState.resuming = false
+        SessionState.resumeFailed = false
         SessionState.pipActive = false
         pipTask = false
         SessionState.program = intent?.getStringExtra(EXTRA_PROGRAM)
@@ -401,7 +404,7 @@ class SessionService : Service() {
 
     private fun runSession(gen: Int) {
         SessionTerminal.clear()
-        com.droiddeck.launcher.gpu.TpUbwcHint.forThisDevice()
+        com.droiddeck.launcher.gpu.TpUbwcHint.forThisDevice(this)
         try {
             LinuxRuntime.writeAccounts(this)
         } catch (e: Exception) {
@@ -678,6 +681,7 @@ class SessionService : Service() {
             com.droiddeck.launcher.core.AppLanguage.system(this).country,
         ))
         guest.add("TZ=" + java.util.TimeZone.getDefault().id)
+        if (SessionState.mode == MODE_STEAM) SessionPrefs.pendingShaderPrecache(this)?.let { guest.add("BL_SHADER_PRECACHE=" + if (it) "1" else "0") }
         guest.add("XDG_RUNTIME_DIR=" + LinuxRuntime.GUEST_RUNTIME_DIR)
         guest.add("XDG_SESSION_TYPE=wayland")
         guest.add("WAYLAND_DISPLAY=wayland-0")
@@ -700,7 +704,6 @@ class SessionService : Service() {
         val tuOverride = tuDebugOverride()
         val tuDriver = sysmemDriver(linuxDriverId)
         (tuOverride ?: "sysmem".takeIf { tuDriver || SessionPrefs.tuSysmem(this) })?.let { guest.add("TU_DEBUG=$it") }
-        com.droiddeck.launcher.gpu.TpUbwcHint.forThisDevice()?.let { guest.add("${com.droiddeck.launcher.gpu.TpUbwcHint.ENV}=$it") }
         if (SessionPrefs.zinkLazy(this)) {
             guest.add("ZINK_DESCRIPTORS=lazy")
             guest.add("ZINK_DEBUG=compact")
@@ -724,11 +727,13 @@ class SessionService : Service() {
         guest.add("BL_SYNC_FALLBACK=" + (if (SessionPrefs.syncFallback(this)) "1" else "0"))
         guest.add("BL_FSYNC_FIRST=" + (if (SessionPrefs.fsyncFirst(this)) "1" else "0"))
         guest.add("BL_GAMESCOPE_REALTIME=" + (if (SessionPrefs.gamescopeRealtime(this)) "1" else "0"))
+        if (SessionPrefs.cursorComposite(this)) guest.add("BL_CURSOR_COMPOSITE=1")
         if (com.droiddeck.launcher.core.ZramSupport.supported()) guest.add("BL_ZRAM=1")
         guest.add("BANNER_AUDIO_DIRECT_DECAY=0")
         val extra = extraEnv() + com.droiddeck.launcher.agent.AgentEnv.beginSession(this)
         if (extra.none { it.startsWith("TU_DEBUG=") }) guest.add("$GAME_TU_DEBUG=" + (tuOverride ?: if (tuDriver) "sysmem" else ""))
         extra.forEach { guest.add(it) }
+        com.droiddeck.launcher.gpu.TpUbwcHint.forThisDevice(this)?.let { guest.add("${com.droiddeck.launcher.gpu.TpUbwcHint.ENV}=$it") }
         val clientPinned = steamHere && SessionPrefs.clientCpusOverride(this)
         if (clientPinned) {
             guest.add("BL_CLIENT_CPUS=" + CpuCores.listOrAll(SessionPrefs.clientCpus(this)))
@@ -1218,6 +1223,7 @@ class SessionService : Service() {
     }
 
     private fun resumeSession(panelVisible: Boolean = true) {
+        if (SessionState.suspended) SessionState.resumeRequested = true
         if (panelVisible) activityVisible = true
         screenOn = readScreenOn()
         manualPauseRequested = false
@@ -1418,6 +1424,9 @@ class SessionService : Service() {
         val downloadsBlockingSuspend = downloadsKeepAwake() && hidden && !suspendDownloadNow
         if (suspendPolicy == SessionPrefs.SUSPEND_MANUAL && hidden && !downloadsBlockingSuspend) {
             manualPauseRequested = true
+        } else if (!hidden && !SessionState.suspended) {
+            // Coming back before the freeze finished keeps the game running instead of pausing it a moment later.
+            manualPauseRequested = false
         }
         val controller = suspendController ?: return
         if (downloadsBlockingSuspend) acquireLocks()
@@ -1443,6 +1452,7 @@ class SessionService : Service() {
             freezeCancelled = true
             controller.cancelFreeze()
         }
+        if (shouldSuspend && SessionState.suspended && !suspendOperationPending) SessionState.resumeRequested = false
         if (suspendOperationPending || suspendAttemptFailed || shouldSuspend == SessionState.suspended) return
         val gen = sessionGen
         suspendOperationPending = true
@@ -1466,6 +1476,7 @@ class SessionService : Service() {
                     freezePending = false
                     if (success) {
                         SessionState.suspended = true
+                        SessionState.resumeFailed = false
                         SessionEvents.transition(SessionPhase.SUSPENDED, "session.suspended")
                         releaseLocks()
                         refreshNotification()
@@ -1484,16 +1495,22 @@ class SessionService : Service() {
             }
         } else {
             acquireLocks()
+            SessionState.resuming = true
             controller.resume { success ->
                 mainHandler.post {
                     if (gen != sessionGen || !SessionState.running) return@post
                     suspendOperationPending = false
+                    SessionState.resuming = false
+                    SessionState.resumeRequested = false
                     if (success) {
                         SessionState.suspended = false
+                        SessionState.resumeFailed = false
                         SessionEvents.transition(SessionEvents.resumePhase(), "session.resumed")
                         refreshNotification()
                     } else {
                         suspendAttemptFailed = true
+                        SessionState.resumeFailures++
+                        SessionState.resumeFailed = true
                         Log.w(TAG, "could not confirm that the session resumed")
                     }
                     updateSuspendPolicy()
@@ -1583,6 +1600,9 @@ class SessionService : Service() {
                 return@post
             }
             SessionState.suspended = false
+            SessionState.resumeRequested = false
+            SessionState.resuming = false
+            SessionState.resumeFailed = false
             SessionState.pipActive = false
             pipTask = false
             SessionState.guestPid = -1
@@ -2047,6 +2067,7 @@ class SessionService : Service() {
 
         fun resume(context: Context) {
             if (!SessionState.running) return
+            if (SessionState.suspended) SessionState.resumeRequested = true
             context.startService(Intent(context, SessionService::class.java).setAction(ACTION_RESUME))
         }
 

@@ -120,6 +120,7 @@ class FrontEndActivity : ComponentActivity() {
     private var glThread by mutableStateOf(true)
     private var noGlError by mutableStateOf(true)
     private var returnAfterGame by mutableStateOf(true)
+    private var shaderPrecache by mutableStateOf(true)
     private var steamRepairQueued by mutableStateOf(false)
     private var mangoapp by mutableStateOf(true)
     private var steamController by mutableStateOf(SessionPrefs.CONTROLLER_DECK)
@@ -154,6 +155,7 @@ class FrontEndActivity : ComponentActivity() {
     private var gpuClockPin by mutableStateOf(false)
     private var prootNoSeccomp by mutableStateOf(false)
     private var prootFastPath by mutableStateOf(true)
+    private var cursorComposite by mutableStateOf(false)
     private var guestHostname by mutableStateOf(SessionPrefs.DEFAULT_GUEST_HOSTNAME)
     private var phantomWarning by mutableStateOf<String?>(null)
     private var phantomProcessStatus by mutableStateOf(PhantomProcessStatus.NOT_APPLICABLE)
@@ -161,7 +163,7 @@ class FrontEndActivity : ComponentActivity() {
     private var directAudio by mutableStateOf(false)
     private var picturePosition by mutableStateOf("center")
     private var stretch16x9 by mutableStateOf(false)
-    private var orientation by mutableStateOf(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
+    private var orientation by mutableStateOf(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE)
     private var launcherFullscreen by mutableStateOf(true)
     private var downloadSource by mutableStateOf(DownloadSource.MODE_AUTO)
     private var downloadMirror by mutableStateOf("")
@@ -1509,6 +1511,7 @@ class FrontEndActivity : ComponentActivity() {
                 onRestoreBundled = { TurnipDriver(this).restoreBundled(); drivers.refreshDrivers() },
                 onMode = { m -> drivers.chooseMode(m) },
                 onRestart = { drivers.restartApp() },
+                onTpUbwcMode = { drivers.chooseTpUbwcMode(it) },
             ),
             protons = com.droiddeck.launcher.ui.ProtonsState(
                 rows = protons.protonRows, busyId = protons.protonBusyId, stage = protons.protonStage, percent = protons.protonPercent,
@@ -1634,6 +1637,7 @@ class FrontEndActivity : ComponentActivity() {
                 syncBackend = if (mode == SessionService.MODE_STEAM) SessionPrefs.syncBackendOf(fastSync, fsyncFirst, syncFallback) else null,
                 steamClientArch = if (mode == SessionService.MODE_STEAM) steamClientArch else null,
                 returnAfterGame = if (mode == SessionService.MODE_STEAM) returnAfterGame else null,
+                shaderPrecache = if (mode == SessionService.MODE_STEAM) shaderPrecache else null,
                 steamRepairQueued = steamRepairQueued,
                 mangoapp = mangoapp,
                 steamController = if (mode == SessionService.MODE_STEAM) steamController else null,
@@ -1720,9 +1724,15 @@ class FrontEndActivity : ComponentActivity() {
                     syncFallback = SessionPrefs.syncFallback(this)
                 },
                 onSteamRepair = { steamRepairQueued = SteamRepair.queue(this) },
-                onSteamClientArch = { id -> SessionPrefs.setSteamClientArch(this, id); steamClientArch = id; refresh() },
+                onSteamClientArch = { id ->
+                    SessionPrefs.setSteamClientArch(this, id)
+                    steamClientArch = id
+                    shaderPrecache = SessionPrefs.shaderPrecache(this)
+                    refresh()
+                },
                 onMangoapp = { on -> SessionPrefs.setMangoapp(this, on); mangoapp = on },
                 onReturnAfterGame = { on -> SessionPrefs.setReturnAfterGame(this, on); returnAfterGame = on },
+                onShaderPrecache = { on -> SessionPrefs.setShaderPrecache(this, on); shaderPrecache = on },
                 onSteamController = { id -> SessionPrefs.setSteamController(this, id); steamController = id },
                 onRunSteamAtStartup = { on ->
                     SessionPrefs.setRunSteamAtStartup(this, on)
@@ -1763,7 +1773,8 @@ class FrontEndActivity : ComponentActivity() {
             fsyncFirst = fsyncFirst,
             gamescopeRealtime = gamescopeRealtime,
             gpuClockPin = gpuClockPin,
-            prootNoSeccomp = prootNoSeccomp, prootFastPath = prootFastPath, guestHostname = guestHostname, phantomWarning = phantomWarning,
+            prootNoSeccomp = prootNoSeccomp, prootFastPath = prootFastPath, cursorComposite = cursorComposite,
+            guestHostname = guestHostname, phantomWarning = phantomWarning,
             onClientOverride = { on -> SessionPrefs.setClientCpusOverride(this, on); clientOverride = on },
             onTuSysmem = { on -> SessionPrefs.setTuSysmem(this, on); tuSysmem = on },
             onZinkLazy = { on -> SessionPrefs.setZinkLazy(this, on); zinkLazy = on },
@@ -1777,6 +1788,7 @@ class FrontEndActivity : ComponentActivity() {
             onGpuClockPin = { on -> SessionPrefs.setGpuClockPin(this, on); gpuClockPin = on },
             onProotNoSeccomp = { on -> SessionPrefs.setProotNoSeccomp(this, on); prootNoSeccomp = on },
             onProotFastPath = { on -> SessionPrefs.setProotFastPath(this, on); prootFastPath = on },
+            onCursorComposite = { on -> SessionPrefs.setCursorComposite(this, on); cursorComposite = on },
             onGuestHostname = { name -> SessionPrefs.setGuestHostname(this, name) },
             onClientCore = { core, on ->
                 clientCores = if (on) clientCores + core else clientCores - core
@@ -1892,6 +1904,7 @@ class FrontEndActivity : ComponentActivity() {
         steamRepairQueued = SteamRepair.queued(this)
         mangoapp = SessionPrefs.mangoapp(this)
         returnAfterGame = SessionPrefs.returnAfterGame(this)
+        shaderPrecache = SessionPrefs.shaderPrecache(this)
         steamController = SessionPrefs.steamController(this)
         runSteamAtStartup = SessionPrefs.runSteamAtStartup(this)
         loadBootMovie()
@@ -1958,6 +1971,7 @@ class FrontEndActivity : ComponentActivity() {
         gpuClockPin = SessionPrefs.gpuClockPin(this)
         prootNoSeccomp = SessionPrefs.prootNoSeccomp(this)
         prootFastPath = SessionPrefs.prootFastPath(this)
+        cursorComposite = SessionPrefs.cursorComposite(this)
         guestHostname = SessionPrefs.guestHostname(this)
         refreshPhantomStatus()
     }
