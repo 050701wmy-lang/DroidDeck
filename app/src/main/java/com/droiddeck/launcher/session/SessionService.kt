@@ -1872,6 +1872,7 @@ class SessionService : Service() {
             downloadMonitorTask = null
             steamDownloadMonitor.reset()
             downloadActive = false
+            if (clientInstallActive) SessionEvents.record("steam.client_download", mapOf("active" to false))
             clientInstallActive = false
             if (wasActive) refreshNotification()
             return
@@ -1889,7 +1890,8 @@ class SessionService : Service() {
                 val root = LinuxRuntime.rootDir(this@SessionService)
                 val wasActive = downloadActive
                 val wasInstalling = clientInstallActive
-                clientInstallActive = !SessionState.firstFrameSeen && SteamDownloadMonitor.clientInstallPending(root)
+                clientInstallActive = !SessionState.firstFrameSeen &&
+                    (clientInstallActive || SteamDownloadMonitor.clientInstallPending(root))
                 downloadActive = clientInstallActive || steamDownloadsInBackground && steamDownloadMonitor.poll(
                     root,
                     receivedBytes = TrafficStats.getUidRxBytes(android.os.Process.myUid()),
