@@ -2046,6 +2046,15 @@
     <string name="stores_itch_no_exe">Ve stahování nebyla nalezena hra pro Windows</string>
     <string name="stores_itch_extract_failed">Stažený soubor nelze rozbalit (kód %1$d)</string>
     <string name="stores_itch_no_catalog">itch.io neodpovědělo</string>
+    <string name="stores_itch_sort_popular">Populární</string>
+    <string name="stores_itch_sort_new">Nové</string>
+    <string name="stores_itch_sort_top_rated">Nejlépe hodnocené</string>
+    <string name="stores_itch_sort_top_sellers">Nejprodávanější</string>
+    <string name="stores_itch_price_any">Jakákoli cena</string>
+    <string name="stores_itch_price_free">Zdarma</string>
+    <string name="stores_itch_price_sale">Ve slevě</string>
+    <string name="stores_itch_load_more">Načíst další</string>
+    <string name="stores_itch_browse_failed">Hry z itch.io se nepodařilo načíst</string>
     <string name="stores_itch_archive">Archivy %1$s nejsou podporovány</string>
     <string name="stores_itch_download_failed">itch.io odpovědělo HTTP %1$d</string>
     <string name="stores_free">Zdarma</string>

@@ -2081,6 +2081,15 @@
     <string name="stores_itch_no_exe">No Windows game found in the download</string>
     <string name="stores_itch_extract_failed">Could not extract the download (exit %1$d)</string>
     <string name="stores_itch_no_catalog">itch.io did not answer</string>
+    <string name="stores_itch_sort_popular">Popular</string>
+    <string name="stores_itch_sort_new">New</string>
+    <string name="stores_itch_sort_top_rated">Top rated</string>
+    <string name="stores_itch_sort_top_sellers">Top sellers</string>
+    <string name="stores_itch_price_any">Any price</string>
+    <string name="stores_itch_price_free">Free</string>
+    <string name="stores_itch_price_sale">On sale</string>
+    <string name="stores_itch_load_more">Load more</string>
+    <string name="stores_itch_browse_failed">Could not load games from itch.io</string>
     <string name="stores_itch_archive">%1$s archives are not supported</string>
     <string name="stores_itch_download_failed">itch.io answered HTTP %1$d</string>
     <string name="stores_free">Free</string>

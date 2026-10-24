@@ -145,6 +145,7 @@ import com.droiddeck.launcher.R
 import com.droiddeck.launcher.frontend.Library
 import com.droiddeck.launcher.session.SessionPrefs
 import com.droiddeck.launcher.stores.CatalogItem
+import com.droiddeck.launcher.stores.itch.ItchBrowseState
 import com.droiddeck.launcher.stores.Store
 import com.droiddeck.launcher.stores.StoreTab
 import com.droiddeck.launcher.stores.StoresState
@@ -954,7 +955,8 @@ private fun Storefront(
     val everything = remember(library, shelves, found) { (found + library + (shelves?.all ?: emptyList())).distinctBy { it.id } }
     LaunchedEffect(store, q) { StoresState.search(ctx, store, q) }
     val loaded = StoresState.library.containsKey(store)
-    val showGrid = tab != "store" || q.isNotEmpty()
+    val browsing = store == Store.ITCH && tab == "store" && q.isEmpty() && ItchBrowseState.active
+    val showGrid = tab != "store" || q.isNotEmpty() || browsing
     val sort = s.storesSort
     val lastPlayedFor = remember(s.steamGames) {
         val byKey = s.steamGames.associate { "${it.source}:${it.storeId}" to it.lastPlayed }
@@ -967,8 +969,13 @@ private fun Storefront(
         lookup
     }
     val isSizeSort = tab == "library" && (sort == "sizeAsc" || sort == "sizeDesc")
-    val candidates = remember(library, everything, tab, q, s.storesShowMature) {
-        if (tab == "library") library.filter(::matches) else everything.filter { matches(it) && shown(it) }
+    val browseItems = if (browsing) ItchBrowseState.items else emptyList()
+    val candidates = remember(library, everything, tab, q, s.storesShowMature, browsing, browseItems) {
+        if (tab == "library") library.filter(::matches)
+        else if (browsing) {
+            val owned = library.associateBy { it.id }
+            browseItems.map { owned[it.id] ?: it }.filter(::shown)
+        } else everything.filter { matches(it) && shown(it) }
     }
     val candidateKeys = remember(candidates) { candidates.map { it.key } }
     var resolvedSizeSortKey by remember(store, tab) { mutableStateOf<List<String>?>(null) }
@@ -1006,6 +1013,8 @@ private fun Storefront(
     }
     val empty = stringResource(when {
         tab == "library" && library.isEmpty() && StoresState.status[store] != null -> R.string.stores_library_loading
+        browsing && ItchBrowseState.loading -> R.string.stores_shelves_loading
+        browsing && ItchBrowseState.failed -> R.string.stores_itch_browse_failed
         else -> R.string.stores_nothing_matches
     })
     var firstPlaced = false
@@ -1016,8 +1025,9 @@ private fun Storefront(
     // A bar only where the tab has nothing else on it: shelves, the shelf of owned games, or a grid still loading.
     val gridEmpty = if (showGrid) visible.isEmpty() else (shelves == null || shelves.isEmpty) && library.isEmpty()
     val barLine = StoresState.status[store]?.takeIf { gridEmpty && syncCount(it) != null }
+    val itchBar = store == Store.ITCH && tab == "store" && q.isEmpty()
     val headerItems = 1 + (if (sizeSortPending) 1 else 0) + (if (barLine != null) 1 else 0) +
-        (if (StoresState.problems[store] != null) 1 else 0)
+        (if (StoresState.problems[store] != null) 1 else 0) + (if (itchBar) 1 else 0)
     val listMode = s.storesView == "list" && tab == "library"
     val capsules = s.storesView == "capsules" && tab == "library"
     val tileWidth = if (capsules) CapsuleWidth else CardWidth
@@ -1102,6 +1112,7 @@ private fun Storefront(
         }
         barLine?.let { line -> item(key = "sync", span = { GridItemSpan(maxLineSpan) }) { Rise(3) { SyncBar(line) } } }
         StoresState.problems[store]?.let { line -> item(key = "problem", span = { GridItemSpan(maxLineSpan) }) { Rise(3) { Box(Modifier.padding(bottom = 8.dp)) { Note(line) } } } }
+        if (itchBar) item(key = "itch-browse-bar", span = { GridItemSpan(maxLineSpan) }) { ItchBrowseBar() }
         when (tab) {
             "library" -> if (!loaded) Unit
                 else if (split == 0) storeGrid(visible, empty, card)
@@ -1112,8 +1123,10 @@ private fun Storefront(
                     storeGrid(visible.drop(split), empty, card)
                 }
             else -> {
-                if (q.isNotEmpty()) storeGrid(visible, empty, card)
-                else {
+                if (q.isNotEmpty() || browsing) {
+                    storeGrid(visible, empty, card)
+                    if (browsing) item(key = "itch-more", span = { GridItemSpan(maxLineSpan) }) { ItchLoadMore() }
+                } else {
                     item(key = "shelves", span = { GridItemSpan(maxLineSpan) }) {
                         Column {
                             Shelf(stringResource(R.string.stores_shelf_new), shelf(shelves?.whatsNew), card)
