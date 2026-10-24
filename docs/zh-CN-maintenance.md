@@ -160,3 +160,12 @@ Steam 安装脚本冲突使用上游新的持久下载缓存、通道回退和�
 全部组件包取自同提交 Build APK run `40067301496`；产物 ZIP SHA-256 为 `83a37153b5e4e0c7b9e0433190d11af2c217a3d9c08302fbaf37c6c45394c39b`。原生合成器从当前合并源码重新编译，其余原生载荷来自本次已验证的官方 APK；180 项载荷和源码摘要记录在本机 `.gradle/install/476642b-payload-verification.json`，五个组件包来源记录在 `476642b-addon-packs.json`。
 
 中文和下载加速检查通过；相关 Steam、组件、图形与原生检查共 330 项通过、5 项跳过。首次检查中的临时目录缺少工作流及 Git 索引已补齐，仅重跑相应来源验证；所有失败项已复验通过。设备安装与待安装状态以 `.gradle/install/preview-state.json` 为准。
+
+
+## 已发布预览 main-0790cb4（2026-10-24）
+
+同步 catalog 发布的 `0790cb4390627ea79fb7c9aef3d1acc98b941bdb`，版本仍为 `0.6.0 (15)`。官方 APK SHA-256 为 `2474b0f2336a76a927fd37abc7d97bbb3758120d47026c4b5b6cc987625ae903`。此版本删除 Proton 后清理它保存的组件原件和选择记录，但文件夹没有完全删掉时保留原件；同时关闭 Ubisoft Connect 的游戏内覆盖层，写入设置时保留注释、空行及文件权限，使用唯一临时文件名。
+
+默认中文、额外字体挂载、GitHub 加速、Steam 官方媒体 CDN 与断点续传、本地原生呈现修复和发布缺包检查保持。无需新增翻译；中文覆盖与下载加速检查通过，相关游戏环境、组件及 Steam 安装脚本 105 项检查通过。ProtonExtrasTest 的同一份编译生产类和测试类在 WSL 的 POSIX Java 环境中运行，10 项通过；Windows 的文件替换语义与 Android 不同，因此未为测试宿主改动 Android 的原子替换实现。
+
+全部组件包来自同提交 Build APK run `40093629289`，产物 ZIP SHA-256 为 `5042c5fe3ff07bceee2bff8f9a4317d9eb051f69c6a4934ee03ad9658863522a`。原生合成器使用当前合并源码构建，其余原生载荷来自本次官方 APK；180 项载荷和五个组件包的来源及摘要分别记录在本机 `.gradle/install/0790cb4-payload-verification.json` 和 `0790cb4-addon-packs.json`。APK 与设备安装状态以 `.gradle/install/preview-state.json` 为准。
