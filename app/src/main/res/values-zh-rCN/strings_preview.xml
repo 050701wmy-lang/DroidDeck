@@ -64,4 +64,11 @@
     <string name="vr_controllers_buttons_off">不模拟 VR 双手。支持手柄的游戏和 SteamVR 菜单仍可正常使用手柄。</string>
     <string name="unfolded_controls_with_controller">连接手柄时保留</string>
     <string name="unfolded_controls_with_controller_hint">连接手柄时也显示展开状态的控件，适用于夹持手机的手柄。</string>
+    <string name="gpu_ubwc_title">UBWC 兼容性</string>
+    <string name="gpu_ubwc_hint">如果 Steam 或 Android 出现条纹或闪烁，请尝试开启或关闭。重启 DroidDeck 后对两个驱动均生效。</string>
+    <string name="gpu_ubwc_restart">重启 DroidDeck 以应用更改。</string>
+    <string name="mode_shader_precache">着色器预缓存</string>
+    <string name="mode_shader_precache_hint">Steam 会下载游戏预编译的着色器并在后台处理，以减少游戏卡顿。关闭可节省流量、存储和电量，但游戏会在游玩时编译着色器。与 Steam“下载 → 着色器预缓存”中的设置相同，下次会话生效。</string>
+    <string name="perf_cursor_composite">在 gamescope 内绘制光标</string>
+    <string name="perf_cursor_composite_hint">由 gamescope 自行绘制光标，而非交给 Android。使用手柄控制光标时可开启；手机上关闭速度更快。下次会话生效。</string>
 </resources>

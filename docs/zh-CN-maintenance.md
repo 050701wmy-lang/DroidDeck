@@ -149,3 +149,14 @@ HUD 合并使用上游 `TICK_MS` 常量及帧时间图，保留本地实际呈�
 上游此次重写了历史。旧预览 `923ffde71574130e3871a2c8424c9e080a473217` 与新历史的 `aaa2e40defb1a777811ee20e9d5b068200983cc2` 的源码树均为 `8419d3c89d2b6a5c71d1146e74061ec548e25b8e`。以此相同源码快照为三方合并基线，生成无冲突的合并树，最终合并保留原 fork HEAD 和此次真实预览提交为父提交；未重写 fork 历史、未强制推送。后续正常同步沿新预览提交继续。
 
 官方组件包来自同提交 Build APK run `39910137366`，产物 ZIP SHA-256 为 `9cbc86b2cb2dd9bab198967210acce1461df7d8e697c44e905bd9a46f3e91684`；五个包及 178 项载荷的来源、摘要在本机 `.gradle/install/ffa40a1-addon-packs.json`、`ffa40a1-payload-verification.json`。原生合成器由此次合并源码构建，其余原生库使用本次官方 APK。中文与 GitHub 加速检查通过；相关运行脚本、快速路径、Wine、PipeWire 和原生检查 170 项通过、2 项跳过。APK、设备安装与待安装状态以 `.gradle/install/preview-state.json` 为准。
+
+
+## 已发布预览 main-476642b（2026-10-24）
+
+同步 catalog 发布的 `476642be7168a1c9e872b8644231c68b52b1d100`，版本仍为 `0.6.0 (15)`，官方 APK SHA-256 为 `8c64a3c6361f2719a12e1a3d1126cc2623c2fb2313880def81d140429131b3b5`。更新包括 Steam 账户识别、安装下载的断点续传与 MB 进度、无 ARM64 测试版时的稳定通道回退、下载监测性能、Epic 启动参数和图形兼容性修复；补齐七项新增中文设置。
+
+Steam 安装脚本冲突使用上游新的持久下载缓存、通道回退和校验实现，保留手机已验证的官方 `media.steampowered.com/client` 优先地址及本地中文错误识别标记。测试的耗尽重试夹具从三个 CDN 对齐到四个，并补充清单、组件失败标记检查；26 项 Steam 安装检查通过。默认中文、额外字体挂载、GitHub 加速、发布缺包检查和本地呈现修复保持。
+
+全部组件包取自同提交 Build APK run `40067301496`；产物 ZIP SHA-256 为 `83a37153b5e4e0c7b9e0433190d11af2c217a3d9c08302fbaf37c6c45394c39b`。原生合成器从当前合并源码重新编译，其余原生载荷来自本次已验证的官方 APK；180 项载荷和源码摘要记录在本机 `.gradle/install/476642b-payload-verification.json`，五个组件包来源记录在 `476642b-addon-packs.json`。
+
+中文和下载加速检查通过；相关 Steam、组件、图形与原生检查共 330 项通过、5 项跳过。首次检查中的临时目录缺少工作流及 Git 索引已补齐，仅重跑相应来源验证；所有失败项已复验通过。设备安装与待安装状态以 `.gradle/install/preview-state.json` 为准。
