@@ -1999,7 +1999,11 @@
     <string name="stores_itch_extract_failed">İndirme ayıklanamadı (kod %1$d)</string>
     <string name="stores_itch_no_catalog">itch.io yanıt vermedi</string>
     <string name="stores_itch_sort_popular">Popüler</string>
-    <string name="stores_itch_sort_new">Yeni</string>
+    <string name="stores_itch_sort_new">En yeniler</string>
+    <string name="stores_itch_sort_new_popular">Yeni ve popüler</string>
+    <string name="stores_itch_price_paid">Ücretli</string>
+    <string name="stores_itch_price_under_5">$5 veya altı</string>
+    <string name="stores_itch_price_under_15">$15 veya altı</string>
     <string name="stores_itch_sort_top_rated">En yüksek puanlı</string>
     <string name="stores_itch_sort_top_sellers">En çok satanlar</string>
     <string name="stores_itch_price_any">Herhangi bir fiyat</string>

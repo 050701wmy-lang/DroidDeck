@@ -2018,7 +2018,11 @@
     <string name="stores_itch_extract_failed">Não foi possível extrair a transferência (código %1$d)</string>
     <string name="stores_itch_no_catalog">O itch.io não respondeu</string>
     <string name="stores_itch_sort_popular">Populares</string>
-    <string name="stores_itch_sort_new">Novos</string>
+    <string name="stores_itch_sort_new">Mais recentes</string>
+    <string name="stores_itch_sort_new_popular">Novos e populares</string>
+    <string name="stores_itch_price_paid">Pagos</string>
+    <string name="stores_itch_price_under_5">5 $ ou menos</string>
+    <string name="stores_itch_price_under_15">15 $ ou menos</string>
     <string name="stores_itch_sort_top_rated">Mais bem avaliados</string>
     <string name="stores_itch_sort_top_sellers">Mais vendidos</string>
     <string name="stores_itch_price_any">Qualquer preço</string>

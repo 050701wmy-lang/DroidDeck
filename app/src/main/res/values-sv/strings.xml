@@ -2005,7 +2005,11 @@
     <string name="stores_itch_extract_failed">Det gick inte att packa upp nedladdningen (kod %1$d)</string>
     <string name="stores_itch_no_catalog">itch.io svarade inte</string>
     <string name="stores_itch_sort_popular">Populära</string>
-    <string name="stores_itch_sort_new">Nya</string>
+    <string name="stores_itch_sort_new">Senaste</string>
+    <string name="stores_itch_sort_new_popular">Nya och populära</string>
+    <string name="stores_itch_price_paid">Betalda</string>
+    <string name="stores_itch_price_under_5">$5 eller mindre</string>
+    <string name="stores_itch_price_under_15">$15 eller mindre</string>
     <string name="stores_itch_sort_top_rated">Högst betyg</string>
     <string name="stores_itch_sort_top_sellers">Mest sålda</string>
     <string name="stores_itch_price_any">Alla priser</string>

@@ -5,50 +5,61 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/** Every address here was copied from itch.io's own links, not worked out. */
 class ItchBrowseTest {
+    private fun path(sort: String = ItchBrowse.SORT_POPULAR, price: String = ItchBrowse.PRICE_ANY, platforms: Set<String> = emptySet(), tags: List<String> = emptyList()) =
+        ItchBrowse.path(BrowseQuery(sort, price, platforms, tags))
+
     @Test fun theDefaultQueryIsTheFrontPage() {
         assertTrue(BrowseQuery().isDefault)
-        assertFalse(BrowseQuery(sort = ItchBrowse.SORT_NEW).isDefault)
+        assertFalse(BrowseQuery(sort = ItchBrowse.SORT_NEWEST).isDefault)
         assertFalse(BrowseQuery(price = ItchBrowse.PRICE_FREE).isDefault)
     }
 
-    @Test fun sortsMapToTheirFeedPaths() {
-        assertEquals(listOf("https://itch.io/games.xml"), ItchBrowse.urls(BrowseQuery(), 1))
-        assertEquals(listOf("https://itch.io/games/newest.xml"), ItchBrowse.urls(BrowseQuery(sort = ItchBrowse.SORT_NEW), 1))
-        assertEquals(listOf("https://itch.io/games/top-rated.xml"), ItchBrowse.urls(BrowseQuery(sort = ItchBrowse.SORT_TOP_RATED), 1))
-        assertEquals(listOf("https://itch.io/games/top-sellers.xml"), ItchBrowse.urls(BrowseQuery(sort = ItchBrowse.SORT_TOP_SELLERS), 1))
+    @Test fun sortsUseItchsOwnPaths() {
+        assertEquals("https://itch.io/games", path())
+        assertEquals("https://itch.io/games/new-and-popular", path(sort = ItchBrowse.SORT_NEW_POPULAR))
+        assertEquals("https://itch.io/games/top-sellers", path(sort = ItchBrowse.SORT_TOP_SELLERS))
+        assertEquals("https://itch.io/games/top-rated", path(sort = ItchBrowse.SORT_TOP_RATED))
+        assertEquals("https://itch.io/games/newest", path(sort = ItchBrowse.SORT_NEWEST))
     }
 
-    @Test fun pagesAfterTheFirstCarryThePageNumber() {
-        assertEquals(listOf("https://itch.io/games/newest.xml?page=3"), ItchBrowse.urls(BrowseQuery(sort = ItchBrowse.SORT_NEW), 3))
+    @Test fun pricesUseItchsOwnPaths() {
+        assertEquals("https://itch.io/games/free", path(price = ItchBrowse.PRICE_FREE))
+        assertEquals("https://itch.io/games/on-sale", path(price = ItchBrowse.PRICE_SALE))
+        assertEquals("https://itch.io/games/store", path(price = ItchBrowse.PRICE_PAID))
+        assertEquals("https://itch.io/games/5-dollars-or-less", path(price = ItchBrowse.PRICE_UNDER_5))
+        assertEquals("https://itch.io/games/15-dollars-or-less", path(price = ItchBrowse.PRICE_UNDER_15))
     }
 
-    @Test fun aPriceFilterOffersEverySpellingInOrder() {
-        val free = ItchBrowse.urls(BrowseQuery(sort = ItchBrowse.SORT_TOP_RATED, price = ItchBrowse.PRICE_FREE), 1)
-        assertEquals(listOf("https://itch.io/games/top-rated/free.xml", "https://itch.io/games/top-rated/price-free.xml"), free)
-        assertEquals(listOf("https://itch.io/games/on-sale.xml"), ItchBrowse.urls(BrowseQuery(price = ItchBrowse.PRICE_SALE), 1))
-    }
-
-    @Test fun platformsAndTagsFollowTheSortAndPriceInAFixedOrder() {
-        val query = BrowseQuery(
-            sort = ItchBrowse.SORT_NEW, price = ItchBrowse.PRICE_SALE,
-            platforms = setOf("web", "linux"), tags = listOf("Pixel Art", "Horror"),
+    @Test fun platformsUseItchsOwnNames() {
+        val expected = mapOf(
+            "windows" to "platform-windows", "osx" to "platform-osx", "linux" to "platform-linux", "android" to "platform-android",
+            "ios" to "platform-ios", "web" to "platform-web", "mobile-web" to "platform-mobile-web",
         )
+        assertEquals(expected.keys.toList(), ItchBrowse.platformNames)
+        for ((name, segment) in expected) assertEquals("https://itch.io/games/$segment", path(platforms = setOf(name)))
+    }
+
+    @Test fun aSortAPriceAndAPlatformCombineInThatOrder() {
         assertEquals(
-            listOf("https://itch.io/games/newest/on-sale/platform-linux/platform-web/tag-pixel-art/tag-horror.xml"),
-            ItchBrowse.urls(query, 1),
+            "https://itch.io/games/top-rated/free/platform-windows",
+            path(ItchBrowse.SORT_TOP_RATED, ItchBrowse.PRICE_FREE, setOf("windows")),
         )
     }
 
-    @Test fun tagsBecomeSlugs() {
+    @Test fun aTagIsItsLowercaseNameWithHyphens() {
+        assertEquals("https://itch.io/games/tag-pixel-art", path(tags = listOf("Pixel Art")))
         assertEquals("pixel-art", ItchBrowse.tagSlug(" Pixel Art "))
-        assertEquals("2d", ItchBrowse.tagSlug("2D"))
-        assertEquals("sci-fi", ItchBrowse.tagSlug("Sci-Fi!"))
     }
 
-    @Test fun theSamePlatformsInAnyOrderGiveTheSameUrl() {
-        val a = ItchBrowse.urls(BrowseQuery(platforms = setOf("web", "linux")), 1)
-        val b = ItchBrowse.urls(BrowseQuery(platforms = setOf("linux", "web")), 1)
-        assertEquals(a, b)
+    @Test fun theSamePlatformsInAnyOrderGiveTheSameAddress() {
+        assertEquals(path(platforms = setOf("web", "linux")), path(platforms = setOf("linux", "web")))
+    }
+
+    @Test fun laterPagesAskForThePageNumberAndTheFirstDoesNot() {
+        val query = BrowseQuery(sort = ItchBrowse.SORT_TOP_RATED)
+        assertEquals("https://itch.io/games/top-rated.xml", ItchBrowse.url(query, 1))
+        assertEquals("https://itch.io/games/top-rated.xml?page=2", ItchBrowse.url(query, 2))
     }
 }

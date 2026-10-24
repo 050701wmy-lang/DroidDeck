@@ -2005,7 +2005,11 @@
     <string name="stores_itch_extract_failed">A letöltés nem bontható ki (kód: %1$d)</string>
     <string name="stores_itch_no_catalog">Az itch.io nem válaszolt</string>
     <string name="stores_itch_sort_popular">Népszerű</string>
-    <string name="stores_itch_sort_new">Új</string>
+    <string name="stores_itch_sort_new">Legfrissebb</string>
+    <string name="stores_itch_sort_new_popular">Új és népszerű</string>
+    <string name="stores_itch_price_paid">Fizetős</string>
+    <string name="stores_itch_price_under_5">Legfeljebb 5 $</string>
+    <string name="stores_itch_price_under_15">Legfeljebb 15 $</string>
     <string name="stores_itch_sort_top_rated">Legjobbra értékelt</string>
     <string name="stores_itch_sort_top_sellers">Legkelendőbb</string>
     <string name="stores_itch_price_any">Bármilyen ár</string>

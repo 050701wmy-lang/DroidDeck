@@ -1984,7 +1984,11 @@
     <string name="stores_itch_extract_failed">แตกไฟล์ที่ดาวน์โหลดไม่ได้ (รหัส %1$d)</string>
     <string name="stores_itch_no_catalog">itch.io ไม่ตอบสนอง</string>
     <string name="stores_itch_sort_popular">ยอดนิยม</string>
-    <string name="stores_itch_sort_new">ใหม่</string>
+    <string name="stores_itch_sort_new">ล่าสุด</string>
+    <string name="stores_itch_sort_new_popular">ใหม่และยอดนิยม</string>
+    <string name="stores_itch_price_paid">เสียเงิน</string>
+    <string name="stores_itch_price_under_5">ไม่เกิน $5</string>
+    <string name="stores_itch_price_under_15">ไม่เกิน $15</string>
     <string name="stores_itch_sort_top_rated">คะแนนสูงสุด</string>
     <string name="stores_itch_sort_top_sellers">ขายดี</string>
     <string name="stores_itch_price_any">ทุกราคา</string>

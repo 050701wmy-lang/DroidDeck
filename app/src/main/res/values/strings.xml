@@ -2082,7 +2082,11 @@
     <string name="stores_itch_extract_failed">Could not extract the download (exit %1$d)</string>
     <string name="stores_itch_no_catalog">itch.io did not answer</string>
     <string name="stores_itch_sort_popular">Popular</string>
-    <string name="stores_itch_sort_new">New</string>
+    <string name="stores_itch_sort_new">Most recent</string>
+    <string name="stores_itch_sort_new_popular">New &amp; popular</string>
+    <string name="stores_itch_price_paid">Paid</string>
+    <string name="stores_itch_price_under_5">$5 or less</string>
+    <string name="stores_itch_price_under_15">$15 or less</string>
     <string name="stores_itch_sort_top_rated">Top rated</string>
     <string name="stores_itch_sort_top_sellers">Top sellers</string>
     <string name="stores_itch_price_any">Any price</string>

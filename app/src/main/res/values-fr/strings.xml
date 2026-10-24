@@ -2028,7 +2028,11 @@
     <string name="stores_itch_extract_failed">Impossible d\'extraire le téléchargement (code %1$d)</string>
     <string name="stores_itch_no_catalog">itch.io n\'a pas répondu</string>
     <string name="stores_itch_sort_popular">Populaires</string>
-    <string name="stores_itch_sort_new">Nouveautés</string>
+    <string name="stores_itch_sort_new">Plus récents</string>
+    <string name="stores_itch_sort_new_popular">Nouveautés populaires</string>
+    <string name="stores_itch_price_paid">Payants</string>
+    <string name="stores_itch_price_under_5">5 $ ou moins</string>
+    <string name="stores_itch_price_under_15">15 $ ou moins</string>
     <string name="stores_itch_sort_top_rated">Les mieux notés</string>
     <string name="stores_itch_sort_top_sellers">Meilleures ventes</string>
     <string name="stores_itch_price_any">Tous les prix</string>

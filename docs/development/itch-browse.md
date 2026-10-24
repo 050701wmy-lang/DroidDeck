@@ -14,10 +14,12 @@ https://itch.io/games[/<sort>][/<price>][/platform-<name>...][/tag-<slug>...].xm
 ```
 
 `BrowseQuery` already carries platforms and tags, so the URL builder is complete; the controls for them
-come in a later change. A price filter has more than one spelling on itch, so `urls()` returns every
-candidate and `page()` takes the first that answers with games. Every request is logged
-(`itch.io browse: <url> answered <code> with <n> games`), which is how a wrong guess is found and fixed
-from a device.
+come in a later change. The path pieces are itch's own, copied from its links: sorts `new-and-popular`, `top-sellers`, `top-rated`,
+`newest` (Popular has none); prices `free`, `on-sale`, `store` (Paid), `5-dollars-or-less`,
+`15-dollars-or-less`; platforms `platform-windows`, `-osx`, `-linux`, `-android`, `-ios`, `-web`,
+`-mobile-web`; a tag is `tag-` and its lowercase name with hyphens. `ItchBrowse.path()` builds the page
+address, `url()` adds `.xml` and `?page=N`. Every request is logged
+(`itch.io browse: <url> answered <code> with <n> games`).
 
 Requests go out one at a time, at least 1.2 s apart. A 429 waits 8 s and tries once more; if that fails
 the games already on screen stay. Each page is kept under the app cache for three hours, so going back to

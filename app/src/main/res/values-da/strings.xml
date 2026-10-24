@@ -2005,7 +2005,11 @@
     <string name="stores_itch_extract_failed">Downloaden kunne ikke udpakkes (kode %1$d)</string>
     <string name="stores_itch_no_catalog">itch.io svarede ikke</string>
     <string name="stores_itch_sort_popular">Populære</string>
-    <string name="stores_itch_sort_new">Nye</string>
+    <string name="stores_itch_sort_new">Seneste</string>
+    <string name="stores_itch_sort_new_popular">Nye og populære</string>
+    <string name="stores_itch_price_paid">Betalt</string>
+    <string name="stores_itch_price_under_5">$5 eller mindre</string>
+    <string name="stores_itch_price_under_15">$15 eller mindre</string>
     <string name="stores_itch_sort_top_rated">Bedst bedømte</string>
     <string name="stores_itch_sort_top_sellers">Mest solgte</string>
     <string name="stores_itch_price_any">Alle priser</string>

@@ -2047,7 +2047,11 @@
     <string name="stores_itch_extract_failed">Не вдалося розпакувати завантаження (код %1$d)</string>
     <string name="stores_itch_no_catalog">itch.io не відповів</string>
     <string name="stores_itch_sort_popular">Популярні</string>
-    <string name="stores_itch_sort_new">Нові</string>
+    <string name="stores_itch_sort_new">Найновіші</string>
+    <string name="stores_itch_sort_new_popular">Нові й популярні</string>
+    <string name="stores_itch_price_paid">Платні</string>
+    <string name="stores_itch_price_under_5">До $5</string>
+    <string name="stores_itch_price_under_15">До $15</string>
     <string name="stores_itch_sort_top_rated">З найвищими оцінками</string>
     <string name="stores_itch_sort_top_sellers">Бестселери</string>
     <string name="stores_itch_price_any">Будь-яка ціна</string>

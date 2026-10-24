@@ -90,9 +90,10 @@ private fun BrowseChip(label: String, selected: Boolean, onClick: () -> Unit) {
 @Composable
 private fun sortLabel(sort: String): String = stringResource(
     when (sort) {
-        ItchBrowse.SORT_NEW -> R.string.stores_itch_sort_new
-        ItchBrowse.SORT_TOP_RATED -> R.string.stores_itch_sort_top_rated
+        ItchBrowse.SORT_NEW_POPULAR -> R.string.stores_itch_sort_new_popular
         ItchBrowse.SORT_TOP_SELLERS -> R.string.stores_itch_sort_top_sellers
+        ItchBrowse.SORT_TOP_RATED -> R.string.stores_itch_sort_top_rated
+        ItchBrowse.SORT_NEWEST -> R.string.stores_itch_sort_new
         else -> R.string.stores_itch_sort_popular
     },
 )
@@ -102,6 +103,9 @@ private fun priceLabel(price: String): String = stringResource(
     when (price) {
         ItchBrowse.PRICE_FREE -> R.string.stores_itch_price_free
         ItchBrowse.PRICE_SALE -> R.string.stores_itch_price_sale
+        ItchBrowse.PRICE_PAID -> R.string.stores_itch_price_paid
+        ItchBrowse.PRICE_UNDER_5 -> R.string.stores_itch_price_under_5
+        ItchBrowse.PRICE_UNDER_15 -> R.string.stores_itch_price_under_15
         else -> R.string.stores_itch_price_any
     },
 )

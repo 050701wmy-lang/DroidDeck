@@ -1986,7 +1986,11 @@
     <string name="stores_itch_extract_failed">ダウンロードを展開できませんでした (終了コード %1$d)</string>
     <string name="stores_itch_no_catalog">itch.io から応答がありません</string>
     <string name="stores_itch_sort_popular">人気</string>
-    <string name="stores_itch_sort_new">新着</string>
+    <string name="stores_itch_sort_new">新着順</string>
+    <string name="stores_itch_sort_new_popular">新着＆人気</string>
+    <string name="stores_itch_price_paid">有料</string>
+    <string name="stores_itch_price_under_5">5ドル以下</string>
+    <string name="stores_itch_price_under_15">15ドル以下</string>
     <string name="stores_itch_sort_top_rated">高評価</string>
     <string name="stores_itch_sort_top_sellers">売れ筋</string>
     <string name="stores_itch_price_any">すべての価格</string>

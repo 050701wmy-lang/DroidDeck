@@ -2026,7 +2026,11 @@
     <string name="stores_itch_extract_failed">Descărcarea nu a putut fi extrasă (cod %1$d)</string>
     <string name="stores_itch_no_catalog">itch.io nu a răspuns</string>
     <string name="stores_itch_sort_popular">Populare</string>
-    <string name="stores_itch_sort_new">Noi</string>
+    <string name="stores_itch_sort_new">Cele mai recente</string>
+    <string name="stores_itch_sort_new_popular">Noi și populare</string>
+    <string name="stores_itch_price_paid">Cu plată</string>
+    <string name="stores_itch_price_under_5">5 $ sau mai puțin</string>
+    <string name="stores_itch_price_under_15">15 $ sau mai puțin</string>
     <string name="stores_itch_sort_top_rated">Cele mai bine cotate</string>
     <string name="stores_itch_sort_top_sellers">Cele mai vândute</string>
     <string name="stores_itch_price_any">Orice preț</string>

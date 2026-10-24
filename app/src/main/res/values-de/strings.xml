@@ -1997,7 +1997,11 @@
     <string name="stores_itch_extract_failed">Download konnte nicht entpackt werden (Code %1$d)</string>
     <string name="stores_itch_no_catalog">itch.io hat nicht geantwortet</string>
     <string name="stores_itch_sort_popular">Beliebt</string>
-    <string name="stores_itch_sort_new">Neu</string>
+    <string name="stores_itch_sort_new">Neueste</string>
+    <string name="stores_itch_sort_new_popular">Neu und beliebt</string>
+    <string name="stores_itch_price_paid">Kostenpflichtig</string>
+    <string name="stores_itch_price_under_5">5 $ oder weniger</string>
+    <string name="stores_itch_price_under_15">15 $ oder weniger</string>
     <string name="stores_itch_sort_top_rated">Bestbewertet</string>
     <string name="stores_itch_sort_top_sellers">Meistverkauft</string>
     <string name="stores_itch_price_any">Beliebiger Preis</string>

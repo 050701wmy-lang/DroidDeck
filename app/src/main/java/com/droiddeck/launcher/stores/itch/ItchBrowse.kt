@@ -24,15 +24,22 @@ internal class BrowsePage(val items: List<CatalogItem>, val code: Int, val cache
 
 internal object ItchBrowse {
     const val SORT_POPULAR = "popular"
-    const val SORT_NEW = "new"
-    const val SORT_TOP_RATED = "top-rated"
+    const val SORT_NEW_POPULAR = "new-and-popular"
     const val SORT_TOP_SELLERS = "top-sellers"
-    val sorts = listOf(SORT_POPULAR, SORT_NEW, SORT_TOP_RATED, SORT_TOP_SELLERS)
+    const val SORT_TOP_RATED = "top-rated"
+    const val SORT_NEWEST = "newest"
+    val sorts = listOf(SORT_POPULAR, SORT_NEW_POPULAR, SORT_TOP_SELLERS, SORT_TOP_RATED, SORT_NEWEST)
 
     const val PRICE_ANY = "any"
     const val PRICE_FREE = "free"
-    const val PRICE_SALE = "sale"
-    val prices = listOf(PRICE_ANY, PRICE_FREE, PRICE_SALE)
+    const val PRICE_SALE = "on-sale"
+    const val PRICE_PAID = "store"
+    const val PRICE_UNDER_5 = "5-dollars-or-less"
+    const val PRICE_UNDER_15 = "15-dollars-or-less"
+    val prices = listOf(PRICE_ANY, PRICE_FREE, PRICE_SALE, PRICE_PAID, PRICE_UNDER_5, PRICE_UNDER_15)
+
+    /** Platform names as itch spells them in `platform-<name>`. */
+    val platformNames = listOf("windows", "osx", "linux", "android", "ios", "web", "mobile-web")
 
     private const val BASE = "https://itch.io/games"
     private const val FRESH_MS = 3 * 60 * 60 * 1000L
@@ -43,52 +50,34 @@ internal object ItchBrowse {
     @Volatile private var lastRequestAt = 0L
     private val lock = Any()
 
-    private fun sortSegment(sort: String): String? = when (sort) {
-        SORT_NEW -> "newest"
-        SORT_TOP_RATED -> "top-rated"
-        SORT_TOP_SELLERS -> "top-sellers"
-        else -> null
-    }
+    /** The path piece itch uses for each choice; the default sort and price have none. */
+    private fun sortSegment(sort: String): String? = sort.takeIf { it != SORT_POPULAR && it in sorts }
 
-    /** The ways itch spells a price filter; the first that answers is used, so one wrong guess does not empty the tab. */
-    private fun priceSegments(price: String): List<String?> = when (price) {
-        PRICE_FREE -> listOf("free", "price-free")
-        PRICE_SALE -> listOf("on-sale")
-        else -> listOf(null)
-    }
+    private fun priceSegment(price: String): String? = price.takeIf { it != PRICE_ANY && it in prices }
 
-    /** Every feed URL that could answer [query] for [page], most likely first. */
-    fun urls(query: BrowseQuery, page: Int): List<String> = priceSegments(query.price).map { price ->
-        val segments = listOfNotNull(sortSegment(query.sort), price) +
+    /** The address of [query]'s page on itch: sort, price, platforms, then tags, as itch's own links spell them. */
+    fun path(query: BrowseQuery): String {
+        val segments = listOfNotNull(sortSegment(query.sort), priceSegment(query.price)) +
             query.platforms.sorted().map { "platform-$it" } +
             query.tags.map { "tag-" + tagSlug(it) }
-        val path = if (segments.isEmpty()) BASE else BASE + "/" + segments.joinToString("/")
-        path + ".xml" + if (page > 1) "?page=$page" else ""
+        return if (segments.isEmpty()) BASE else BASE + "/" + segments.joinToString("/")
     }
+
+    /** The listing feed for [query]'s [page]. */
+    fun url(query: BrowseQuery, page: Int): String = path(query) + ".xml" + if (page > 1) "?page=$page" else ""
 
     fun tagSlug(tag: String): String = tag.trim().lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
 
     /** Page [page] of [query]: the disk copy when it is fresh, otherwise the feed, one request at a time and spaced out. */
     fun page(context: Context, query: BrowseQuery, page: Int, force: Boolean = false): BrowsePage {
         val app = context.applicationContext
-        val candidates = urls(query, page)
-        if (!force) for (url in candidates) {
-            val stored = read(app, url) ?: continue
-            return BrowsePage(stored, 200, true)
-        }
-        var code = 0
-        for (url in candidates) {
-            val (status, body) = fetch(url)
-            code = status
-            if (status !in 200..299 || body == null) continue
-            val items = ItchShelves.parse(body)
-            StoresState.logLine("itch.io browse: $url answered $status with ${items.size} games")
-            if (items.isEmpty()) continue
-            write(app, url, items)
-            return BrowsePage(items, status, false)
-        }
-        StoresState.logLine("itch.io browse: ${candidates.first()} gave nothing (last status $code)")
-        return BrowsePage(emptyList(), code, false)
+        val url = url(query, page)
+        if (!force) read(app, url)?.let { return BrowsePage(it, 200, true) }
+        val (status, body) = fetch(url)
+        val items = if (status in 200..299 && body != null) ItchShelves.parse(body) else emptyList()
+        StoresState.logLine("itch.io browse: $url answered $status with ${items.size} games")
+        if (items.isNotEmpty()) write(app, url, items)
+        return BrowsePage(items, status, false)
     }
 
     private fun fetch(url: String): Pair<Int, String?> {
