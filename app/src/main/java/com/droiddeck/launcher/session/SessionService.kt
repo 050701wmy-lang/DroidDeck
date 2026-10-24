@@ -71,11 +71,6 @@ class SessionService : Service() {
     private val steamDownloadMonitor = SteamDownloadMonitor()
     private var downloadMonitorTask: Runnable? = null
     private var downloadActive = false
-    /**
-     * The runtime is fetching the Steam client itself (a first run, a repair), before anything is on
-     * screen. That download keeps the session awake whatever the downloads setting says: paused, a
-     * first run never gets as far as showing Steam.
-     */
     private var clientInstallActive = false
     @Volatile private var steamLibraryMounts = emptyMap<String, File>()
     private var suspendDownloadNow = false
@@ -647,7 +642,6 @@ class SessionService : Service() {
                     }
                 },
             )
-            // Watching first: a first run's client download must be known before anything is paused.
             updateDownloadMonitoring()
             mainHandler.post { updateSuspendPolicy() }
         }
@@ -1863,15 +1857,10 @@ class SessionService : Service() {
         getSystemService(NotificationManager::class.java)?.notify(NOTIFICATION_ID, buildNotification())
     }
 
-    /** A download is under way that holds the session awake while it is out of sight. */
     private fun downloadsKeepAwake(): Boolean =
         downloadActive && (steamDownloadsInBackground || clientInstallActive) &&
             SessionState.mode == MODE_STEAM && suspendPolicy != SessionPrefs.SUSPEND_NEVER
 
-    /**
-     * Steam's own downloads with the downloads setting on, and the Steam client's download until the
-     * session shows its first frame whatever the setting: once Steam is on screen it was fetched.
-     */
     private fun downloadWatchWanted(): Boolean =
         SessionState.running && SessionState.mode == MODE_STEAM && suspendPolicy != SessionPrefs.SUSPEND_NEVER &&
             (steamDownloadsInBackground || !SessionState.firstFrameSeen)

@@ -210,7 +210,6 @@ class SteamDownloadMonitorTest {
             assertTrue(SteamDownloadMonitor.clientInstallPending(root))
             File(steam, "steamrtarm64").mkdirs()
             File(steam, "steamrtarm64/steam").writeText("client")
-            // Unpacked but not finished: droiddeck-steam-install stamps the client last.
             assertTrue(SteamDownloadMonitor.clientInstallPending(root))
             File(steam, "package").mkdirs()
             File(steam, "package/droiddeck-installed").writeText("1791686101\n")

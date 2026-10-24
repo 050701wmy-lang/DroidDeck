@@ -131,10 +131,6 @@ class LoadingState(context: Context, private val steam: Boolean = true) {
             }
         }
 
-        /**
-         * What a Steam client download line says to show and how far it is: megabytes when the
-         * runtime counts them ("<part> (2/17), 45 of 360 MB"), else the part and its number.
-         */
         internal fun clientDownload(line: String): Pair<String, Int>? {
             val count = INSTALL_COUNT.find(line) ?: return null
             val mb = INSTALL_MEGABYTES.find(line.substring(count.range.last + 1))

@@ -27,7 +27,6 @@ class LoadingStateTest {
             "bins_linuxarm64_linuxarm64" to 11,
             LoadingState.clientDownload("== STEP 17:38:17 downloading Steam: bins_linuxarm64_linuxarm64 (2/17)"),
         )
-        // Under a megabyte in all: nothing to count yet.
         assertEquals("a_all" to 50, LoadingState.clientDownload("== STEP 00:00:00 downloading Steam: a_all (1/2), 0 of 0 MB"))
     }
 

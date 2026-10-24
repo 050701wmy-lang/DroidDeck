@@ -343,7 +343,6 @@ sys.exit(28 if end < len(data) else 0)
         self.requests.unlink()
         Path(str(self.requests) + '.offsets').unlink()
         self.assertEqual(0, self.install().returncode)
-        # The next session asks only for the rest of the part it did not finish.
         self.assertEqual(['steam_client_steamdeck_publicbeta_linuxarm64', client], self.requested())
         self.assertEqual([400000], self.offsets(client))
         self.assertFalse(self.download.exists())
@@ -383,7 +382,6 @@ sys.exit(28 if end < len(data) else 0)
         self.assertNotEqual(0, self.install().returncode)
         self.assertIn(files['a_all'], self.requested())
         self.requests.unlink()
-        # Still a repair, but what the interrupted one redid is not done a third time.
         self.assertEqual(0, self.install().returncode)
         self.assertEqual(['steam_client_steamdeck_publicbeta_linuxarm64', files['client_linuxarm64_linuxarm64']],
                          self.requested())
