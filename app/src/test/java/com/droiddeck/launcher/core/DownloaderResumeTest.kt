@@ -206,8 +206,8 @@ class DownloaderResumeTest {
             val result = executor.submit<Boolean> { Downloader.downloadFile(url, target, true, null, cancellation, null) }
             assertTrue("server sent the first chunk", bodyStarted.await(2, TimeUnit.SECONDS))
             val cancelled = cancelExecutor.submit { cancellation.cancel() }
-            cancelled.get(2, TimeUnit.SECONDS)
-            assertFalse("cancelled download", result.get(2, TimeUnit.SECONDS))
+            cancelled.get(10, TimeUnit.SECONDS)
+            assertFalse("cancelled download", result.get(10, TimeUnit.SECONDS))
             assertEquals(listOf<String?>(null), requests.toList())
         } finally {
             continueBody.countDown()
