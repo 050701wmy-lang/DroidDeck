@@ -56,6 +56,8 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -599,7 +601,13 @@ private fun AboutTab(developer: String, publisher: String, releaseDate: String, 
             val parts = listOf(developer, publisher, com.droiddeck.launcher.stores.GameFacts.releaseLabel(releaseDate).orEmpty()).filter { it.isNotBlank() }.distinct()
             Text(parts.joinToString(" · "), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.readable())
         }
-        if (description.isNotBlank()) StoreAbout(description, AboutHeight, Modifier.fillMaxWidth())
+        if (description.isNotBlank()) {
+            val floor = LocalDetailFloor.current
+            val density = LocalDensity.current
+            var room by remember { mutableStateOf(AboutHeight) }
+            val fill = Modifier.onGloballyPositioned { c -> room = maxOf(AboutHeight, with(density) { (floor() - c.positionInRoot().y).toDp() - 14.dp }) }
+            StoreAbout(description, room, Modifier.fillMaxWidth().then(fill))
+        }
     }
 }
 
