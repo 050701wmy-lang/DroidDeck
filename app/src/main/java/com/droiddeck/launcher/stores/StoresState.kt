@@ -212,9 +212,11 @@ object StoresState {
     }
 
     var pendingInstall by mutableStateOf<CatalogItem?>(null)
+    var itchPicking by mutableStateOf<CatalogItem?>(null)
 
     fun requestInstall(context: Context, item: CatalogItem) {
         askForNotifications(context)
+        if (item.store == Store.ITCH && item.extra["uploadId"].isNullOrEmpty()) { itchPicking = item; return }
         if (isUnfinished(item)) { install(context, item); return }
         val targets = StoreInstallRoot.targets(context)
         if (targets.size > 1 || StoreLanguage.selectable(item.store)) pendingInstall = item
