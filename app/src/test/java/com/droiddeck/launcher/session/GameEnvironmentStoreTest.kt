@@ -13,6 +13,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], manifest = Config.NONE)
@@ -80,6 +82,45 @@ class GameEnvironmentStoreTest {
             guestDirectory.mkdirs()
             GameEnvironmentStore.publish(context)
         }
+        assertTrue(JSONObject(guest.readText()).getBoolean(GameEnvironmentStore.GAME_DEBUG_LOGS))
+    }
+
+    @Test fun unchangedEffectiveDiagnosticsDoNotRequireGuestPublication() {
+        assertFalse(SessionPrefs.gameDebugLogsEnabled(context))
+        val guestDirectory = guest.parentFile!!
+        guestDirectory.deleteRecursively()
+        guestDirectory.parentFile!!.mkdirs()
+        guestDirectory.writeText("blocks the guest configuration directory\n")
+        try {
+            assertTrue(SessionPrefs.setLogsEnabled(context, false))
+            assertFalse(SessionPrefs.logsEnabled(context))
+        } finally {
+            guestDirectory.delete()
+            guestDirectory.mkdirs()
+            SessionPrefs.setLogsEnabled(context, true)
+            GameEnvironmentStore.publish(context)
+        }
+    }
+
+    @Test fun logPreferenceUpdatesUseThePublisherLock() {
+        val entered = CountDownLatch(1)
+        val finished = CountDownLatch(1)
+        lateinit var thread: Thread
+        synchronized(GameEnvironmentStore) {
+            thread = Thread {
+                entered.countDown()
+                SessionPrefs.setGameDebugLogsEnabled(context, true)
+                finished.countDown()
+            }
+            thread.start()
+            assertTrue(entered.await(5, TimeUnit.SECONDS))
+            assertFalse(finished.await(100, TimeUnit.MILLISECONDS))
+            assertFalse(SessionPrefs.gameDebugLogsEnabled(context))
+            assertFalse(JSONObject(guest.readText()).getBoolean(GameEnvironmentStore.GAME_DEBUG_LOGS))
+        }
+        assertTrue(finished.await(5, TimeUnit.SECONDS))
+        thread.join()
+        assertTrue(SessionPrefs.gameDebugLogsEnabled(context))
         assertTrue(JSONObject(guest.readText()).getBoolean(GameEnvironmentStore.GAME_DEBUG_LOGS))
     }
 

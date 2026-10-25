@@ -120,7 +120,7 @@ object LogRedactor {
 
     private const val ACCOUNT_VALUE = "(\"[^\"<\\r\\n]+\"|'[^'<\\r\\n]+'|[^\\s\"'<>&;,}]+)"
     private val ACCOUNT_KV = Regex(
-        "(?i)(?<![A-Za-z0-9_])(account[_-]?name|user[_-]?name|epicusername)" +
+        "(?i)(?<![A-Za-z0-9_])(account[_-]?name|account[_-]?id|user[_-]?name|epicusername)" +
             "([\"']?\\s*[=:]\\s*|[\"']\\s+)" + ACCOUNT_VALUE
     )
     private val LOGIN_KV = Regex(
@@ -286,13 +286,13 @@ object LogRedactor {
             java.io.InputStreamReader(input, decoder).use { reader ->
                 val buffer = CharArray(8192)
                 val line = StringBuilder(4096)
-                var withheld = false
+                var withheld: String? = null
                 var afterCr = false
                 fun emit() {
-                    out.write(if (withheld) "<unsupported or oversized line withheld>" else redactForShare(line.toString()))
+                    out.write(withheld ?: redactForShare(line.toString()))
                     out.write("\n")
                     line.setLength(0)
-                    withheld = false
+                    withheld = null
                 }
                 try {
                     while (true) {
@@ -310,15 +310,15 @@ object LogRedactor {
                             if (ch == '\r' || ch == '\n') {
                                 emit()
                                 afterCr = ch == '\r'
-                            } else if (!withheld) {
+                            } else if (withheld == null) {
                                 if (ch == '\u0000' || line.length == MAX_LINE_LENGTH) {
-                                    withheld = true
+                                    withheld = if (ch == '\u0000') "<unsupported or oversized line withheld>" else OVERSIZED_LINE
                                     line.setLength(0)
                                 } else line.append(ch)
                             }
                         }
                     }
-                    if (withheld || line.isNotEmpty()) emit()
+                    if (withheld != null || line.isNotEmpty()) emit()
                 } catch (_: java.nio.charset.CharacterCodingException) {
                     out.write("<unsupported encoding; file withheld>\n")
                 }
