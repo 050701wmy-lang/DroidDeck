@@ -1,6 +1,7 @@
 package com.droiddeck.launcher.stores
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.util.Log
 import com.droiddeck.launcher.frontend.AddedGames
 import com.droiddeck.launcher.frontend.Library
@@ -48,11 +49,38 @@ object CloudSaves {
     private fun markSynced(context: Context, store: Store, id: String) = prefs(context, store).edit().putLong("cloud_sync_$id", System.currentTimeMillis()).apply()
 
 
+    private const val TEMPLATE_NONE = "none"
+    internal const val TEMPLATE_NONE_TTL_MS = 24 * 60 * 60 * 1000L
+
+    internal fun noneTemplateIsCurrent(storedAtMs: Long, nowMs: Long) =
+        storedAtMs > 0L && nowMs - storedAtMs < TEMPLATE_NONE_TTL_MS
+
+    private fun rememberNoCloud(p: SharedPreferences, id: String) {
+        p.edit().putString("cloud_template_$id", TEMPLATE_NONE)
+            .putLong("cloud_template_at_$id", System.currentTimeMillis()).apply()
+    }
+
     fun template(context: Context, store: Store, id: String, folder: File, sidecar: StoreGameSidecar): String? {
         val p = prefs(context, store)
-        if (p.contains("cloud_template_$id")) return p.getString("cloud_template_$id", "")
+        var retryNone = false
+        if (p.contains("cloud_template_$id")) {
+            val cached = p.getString("cloud_template_$id", "") ?: ""
+            if (cached == TEMPLATE_NONE) {
+                if (noneTemplateIsCurrent(p.getLong("cloud_template_at_$id", 0L), System.currentTimeMillis())) return ""
+                retryNone = true
+            } else if (cached.isNotEmpty()) return cached
+        }
+        var gogLocation = ""
         val fetched = when (store) {
-            Store.GOG -> gogTemplate(context, id, folder)
+            Store.GOG -> {
+                val config = gogConfig(context, id, folder)
+                if (config == null) {
+                    if (retryNone) { rememberNoCloud(p, id); return "" }
+                    return null
+                }
+                gogLocation = config.name
+                config.location
+            }
             Store.EPIC -> {
                 val token = EpicCredentialStore.getValidAccessToken(context) ?: return null
                 val ns = sidecar.extra["namespace"].orEmpty()
@@ -61,7 +89,14 @@ object CloudSaves {
             }
             Store.AMAZON, Store.ITCH, Store.XBOX, Store.BATTLENET -> ""
         } ?: return null
-        p.edit().putString("cloud_template_$id", fetched).apply()
+        p.edit()
+            .putString("cloud_template_$id", fetched.ifEmpty { TEMPLATE_NONE })
+            .apply {
+                if (fetched.isEmpty()) putLong("cloud_template_at_$id", System.currentTimeMillis())
+                else remove("cloud_template_at_$id")
+                if (store == Store.GOG && gogLocation.isNotEmpty()) putString("cloud_location_$id", gogLocation)
+            }
+            .apply()
         Log.i(TAG, "cloud ${store.id} $id template ${if (fetched.isEmpty()) "none" else "found"}")
         return fetched
     }
@@ -81,27 +116,19 @@ object CloudSaves {
             if (c.responseCode !in 200..299) { c.disconnect(); return null }
             val cloud = JSONObject(c.inputStream.bufferedReader().readText()).optJSONObject("content")?.optJSONObject("Windows")?.optJSONObject("cloudStorage")
             c.disconnect()
-            if (cloud?.optBoolean("enabled", false) != true) return GogConfig("", "")
-            val locations = cloud.optJSONArray("locations") ?: return GogConfig("", "")
-            val all = (0 until locations.length()).mapNotNull { locations.optJSONObject(it) }
-            val chosen = all.firstOrNull { it.optString("name").equals("saves", true) } ?: all.firstOrNull()
-            val location = chosen?.optString("location").orEmpty()
-            val name = chosen?.optString("name").orEmpty()
-            if (location.isEmpty()) GogConfig("", "") else GogConfig(name, location)
+            val locations = cloud?.optJSONArray("locations")
+            val picked = CloudSavePaths.gogSaveFromRemote(
+                enabled = cloud?.optBoolean("enabled", false) == true,
+                locations = (0 until (locations?.length() ?: 0)).mapNotNull { i ->
+                    locations!!.optJSONObject(i)?.let { it.optString("name") to it.optString("location") }
+                },
+                clientId = clientId,
+            )
+            if (picked == null) GogConfig("", "") else GogConfig(picked.name, picked.template)
         } catch (e: Exception) {
             Log.w(TAG, "gog remote-config: ${e.javaClass.simpleName}")
             null
         }
-    }
-
-    private fun gogTemplate(context: Context, id: String, folder: File): String? {
-        val p = GogPrefs.get(context)
-        if (p.contains("cloud_template_$id")) return p.getString("cloud_template_$id", "")
-        val config = gogConfig(context, id, folder) ?: return null
-        p.edit().putString("cloud_template_$id", config.location).apply {
-            if (config.name.isNotEmpty()) putString("cloud_location_$id", config.name)
-        }.apply()
-        return config.location
     }
 
     /**
@@ -111,7 +138,7 @@ object CloudSaves {
     private fun gogLocationName(context: Context, id: String, folder: File): String? {
         val p = GogPrefs.get(context)
         p.getString("cloud_location_$id", null)?.ifEmpty { null }?.let { return it }
-        if (p.getString("cloud_template_$id", null)?.isEmpty() == true) return null
+        if (p.getString("cloud_template_$id", null)?.let { it.isEmpty() || it == TEMPLATE_NONE } == true) return null
         val config = gogConfig(context, id, folder) ?: return null
         if (config.name.isNotEmpty()) p.edit().putString("cloud_location_$id", config.name).apply()
         return config.name.ifEmpty { null }
@@ -296,7 +323,7 @@ object CloudSaves {
                 }
             }
         } catch (e: NoCloudSaves) {
-            prefs(context, store).edit().putString("cloud_template_$id", "").apply()
+            rememberNoCloud(prefs(context, store), id)
             Result("skipped", 0, 0, "no-cloud-saves")
         } catch (e: Exception) {
             Result("failed", 0, 0, e.javaClass.simpleName)

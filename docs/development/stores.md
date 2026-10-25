@@ -268,7 +268,12 @@ the prefix's user folder appears, within a minute. Every path logs
   `CloudSaveFolder`, e.g. `{AppData}/Game/Saved/SaveGames`. `CloudSavePaths` expands it inside the
   game's prefix (`compatdata/<shortcut appid>/pfx/drive_c/users/steamuser`) or its install folder,
   case-insensitively, and refuses a path that leaves its boundary. A game whose store gives none
-  has no cloud saves.
+  has no cloud saves; a cached none is retried after a day.
+- **Galaxy SDK saves:** `cloudStorage.enabled` with an empty `locations` list is Galaxy SDK
+  IStorage, whose objects live under a location named `__default` in
+  `%LocalAppData%/GOG.com/Galaxy/Applications/<clientId>/Storage/Shared/Files`. It goes through the
+  same location-qualified handling below. GET peels gzip when `Content-Encoding` is gzip, or when
+  the object round-trips as GOG's PUT gzip (deflate 6, mtime 0); a gzip-format save is left intact.
 - **GOG names are location-qualified:** the cloud API lists `saves/user1.dat`, where `saves` is the
   `name` of the selected `cloudStorage.locations` entry and the folder is that entry's `location`
   (`.../Hollow Knight Silksong/default`). `GogCloud` strips the location segment for the local path
