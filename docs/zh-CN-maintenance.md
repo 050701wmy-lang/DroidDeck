@@ -169,3 +169,14 @@ Steam 安装脚本冲突使用上游新的持久下载缓存、通道回退和�
 默认中文、额外字体挂载、GitHub 加速、Steam 官方媒体 CDN 与断点续传、本地原生呈现修复和发布缺包检查保持。无需新增翻译；中文覆盖与下载加速检查通过，相关游戏环境、组件及 Steam 安装脚本 105 项检查通过。ProtonExtrasTest 的同一份编译生产类和测试类在 WSL 的 POSIX Java 环境中运行，10 项通过；Windows 的文件替换语义与 Android 不同，因此未为测试宿主改动 Android 的原子替换实现。
 
 全部组件包来自同提交 Build APK run `40093629289`，产物 ZIP SHA-256 为 `5042c5fe3ff07bceee2bff8f9a4317d9eb051f69c6a4934ee03ad9658863522a`。原生合成器使用当前合并源码构建，其余原生载荷来自本次官方 APK；180 项载荷和五个组件包的来源及摘要分别记录在本机 `.gradle/install/0790cb4-payload-verification.json` 和 `0790cb4-addon-packs.json`。APK 与设备安装状态以 `.gradle/install/preview-state.json` 为准。
+
+
+## 已发布预览 main-1f42f51（2026-10-25）
+
+同步 catalog 发布的 `1f42f512e2594e741abbefb621f5fa38ec2bc709`，版本仍为 `0.6.0 (15)`。官方 APK SHA-256 为 `e3d2b95e1c4f15f8c6104aa43f5f4dbf718f1b2ef5b39757e59c13eb1d588bad`。更新包括 Xbox 云游戏原生播放器、arm64 与 x86-64 Steam 客户端共享游戏、Proton 自动更新的会话保护、itch.io 筛选与分页、Steam 文件对话框及 GOG 登录 User-Agent 修复。上游已提供对应中文，无需补译。
+
+两个原生冲突已结合处理：云串流先进入独立渲染路径，普通 Wayland 场景继续设置本地帧缓存的源帧编号；Vulkan 只启用驱动提供的扩展，AHardwareBuffer 按上游条件启用，同时即便没有 AHardwareBuffer 支持也保留 DMA-BUF 需要的 FOREIGN 队列所有权扩展，且不重复注册。默认中文、字体挂载、GitHub 加速、Steam 官方 CDN、发布缺包检查及本地呈现统计保持。
+
+组件包来自同提交 Build APK run `40160697326`，产物 ZIP SHA-256 为 `e233013b675cfebe42841e8ae7b851f4b9d3784d911aea67b8f6446226b437bb`。本地合成器从当前合并源码构建，其他原生库取自此次官方 APK；184 项载荷和五个组件包摘要分别记录在 `.gradle/install/1f42f51-payload-verification.json`、`1f42f51-addon-packs.json`。新增 WebRTC 依赖为上游固定的 `io.github.webrtc-sdk:android:125.6422.07`，使用官方 Maven Central；本机 `preview-webrtc.gradle` 仅将该模块路由到该仓库。
+
+中文和 GitHub 加速检查通过。相关脚本、共享库、输入、文件对话框及原生回归检查 201 项通过、1 项跳过；文件对话框 JavaScript 用现有 Windows Node 复验，未因 WSL 缺少 Node 跳过。Xbox 云游戏设置与筛选、itch 浏览的 15 项针对性 JUnit 检查通过，发布构建与 lint 通过。APK 与设备安装状态以本机 `.gradle/install/preview-state.json` 为准，构建通过不代表已做云游戏服务或硬件串流测试。
