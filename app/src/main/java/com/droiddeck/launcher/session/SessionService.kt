@@ -432,7 +432,9 @@ class SessionService : Service() {
         killStragglers()
         for (pack in listOf(AddonPack.PROOT, AddonPack.DIRECTAUDIO))
             if (!pack.await(this, { gen == sessionGen && SessionState.running })) Log.w(TAG, "${pack.name} pack unavailable")
-        val agentEnvironment = com.droiddeck.launcher.agent.AgentEnv.beginSession(this)
+        val agentEnvironment = runCatching { com.droiddeck.launcher.agent.AgentEnv.beginSession(this) }
+            .onFailure { Log.w(TAG, "agent environment skipped", it) }
+            .getOrDefault(emptyList())
         SessionFiles.stage(this, root, startsSession = true)
         // Earlier sessions' reports still read the Steam logs and VAC marker this session replaces.
         SessionArtifacts.awaitCollections()

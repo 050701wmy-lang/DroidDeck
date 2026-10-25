@@ -131,13 +131,13 @@ object AgentEnv {
         val state = load(context)
         val active = strings(state.optJSONArray("pending"))
         val overrides = strings(state.optJSONArray("pendingOverrides"))
-        state.put("active", JSONArray(active)).put("pending", JSONArray())
-        state.put("activeOverrides", JSONArray(overrides)).put("pendingOverrides", JSONArray())
-        save(context, state)
         bin(context).listFiles()
             ?.filter { it.name !in overrides }?.forEach { it.delete() }
         val lines = strings(state.optJSONArray("persistent")) + active
         val withPath = if (overrides.none { it != "libblfastpath.so" }) lines else lines + "PATH=$GUEST_BIN:${pathOf(lines)}"
+        state.put("active", JSONArray(active)).put("pending", JSONArray())
+        state.put("activeOverrides", JSONArray(overrides)).put("pendingOverrides", JSONArray())
+        save(context, state)
         if (withPath.isNotEmpty()) Log.i(TAG, "agent environment keys for this session: ${withPath.map { it.substringBefore('=') }}")
         withPath
     }
