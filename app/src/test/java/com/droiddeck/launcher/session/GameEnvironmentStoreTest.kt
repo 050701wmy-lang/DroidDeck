@@ -103,6 +103,7 @@ class GameEnvironmentStoreTest {
     }
 
     @Test fun logPreferenceUpdatesUseThePublisherLock() {
+        GameEnvironmentStore.publish(context)
         val entered = CountDownLatch(1)
         val finished = CountDownLatch(1)
         lateinit var thread: Thread
@@ -127,6 +128,7 @@ class GameEnvironmentStoreTest {
     @Test fun gameDebugLogsWaitForARetainedSessionFolder() {
         assertNull(SessionPaths.current())
         assertTrue(SessionPaths.currentSessionLogsRetained(context))
+        GameEnvironmentStore.publish(context)
         SessionPrefs.setLogsEnabled(context, false)
         val cacheSession = SessionPaths.beginOrCurrent(context, "game-debug-logs")
         try {

@@ -265,8 +265,8 @@ object SessionArtifacts {
     internal fun scrubAndMark(
         dir: File,
         stopWhenSessionStarts: Boolean = false,
-        sessionStarted: () -> Boolean = { SessionState.running },
         beforeReplace: (File) -> Unit = {},
+        sessionStarted: () -> Boolean = { SessionState.running },
     ): Boolean {
         val shouldStop = { stopWhenSessionStarts && sessionStarted() }
         val record = scrubTree(Record(dir), shouldStop, beforeReplace)
