@@ -330,11 +330,11 @@ class AppUpdatesTest {
         assertTrue(g.certain)
     }
 
-    @Test fun aPublishedPreviewPastStableIsNightlyButNotSaved() {
+    @Test fun aPublishedPreviewPastStableIsCertainNightly() {
         val withHistory = AppUpdates.Catalog(stable, release("1111111"), emptyList(), 0L, recentPreview)
         val g = AppUpdates.guessFollow(withHistory, me("2".repeat(40), version = "0.3.0"))
         assertEquals(AppUpdates.Channel.NIGHTLY, g.follow.channel)
-        assertFalse(g.certain)
+        assertTrue(g.certain)
     }
 
     @Test fun anUncataloguedNewerBuildStaysStableForNow() {
