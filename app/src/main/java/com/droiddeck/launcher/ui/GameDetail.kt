@@ -364,6 +364,7 @@ private fun GameActions(
                     }
                     SecondaryButton(stringResource(R.string.stores_xbox_manage), enabled = download == null) { XboxContent.manage(ctx, installed) }
                 }
+                if (store == Store.BATTLENET) SecondaryButton(stringResource(R.string.bnet_open)) { a.onBattleNet() }
             }
             download != null -> {
                 ActionChip(downloadLabel(download), ok = false)
@@ -378,6 +379,7 @@ private fun GameActions(
                 }
                 ConfirmButton(stringResource(R.string.stores_dl_clear), stringResource(R.string.stores_dl_cancel_confirm), compact = true) { DownloadQueue.clear(ctx, failed.key) }
             }
+            store == Store.BATTLENET && item != null -> InstallButton(stringResource(R.string.stores_install), leadOn) { StoresState.requestInstall(ctx, item) }
             store == Store.XBOX && item != null && !item.xboxPc && item.xboxCloud -> {
                 XboxStreamButton(item.id, item.title, main = true, modifier = leadOn)
                 XboxLibraryButton(item.id, item)
@@ -521,6 +523,7 @@ private fun IconAction(icon: androidx.compose.ui.graphics.vector.ImageVector, la
 private fun RemoveButton(title: String, game: Library.SteamGame?, installed: InstalledStoreGame?, a: FrontEndActions) {
     val ctx = LocalContext.current
     val colors = MaterialTheme.colorScheme
+    if ((installed?.sidecar?.store?.id ?: game?.source) == Store.BATTLENET.id) return
     if (installed != null) {
         val key = installed.key
         val gone = StoresState.uninstalling[key]

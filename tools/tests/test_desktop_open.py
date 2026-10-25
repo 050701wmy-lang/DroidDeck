@@ -456,6 +456,15 @@ class ProtonRunTest(Temp):
                          ("0", "0", str(appid << 32 | 0x02000000), "1"))
         self.assertEqual(env["STEAM_COMPAT_DATA_PATH"], str(self.root / ("steamapps/compatdata/%d" % appid)))
 
+    def test_a_window_draws_with_the_desktops_software_gl(self):
+        target = RUN["Target"]("2596113170", "/c", "/i", str(self.root), "fixed")
+        session = {"MESA_LOADER_DRIVER_OVERRIDE": "zink", "GALLIUM_DRIVER": "zink", "LIBGL_KOPPER_DRI2": "true"}
+        env = RUN["environment"](session, target, "/tool", str(self.root), window=True)
+        self.assertEqual((env["LIBGL_ALWAYS_SOFTWARE"], env["GALLIUM_DRIVER"]), ("1", "llvmpipe"))
+        self.assertNotIn("MESA_LOADER_DRIVER_OVERRIDE", env)
+        self.assertNotIn("LIBGL_KOPPER_DRI2", env)
+        self.assertEqual(RUN["environment"](session, target, "/tool", str(self.root))["GALLIUM_DRIVER"], "zink")
+
     def test_a_steam_game_keeps_its_own_id(self):
         target = RUN["Target"]("413150", "/c", "/i", str(self.root), "steam")
         env = RUN["environment"]({"PROTON_USE_WINED3D": "0"}, target, "/tool", str(self.root), window=True)
@@ -464,6 +473,13 @@ class ProtonRunTest(Temp):
     def test_an_installer_package_goes_to_msiexec(self):
         self.assertEqual(RUN["arguments"]("/root/x/setup.msi", ["/qn"]), ["msiexec", "/i", "Z:\\root\\x\\setup.msi", "/qn"])
         self.assertEqual(RUN["arguments"]("/root/x/a.exe", ["-w"]), ["/root/x/a.exe", "-w"])
+
+    def test_a_virtual_desktop_runs_the_program_by_its_windows_path(self):
+        pfx = "/root/Steam/steamapps/compatdata/2596113170"
+        self.assertEqual(RUN["arguments"](pfx + "/pfx/drive_c/Program Files (x86)/Battle.net/Battle.net Launcher.exe", [], "1280x720", pfx),
+                         ["explorer.exe", "/desktop=droiddeck,1280x720", "C:\\Program Files (x86)\\Battle.net\\Battle.net Launcher.exe"])
+        self.assertEqual(RUN["arguments"]("/root/.cache/setup.exe", ["--lang=enUS"], "1920x1080", pfx),
+                         ["explorer.exe", "/desktop=droiddeck,1920x1080", "Z:\\root\\.cache\\setup.exe", "--lang=enUS"])
 
     def test_a_games_own_program_is_left_to_steam(self):
         self.write("Steam/appcache/appinfo.vdf", appinfo({413150: STARDEW}))

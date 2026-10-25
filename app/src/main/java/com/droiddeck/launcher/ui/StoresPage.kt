@@ -235,6 +235,12 @@ internal fun StoresPage(s: FrontEndState, a: FrontEndActions, modifier: Modifier
     LaunchedEffect(Unit) { StoresState.refresh(ctx) }
     val lifecycle = androidx.compose.ui.platform.LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(chip) {
+        if (chip == Store.BATTLENET.id) {
+            while (true) {
+                if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) com.droiddeck.launcher.stores.battlenet.BattleNetClient.refresh(ctx)
+                delay(5_000)
+            }
+        }
         if (chip == Store.EPIC.id) {
             EpicClient.ensure(ctx)
             while (true) {
@@ -919,7 +925,7 @@ private fun Storefront(
                 Shelf(stringResource(R.string.stores_shelf_new), shelf(shelves?.whatsNew), card)
                 Shelf(stringResource(R.string.stores_shelf_deals), shelf(shelves?.deals), card)
                 Shelf(stringResource(R.string.stores_shelf_free), shelf(shelves?.free), card)
-                Shelf(stringResource(R.string.stores_shelf_trending), shelf(shelves?.trending), card)
+                Shelf(stringResource(if (store == Store.BATTLENET) R.string.bnet_store else R.string.stores_shelf_trending), shelf(shelves?.trending), card)
                 if (shelves == null) Rise(4) { Box(Modifier.padding(top = 8.dp)) { Note(stringResource(R.string.stores_shelves_loading)) } }
                 else if (shelves.isEmpty && store == Store.AMAZON) Rise(4) { Box(Modifier.padding(top = 8.dp)) { Note(stringResource(R.string.stores_amazon_no_catalog)) } }
             }
@@ -965,6 +971,39 @@ private fun ProfileStrip(store: Store, owned: Int, loaded: Boolean, s: FrontEndS
             }
         }
         if (store == Store.EPIC) EpicLauncherRow(s, a)
+        if (store == Store.BATTLENET) BattleNetLauncherRow(s, a)
+    }
+}
+
+@Composable
+private fun BattleNetLauncherRow(s: FrontEndState, a: FrontEndActions) {
+    val ctx = LocalContext.current
+    val colors = MaterialTheme.colorScheme
+    val pal = LocalPalette.current
+    val title = stringResource(R.string.bnet_name)
+    Box(Modifier.fillMaxWidth().height(1.dp).background(pal.line))
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().testTag("stores-battlenet-launcher")) {
+        val icon by androidx.compose.runtime.produceState<java.io.File?>(null, s.battleNetInstalled) {
+            value = if (!s.battleNetInstalled) null
+            else kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { com.droiddeck.launcher.runtime.BattleNet.icon(ctx) }
+        }
+        if (icon != null) AsyncImage(model = icon, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.size(36.dp).clip(RoundedCornerShape(8.dp)))
+        Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = colors.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Actions {
+            SecondaryButton(stringResource(R.string.bnet_open), enabled = !s.busy, compact = true) { a.onBattleNet() }
+            val entry = remember(s.battleNetInstalled) { com.droiddeck.launcher.runtime.BattleNet.launcherEntry(s.battleNetInstalled) }
+            val scope = entry?.let { com.droiddeck.launcher.session.NoSteamLaunch.scope(it) }
+            if (entry != null && scope != null) {
+                val host = rememberMenuHost()
+                val settings = rememberGameSettings(scope)
+                Box {
+                    SecondaryButton(stringResource(R.string.game_settings_card), compact = true) {
+                        host.open = if (host.open == GAME_SETTINGS_MENU) null else GAME_SETTINGS_MENU
+                    }
+                    GameSettingsMenus(host, entry, settings)
+                }
+            }
+        }
     }
 }
 
@@ -1066,6 +1105,7 @@ internal fun storePalette(base: Palette, store: Store?): Palette {
         Store.AMAZON -> Color(0xFFFF9900) to Color(0xFFE07800)
         Store.XBOX -> Color(0xFF70C850) to Color(0xFF107C10)
         Store.ITCH -> Color(0xFFFF5C5C) to Color(0xFFD93B3B)
+        Store.BATTLENET -> Color(0xFF148EFF) to Color(0xFF0B6BD3)
         null -> return base
     }
     val on = if (accent.luminance() > 0.18f) Color(0xFF0B0B0D) else Color.White
