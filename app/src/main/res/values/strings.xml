@@ -908,9 +908,9 @@
     <string name="store_installed_size_value">%1$s (plus its shared runtime)</string>
     <string name="store_website">Website</string>
     <string name="store_verified">Verified</string>
-    <string name="upd_title">Updates</string>
+    <string name="upd_title">Changelog</string>
     <string name="upd_build">DroidDeck %1$s · %2$s</string>
-    <string name="upd_checked">Checked %1$s</string>
+    <string name="upd_checked">Refreshed %1$s</string>
     <string name="upd_not_checked">Not checked yet</string>
     <string name="upd_perm_title">Let DroidDeck update itself</string>
     <string name="upd_perm_text">On the next screen, turn on Allow from this source, then come back. The update continues by itself.</string>
@@ -1203,7 +1203,7 @@
     <string name="rail_components">Components</string>
     <string name="rail_apps">Apps</string>
     <string name="rail_setup">Setup</string>
-    <string name="rail_updates">Updates</string>
+    <string name="rail_updates">Changelog</string>
     <string name="rail_percent">%1$d%%</string>
     <string name="rail_resume_named">Resume %1$s</string>
     <string name="roms_text">Shows up as /root/ROMs in each session. Internal storage is at /root/Storage.</string>
@@ -1350,7 +1350,7 @@
     <string name="main_open_dev_options">Open Developer options in Settings</string>
 
     <string name="upd_unknown_apps_failed">Couldn\'t open Android\'s \"Install unknown apps\" setting</string>
-    <string name="upd_couldnt_check">Couldn\'t check: %1$s</string>
+    <string name="upd_couldnt_check">Could not refresh changelog: %1$s</string>
     <string name="upd_no_download">This build has no download for this copy of DroidDeck</string>
     <string name="upd_stop_first">Stop the running session first, then update</string>
     <string name="upd_stage_downloading">Downloading</string>

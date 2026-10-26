@@ -191,3 +191,12 @@ Steam 安装脚本冲突使用上游新的持久下载缓存、通道回退和�
 组件包来自同提交 Build APK run `40320808356`，产物 ZIP SHA-256 为 `09e9eb379cc3b436ee780c75bf4d71c560be84ed128d8076bbc59b3da707c3e9`。当前合并源码的合成器及 DD-FG 已重新编译，其余原生载荷取自此次官方 APK；195 项载荷及源码摘要保存在 `.gradle/install/9fc4851-payload-verification.json`，五个组件包来源保存在 `9fc4851-addon-packs.json`。
 
 中文与 GitHub 加速检查通过。相关脚本和原生回归检查执行 206 项；DD-FG 另 6 项在设置现有 NDK Vulkan 头及原生构建同用的 vk_layer.h 兼容头后复验通过，未为测试改动生产逻辑。触屏按住、会话手势路由与性能模式的 21 项针对性 JUnit 检查通过，发布构建与 lint 通过。实际 APK 及设备安装状态记录在本机 `.gradle/install/preview-state.json`，尚未在设备验证触屏或性能效果。
+
+
+## 只读更新日志（2026-10-27）
+
+按用户要求，侧栏和页面标题改为“更新日志”，保留原 updates 导航键以兼容已保存的页面选择。页面读取官方 catalog 的 preview 与 recentPreviews，按提交去重并按发布时间展示标题、摘要、时间及当前版本；支持缓存、刷新和错误提示，自签构建也可查看。
+
+UpdatesMenu 只读取与刷新目录。页面的通道选择、APK 下载/安装动作、未知来源权限弹窗和安装状态接收器已移除，侧栏更新角标也已移除。AppUpdates 和 SelfInstaller 的后端校验保留，后续同步不得恢复官方 APK 的应用内下载或安装入口；这一入口应继续作为只读日志。
+
+此界面修改沿用已验证的 main-9fc4851 原生载荷和五个组件包、原版包名 com.droiddeck.launcher、DroidDeck 名称及既有签名。APK 与设备验证结果记录在本机 preview-state.json。

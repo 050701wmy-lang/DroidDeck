@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="changelog_empty">No changelog available. Refresh to try again.</string>
+    <string name="changelog_installed">Installed build</string>
+</resources>

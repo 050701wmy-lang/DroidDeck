@@ -1382,11 +1382,6 @@ class FrontEndActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= 33) state.getParcelable(key, Intent::class.java)
         else @Suppress("DEPRECATION") state.getParcelable(key)
 
-    override fun onDestroy() {
-        updates.unregister()
-        super.onDestroy()
-    }
-
     override fun onStop() {
         unregisterReceiver(wifiLocationReceiver)
         unregisterReceiver(mediaReceiver)

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="changelog_empty">暂无更新日志，可点击刷新重试。</string>
+    <string name="changelog_installed">当前安装版本</string>
+</resources>

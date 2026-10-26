@@ -901,9 +901,9 @@
     <string name="store_installed_size_value">%1$s（外加其共享运行时）</string>
     <string name="store_website">网站</string>
     <string name="store_verified">已验证</string>
-    <string name="upd_title">更新</string>
+    <string name="upd_title">更新日志</string>
     <string name="upd_build">DroidDeck %1$s · %2$s</string>
-    <string name="upd_checked">已于 %1$s 检查</string>
+    <string name="upd_checked">已于 %1$s 刷新</string>
     <string name="upd_not_checked">尚未检查</string>
     <string name="upd_perm_title">允许 DroidDeck 自动更新</string>
     <string name="upd_perm_text">在下一屏幕中打开“允许此来源”，然后返回。更新会自动继续。</string>
@@ -1190,7 +1190,7 @@
     <string name="rail_components">组件</string>
     <string name="rail_apps">应用</string>
     <string name="rail_setup">配置</string>
-    <string name="rail_updates">更新</string>
+    <string name="rail_updates">更新日志</string>
     <string name="rail_percent">%1$d%%</string>
     <string name="rail_resume_named">恢复 %1$s</string>
     <string name="roms_text">在每个会话中显示为 /root/ROMs。内部存储位于 /root/Storage。</string>
@@ -1328,7 +1328,7 @@
     <string name="main_open_dev_options">在设置中打开开发者选项</string>
 
     <string name="upd_unknown_apps_failed">无法打开 Android 的“安装未知应用”设置</string>
-    <string name="upd_couldnt_check">无法检查：%1$s</string>
+    <string name="upd_couldnt_check">无法刷新更新日志：%1$s</string>
     <string name="upd_no_download">此构建没有适用于此 DroidDeck 副本的下载</string>
     <string name="upd_stop_first">请先停止正在运行的会话，再进行更新</string>
     <string name="upd_stage_downloading">正在下载</string>
