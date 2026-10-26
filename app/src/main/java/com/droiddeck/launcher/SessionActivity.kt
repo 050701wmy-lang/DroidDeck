@@ -257,6 +257,10 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     private val cursorResync = Runnable { if (syncClientCursor() && clientHidesCursor) cursorVisible = false }
     private val uiHandler = Handler(Looper.getMainLooper())
     private var pendingBackAction: Runnable? = null
+    private val backQamInput = com.droiddeck.launcher.input.BackQamInput(
+        setPressed = { padBridge?.setBackQamPressed(it) },
+        onTap = { performBackAction(double = it) },
+    )
     private var drawerDirectionKey = KeyEvent.KEYCODE_UNKNOWN
     private var drawerDirectionDownTime = 0L
     private var drawerDirectionDeviceId = -1
@@ -446,6 +450,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         }
         override fun onInputDeviceRemoved(deviceId: Int) {
             Log.i(TAG, "input device $deviceId disconnected")
+            backQamInput.onDeviceRemoved(deviceId)
             joyConVr?.refresh()
             padBridge?.onDeviceRemoved(deviceId)
             if (::padMouse.isInitialized) padMouse.reset()
@@ -773,6 +778,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                 }
                 LaunchedEffect(drawerOpen, pcKeyboardOpen, achievementsOpen, gestureSettingsOpen, pipUi, SessionState.suspended) {
                     if (drawerOpen || pcKeyboardOpen || achievementsOpen || gestureSettingsOpen || pipUi || SessionState.suspended) {
+                        backQamInput.cancel()
                         cancelTouchGestures()
                         screenKeys?.stopEditing()
                     }
@@ -2106,6 +2112,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     }
 
     private fun releasePads() {
+        backQamInput.cancel()
         padBridge?.releaseAll()
         joyConVr?.releaseButtons()
     }
@@ -2183,6 +2190,14 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         when (event.keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_MUTE ->
                 return super.dispatchKeyEvent(event)
+        }
+        val backToQam = !pipUi && !screenKeyTextFocus && !drawerOpen && !pcKeyboardOpen && !achievementsOpen &&
+            SessionState.mode == SessionService.MODE_STEAM && SessionState.running && SessionState.firstFrameSeen &&
+            !SessionState.suspended && padBridge?.canHoldQam() == true
+        if (backQamInput.onKeyEvent(event, backToQam)) {
+            pendingBackAction?.let(uiHandler::removeCallbacks)
+            pendingBackAction = null
+            return true
         }
         if (pipUi) return true
         if (screenKeyTextFocus) return super.dispatchKeyEvent(event)
@@ -3253,6 +3268,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
 
     override fun onPause() {
         if (runtimeRemovalBlocked) { super.onPause(); return }
+        backQamInput.cancel()
         capturePausedFrame()
         sessionClipboard.stop()
         if (::touchscreenGestures.isInitialized) touchscreenGestures.cancel()
@@ -3636,6 +3652,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
+        if (!hasFocus) backQamInput.cancel()
         if (!hasFocus && ::padMouse.isInitialized) padMouse.reset()
         if (runtimeRemovalBlocked) return
         if (!hasFocus) {
@@ -3683,6 +3700,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     }
 
     override fun onDestroy() {
+        backQamInput.cancel()
         steamVrRecovery.close()
         uiHandler.removeCallbacks(steamTouchRetry)
         if (runtimeRemovalBlocked) { super.onDestroy(); return }
