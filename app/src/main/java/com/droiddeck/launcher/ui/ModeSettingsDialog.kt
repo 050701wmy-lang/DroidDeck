@@ -306,7 +306,9 @@ fun ModeSheetRows(s: ModeSettings, a: ModeSettingsActions, tab: String, extras: 
                 stringResource(R.string.unfolded_controls_with_controller_hint),
                 s.unfoldedControlsWithController, onChange = a.onUnfoldedControlsWithController,
             )
-            if (steam) ChoiceRow(
+            if (steam && s.steamController in listOf(SessionPrefs.CONTROLLER_DECK, SessionPrefs.CONTROLLER_STEAM)) {
+                Note(stringResource(R.string.back_native_qam_hint))
+            } else if (steam) ChoiceRow(
                 host, "back-actions", stringResource(R.string.mode_back), stringResource(SessionPrefs.backActionsOrder(s.backActionsInverted)),
                 listOf(
                     false to stringResource(SessionPrefs.BACK_MENU_THEN_QAM),
