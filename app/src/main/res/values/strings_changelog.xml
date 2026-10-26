@@ -2,4 +2,6 @@
 <resources>
     <string name="changelog_empty">No changelog available. Refresh to try again.</string>
     <string name="changelog_installed">Installed build</string>
+    <string name="changelog_untranslated_title">Preview %1$s</string>
+    <string name="changelog_translation_pending">Notes for this preview are not yet included.</string>
 </resources>

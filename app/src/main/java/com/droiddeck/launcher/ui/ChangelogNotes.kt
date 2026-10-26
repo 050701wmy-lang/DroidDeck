@@ -1,0 +1,26 @@
+package com.droiddeck.launcher.ui
+
+import com.droiddeck.launcher.R
+
+internal val changelogNotes = mapOf(
+    "eaaecf066143a6fd5efda6d53344f368c4cb48a3" to (R.string.changelog_title_eaaecf066143a6fd5efda6d53344f368c4cb48a3 to R.string.changelog_summary_eaaecf066143a6fd5efda6d53344f368c4cb48a3),
+    "9b68b33e73228c08cee2802d51cb4fa55027ad34" to (R.string.changelog_title_9b68b33e73228c08cee2802d51cb4fa55027ad34 to R.string.changelog_summary_9b68b33e73228c08cee2802d51cb4fa55027ad34),
+    "d65912f0c52a642b2c76be28145a700cf5d183eb" to (R.string.changelog_title_d65912f0c52a642b2c76be28145a700cf5d183eb to 0),
+    "5d945d7784248be6cd294c3ce830c56ef513bbd8" to (R.string.changelog_title_5d945d7784248be6cd294c3ce830c56ef513bbd8 to R.string.changelog_summary_5d945d7784248be6cd294c3ce830c56ef513bbd8),
+    "ee1b3b26e1f7b19216b17a1d49cb070d77980f65" to (R.string.changelog_title_ee1b3b26e1f7b19216b17a1d49cb070d77980f65 to R.string.changelog_summary_ee1b3b26e1f7b19216b17a1d49cb070d77980f65),
+    "e492a78f55c60b717a1ec9858ae869871925564e" to (R.string.changelog_title_e492a78f55c60b717a1ec9858ae869871925564e to R.string.changelog_summary_e492a78f55c60b717a1ec9858ae869871925564e),
+    "fd9de4a21e7c5b49e36ecb05e475477ce85c8d7b" to (R.string.changelog_title_fd9de4a21e7c5b49e36ecb05e475477ce85c8d7b to R.string.changelog_summary_fd9de4a21e7c5b49e36ecb05e475477ce85c8d7b),
+    "1b3814a5876788962141d1a53c4ffcd8cc367c9c" to (R.string.changelog_title_1b3814a5876788962141d1a53c4ffcd8cc367c9c to R.string.changelog_summary_1b3814a5876788962141d1a53c4ffcd8cc367c9c),
+    "78f95c5a0c1a4153aa0426fbc95ed0add0139471" to (R.string.changelog_title_78f95c5a0c1a4153aa0426fbc95ed0add0139471 to R.string.changelog_summary_78f95c5a0c1a4153aa0426fbc95ed0add0139471),
+    "db56cff880e84c777740d377049c8e0e3a844acf" to (R.string.changelog_title_db56cff880e84c777740d377049c8e0e3a844acf to R.string.changelog_summary_db56cff880e84c777740d377049c8e0e3a844acf),
+    "3fdc74051c6b1e0b1ec8a92926fd82144f981a37" to (R.string.changelog_title_3fdc74051c6b1e0b1ec8a92926fd82144f981a37 to R.string.changelog_summary_3fdc74051c6b1e0b1ec8a92926fd82144f981a37),
+    "2a695051991e537dec115ecbb664240bf69daa10" to (R.string.changelog_title_2a695051991e537dec115ecbb664240bf69daa10 to R.string.changelog_summary_2a695051991e537dec115ecbb664240bf69daa10),
+    "1f42f512e2594e741abbefb621f5fa38ec2bc709" to (R.string.changelog_title_1f42f512e2594e741abbefb621f5fa38ec2bc709 to R.string.changelog_summary_1f42f512e2594e741abbefb621f5fa38ec2bc709),
+    "c5d7cdc058981094a1b48603d5f25b48ff0bcda6" to (R.string.changelog_title_c5d7cdc058981094a1b48603d5f25b48ff0bcda6 to R.string.changelog_summary_c5d7cdc058981094a1b48603d5f25b48ff0bcda6),
+    "5ca1f610abfcc2327034ef5f5a04a98a3ac3730b" to (R.string.changelog_title_5ca1f610abfcc2327034ef5f5a04a98a3ac3730b to R.string.changelog_summary_5ca1f610abfcc2327034ef5f5a04a98a3ac3730b),
+    "82d8eb3b79df447c8df577584eb58bf8965d769a" to (R.string.changelog_title_82d8eb3b79df447c8df577584eb58bf8965d769a to R.string.changelog_summary_82d8eb3b79df447c8df577584eb58bf8965d769a),
+    "8d407aa1e80efc041ec86c181f603838389aea42" to (R.string.changelog_title_8d407aa1e80efc041ec86c181f603838389aea42 to R.string.changelog_summary_8d407aa1e80efc041ec86c181f603838389aea42),
+    "aca7fca19fe087dffe89a86a1a92eebd190cdf20" to (R.string.changelog_title_aca7fca19fe087dffe89a86a1a92eebd190cdf20 to R.string.changelog_summary_aca7fca19fe087dffe89a86a1a92eebd190cdf20),
+    "74a6a88df8c3371dd4570e1ce9e258832b380e11" to (R.string.changelog_title_74a6a88df8c3371dd4570e1ce9e258832b380e11 to R.string.changelog_summary_74a6a88df8c3371dd4570e1ce9e258832b380e11),
+    "dc08385411228bb1378f1eeadef317acf7672b9d" to (R.string.changelog_title_dc08385411228bb1378f1eeadef317acf7672b9d to R.string.changelog_summary_dc08385411228bb1378f1eeadef317acf7672b9d),
+)

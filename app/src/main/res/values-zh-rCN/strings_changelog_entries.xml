@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <bool name="changelog_original_notes">false</bool>
+    <string name="changelog_title_eaaecf066143a6fd5efda6d53344f368c4cb48a3" formatted="false">支持竖屏会话与游戏下方的控件</string>
+    <string name="changelog_summary_eaaecf066143a6fd5efda6d53344f368c4cb48a3" formatted="false">Steam、游戏和 Linux 桌面会话现在可以独立选择竖屏或跟随设备旋转，默认仍为横屏。分辨率预设随会话旋转，自定义宽高保持原值；旧版自动分辨率设置继续按预设处理。</string>
+    <string name="changelog_title_9b68b33e73228c08cee2802d51cb4fa55027ad34" formatted="false">性能 HUD 按游戏帧统计，与 Steam 覆盖层保持一致</string>
+    <string name="changelog_summary_9b68b33e73228c08cee2802d51cb4fa55027ad34" formatted="false">修复右上角绿色性能 HUD 帧时间曲线抖动、帧率低于 Steam 性能覆盖层（MangoHud）的问题。例如《Among Us》中，Steam 显示稳定 60 帧时，原 HUD 会显示 51–56 帧并伴有尖峰。</string>
+    <string name="changelog_title_d65912f0c52a642b2c76be28145a700cf5d183eb" formatted="false">修复会话仍使用慢速 PRoot 启动的问题（#1395）</string>
+    <string name="changelog_title_5d945d7784248be6cd294c3ce830c56ef513bbd8" formatted="false">移除重复的会话帧率限制器</string>
+    <string name="changelog_summary_5d945d7784248be6cd294c3ce830c56ef513bbd8" formatted="false">DroidDeck 的模式设置帧率上限与 Steam 快捷访问菜单重复，可能导致两个限制器互相干扰。移除会话级帧率控件及其设置和运行时连接，由 Steam 快捷访问菜单管理 Steam 游戏帧率。</string>
+    <string name="changelog_title_ee1b3b26e1f7b19216b17a1d49cb070d77980f65" formatted="false">HUD 正确显示桌面窗口游戏的实际帧率</string>
+    <string name="changelog_summary_ee1b3b26e1f7b19216b17a1d49cb070d77980f65" formatted="false">修复在 KDE 桌面中从 Steam 启动窗口游戏时，游戏运行流畅但性能 HUD 始终显示 0 帧的问题。</string>
+    <string name="changelog_title_e492a78f55c60b717a1ec9858ae869871925564e" formatted="false">库中不再显示战网 Agent 已移除的游戏</string>
+    <string name="changelog_summary_e492a78f55c60b717a1ec9858ae869871925564e" formatted="false">修复已卸载的战网游戏仍出现在库、Steam 和商店列表中的问题，以及《魔兽世界》《星际争霸》的文件仍在 Games 文件夹中，却从战网客户端消失的问题。</string>
+    <string name="changelog_title_fd9de4a21e7c5b49e36ecb05e475477ce85c8d7b" formatted="false">战网商店改为可向下滚动的游戏网格</string>
+    <string name="changelog_summary_fd9de4a21e7c5b49e36ecb05e475477ce85c8d7b" formatted="false">战网商店原先将全部游戏放在单行横向列表中，下方留白，且最多显示 24 张卡片，导致 31 款游戏中的最后 7 款无法访问。现在改为纵向滚动网格，可浏览完整目录。</string>
+    <string name="changelog_title_1b3814a5876788962141d1a53c4ffcd8cc367c9c" formatted="false">性能模式也遵守设定的帧率上限</string>
+    <string name="changelog_summary_1b3814a5876788962141d1a53c4ffcd8cc367c9c" formatted="false">开启性能模式并设置帧率上限后，游戏现在会按上限运行，不再绘制屏幕不会显示的多余帧。</string>
+    <string name="changelog_title_78f95c5a0c1a4153aa0426fbc95ed0add0139471" formatted="false">启动器支持竖屏布局</string>
+    <string name="changelog_summary_78f95c5a0c1a4153aa0426fbc95ed0add0139471" formatted="false">DroidDeck 现在可以跟随设备旋转或固定竖屏。竖向窗口使用底部导航，横屏保留侧栏。启动器方向与 Steam、游戏、桌面会话方向独立，也适用于文件浏览器、文件选择器和商店登录页面。</string>
+    <string name="changelog_title_db56cff880e84c777740d377049c8e0e3a844acf" formatted="false">商店支持战网游戏下载、更新和卸载</string>
+    <string name="changelog_summary_db56cff880e84c777740d377049c8e0e3a844acf" formatted="false">战网游戏现在可以像 Epic、Xbox 和 itch 游戏一样，直接从商店安装。</string>
+    <string name="changelog_title_3fdc74051c6b1e0b1ec8a92926fd82144f981a37" formatted="false">默认下载并使用 DroidDeck-Proton，自动保持更新</string>
+    <string name="changelog_summary_3fdc74051c6b1e0b1ec8a92926fd82144f981a37" formatted="false">游戏默认使用 DroidDeck-Proton。它会自动下载并保持更新，每次更新替换旧构建，同时保留用户的选择。</string>
+    <string name="changelog_title_2a695051991e537dec115ecbb664240bf69daa10" formatted="false">游戏与商店库合并为统一游戏库和详情页</string>
+    <string name="changelog_summary_2a695051991e537dec115ecbb664240bf69daa10" formatted="false">此前同一游戏可能出现在三个位置，并有两种不同详情页。现在所有已拥有游戏集中在同一个库中，每个来源共用统一游戏详情页，商店用于获取游戏。Steam 标签页保持原样。</string>
+    <string name="changelog_title_1f42f512e2594e741abbefb621f5fa38ec2bc709" formatted="false">GOG 登录页面使用浏览器自身的用户代理</string>
+    <string name="changelog_summary_1f42f512e2594e741abbefb621f5fa38ec2bc709" formatted="false">修复 GOG 登录问题（#1486）。</string>
+    <string name="changelog_title_c5d7cdc058981094a1b48603d5f25b48ff0bcda6" formatted="false">Xbox 云游戏支持商店入口及带帧生成的原生播放器</string>
+    <string name="changelog_summary_c5d7cdc058981094a1b48603d5f25b48ff0bcda6" formatted="false">可在 Linux 会话之外，从 DroidDeck 串流游玩 Xbox 云游戏。还可选择原生播放器，对串流画面使用 DroidDeck 自身的帧生成功能。</string>
+    <string name="changelog_title_5ca1f610abfcc2327034ef5f5a04a98a3ac3730b" formatted="false">修复 StrongBox 密钥库响应慢的手机无法登录 Xbox</string>
+    <string name="changelog_summary_5ca1f610abfcc2327034ef5f5a04a98a3ac3730b" formatted="false">相关问题：#1337、#1300。</string>
+    <string name="changelog_title_82d8eb3b79df447c8df577584eb58bf8965d769a" formatted="false">arm64 与 x86-64 Steam 客户端共享已安装游戏</string>
+    <string name="changelog_summary_82d8eb3b79df447c8df577584eb58bf8965d769a" formatted="false">此前两个客户端使用独立游戏库，在一个客户端安装的游戏会在另一个中显示未安装，需要重复下载。现在双方都能识别对方已安装的游戏，并直接使用相同文件运行。</string>
+    <string name="changelog_title_8d407aa1e80efc041ec86c181f603838389aea42" formatted="false">游戏模式正确切换到 Flatpak 等沙盒快捷方式</string>
+    <string name="changelog_summary_8d407aa1e80efc041ec86c181f603838389aea42" formatted="false">修复从 Steam 大屏幕模式启动 Flatpak 等非 Steam 游戏后，只能听到声音、画面仍停在 Steam 加载动画的问题。以相同方式启动战网也曾出现该现象。</string>
+    <string name="changelog_title_aca7fca19fe087dffe89a86a1a92eebd190cdf20" formatted="false">打开应用时自动更新已安装的 Proton</string>
+    <string name="changelog_summary_aca7fca19fe087dffe89a86a1a92eebd190cdf20" formatted="false">在应用空闲且网络、电源条件合适时，自动更新已安装的 Proton 系列。保留旧构建和固定选择，在启动游戏时暂停更新，并使用持久重试冷却时间；30 项针对性测试已通过。</string>
+    <string name="changelog_title_74a6a88df8c3371dd4570e1ce9e258832b380e11" formatted="false">修复手机横屏时桌面页面内容重叠</string>
+    <string name="changelog_summary_74a6a88df8c3371dd4570e1ce9e258832b380e11" formatted="false">修复安装桌面后，手机横屏页面的大标题与模拟器、应用卡片重叠的问题。原先卸载按钮位于商店和添加按钮下方，增加了区域高度并将标题挤入卡片。</string>
+    <string name="changelog_title_dc08385411228bb1378f1eeadef317acf7672b9d" formatted="false">KDE Steam 客户端退出时停止游戏库辅助进程</string>
+    <string name="changelog_summary_dc08385411228bb1378f1eeadef317acf7672b9d" formatted="false">修复在 KDE 中退出 Steam 桌面客户端后，必须重启会话才能再次打开的问题。原先第二次启动会一直等待，随后报告桌面客户端未就绪。</string>
+</resources>

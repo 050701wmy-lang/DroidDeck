@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.booleanResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -40,6 +41,7 @@ internal fun UpdatesPage(s: FrontEndState, a: FrontEndActions, modifier: Modifie
     val colors = MaterialTheme.colorScheme
     val pal = LocalPalette.current
     val me = remember { AppUpdates.installed() }
+    val originalNotes = booleanResource(R.bool.changelog_original_notes)
     val changes = remember(u.catalog) {
         buildList {
             u.catalog?.preview?.let {
@@ -67,16 +69,27 @@ internal fun UpdatesPage(s: FrontEndState, a: FrontEndActions, modifier: Modifie
                 stringResource(if (u.checking) R.string.common_checking else R.string.changelog_empty),
                 color = colors.onSurfaceVariant)
             changes.forEach { change ->
+                val notes = changelogNotes[change.commit.lowercase()]
+                val title = when {
+                    notes != null -> stringResource(notes.first)
+                    originalNotes -> change.title.ifBlank { change.commit.take(7) }
+                    else -> stringResource(R.string.changelog_untranslated_title, change.commit.take(7))
+                }
+                val summary = when {
+                    notes != null -> if (notes.second != 0) stringResource(notes.second) else ""
+                    originalNotes -> change.summary
+                    else -> stringResource(R.string.changelog_translation_pending)
+                }
                 Column(Modifier.fillMaxWidth().clip(Shape16).background(colors.surface)
                     .border(1.dp, pal.line, Shape16).padding(16.dp)) {
                     if (change.commit.equals(me.commit, ignoreCase = true)) Text(
                         stringResource(R.string.changelog_installed), fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold, color = pal.good)
-                    Text(change.title.ifBlank { change.commit.take(7) }, fontSize = 16.sp,
+                    Text(title, fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold, color = colors.onBackground)
                     Text("${ago(change.publishedAt)} · ${change.commit.take(7)}", fontSize = 12.sp,
                         color = colors.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
-                    if (change.summary.isNotBlank()) Text(change.summary, fontSize = 14.sp,
+                    if (summary.isNotBlank()) Text(summary, fontSize = 14.sp,
                         color = colors.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
                 }
             }

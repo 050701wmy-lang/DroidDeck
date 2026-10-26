@@ -200,3 +200,5 @@ Steam 安装脚本冲突使用上游新的持久下载缓存、通道回退和�
 UpdatesMenu 只读取与刷新目录。页面的通道选择、APK 下载/安装动作、未知来源权限弹窗和安装状态接收器已移除，侧栏更新角标也已移除。AppUpdates 和 SelfInstaller 的后端校验保留，后续同步不得恢复官方 APK 的应用内下载或安装入口；这一入口应继续作为只读日志。
 
 此界面修改沿用已验证的 main-9fc4851 原生载荷和五个组件包、原版包名 com.droiddeck.launcher、DroidDeck 名称及既有签名。APK 与设备验证结果记录在本机 preview-state.json。
+
+日志正文也必须跟随应用语言。ChangelogNotes 按完整提交号引用 Android 字符串资源；英文原文与简体中文标题、摘要分别保存在 values 和 values-zh-rCN 的 strings_changelog_entries.xml。每次同步应补齐官方 preview/recentPreviews 的对应译文，并保留已收录的旧日志。简体中文下尚未收录的提交显示中文待翻译提示，不直接回退上游英文正文；英文显示原文。语言选择继续由 AppLanguage 和 Android 资源系统处理。
