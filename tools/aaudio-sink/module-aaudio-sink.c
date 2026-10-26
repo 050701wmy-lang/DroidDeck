@@ -508,6 +508,7 @@ void pa__done(pa_module *m) {
         return;
 
     android_volume_free(u->android_volume);
+    u->android_volume = NULL;
     if (u->sink)
         pa_sink_unlink(u->sink);
     if (u->thread) {
