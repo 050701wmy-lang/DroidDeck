@@ -99,3 +99,25 @@ The patch can keep the result for `DROIDDECK_WSI_BYPASS_CHECK_MS` milliseconds. 
 or 0 keeps the per-present check; the app sets 100 only in Performance mode and 0
 otherwise. With 100, a window resize or a flip/obscure change is seen up to 100 ms
 later than before; surface creation and capability queries still check every time.
+
+## 0118 Wayland: preserve signed plane positions
+
+Fill scaling and Steam magnification can place the image at negative x/y coordinates.
+The Wayland backend converted these signed positions through an unsigned size helper:
+at host scale 120, -120 became 35791275 and the image moved off-screen while overlays
+could remain visible. A separate signed conversion uses a 64-bit intermediate and
+retains the existing ceiling convention; viewport sizes keep their original helper.
+
+The component build runs `wayland_scaling` for negative crop offsets, positive/zero
+positions, fractional host scales and wide intermediates. This patch may be worth
+upstreaming: the same unsigned position calls were present in ValveSoftware/gamescope
+3.16.29 and master `d175688ad4ec490dc7b0695c5c62f8807684a1f1` when checked on
+2026-10-26. Carry it here until an upstream release containing the fix is adopted.
+
+Device validation on AYN Thor (1280x720 session, 1920x1080 Android output):
+800x600 and 1600x600 source windows retained their image through Auto, Fit,
+Stretch, Fill, Integer and 2x Steam magnification, including returning to Fit.
+The old component lost the image in Fill and magnification. The tested executable
+matches the pinned p14 archive and the locally assembled APK. Hardware checks used
+native Gamescope properties; the physical Back+LB shortcut was not independently
+confirmed. The original APK and runtime were restored after validation.
