@@ -206,6 +206,64 @@ class PadBridgeQamTest {
         assertFalse(pad().isDown(PadState.QAM))
     }
 
+    @Test fun disconnectingThePartnerControllerDiscardsItsQueuedPress() {
+        val device = controller()
+        bridge.setBackQamPressed(true)
+        bridge.onKeyEvent(key(device, KeyEvent.KEYCODE_BUTTON_L1))
+        advance(20)
+        bridge.onDeviceRemoved(device.id)
+        assertTrue(pad().isDown(PadState.QAM))
+        assertFalse(pad().isDown(PadState.LB))
+        advance(60)
+        assertFalse(pad().isDown(PadState.LB))
+        advance(1000)
+        assertFalse(pad().isDown(PadState.LB))
+        assertTrue(pad().isDown(PadState.QAM))
+    }
+
+    @Test fun disconnectingThePartnerControllerImmediatelyReleasesADeliveredPress() {
+        val device = controller()
+        bridge.setBackQamPressed(true)
+        bridge.onKeyEvent(key(device, KeyEvent.KEYCODE_BUTTON_L1))
+        advance(80)
+        assertTrue(pad().isDown(PadState.LB))
+        bridge.onDeviceRemoved(device.id)
+        assertFalse(pad().isDown(PadState.LB))
+        assertTrue(pad().isDown(PadState.QAM))
+        advance(1000)
+        assertFalse(pad().isDown(PadState.LB))
+    }
+
+    @Test fun removingAnotherPlayerDoesNotDiscardThePrimaryPlayersQueuedChord() {
+        val device = controller()
+        bridge.onKeyEvent(key(device, KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.ACTION_UP))
+        val other = controller(11)
+        bridge.onKeyEvent(key(other, KeyEvent.KEYCODE_BUTTON_X, KeyEvent.ACTION_UP))
+        bridge.setBackQamPressed(true)
+        bridge.onKeyEvent(key(device, KeyEvent.KEYCODE_BUTTON_L1))
+        bridge.onDeviceRemoved(other.id)
+        advance(80)
+        assertTrue(pad().isDown(PadState.LB))
+        assertTrue(pad().isDown(PadState.QAM))
+    }
+
+    @Test fun pairingOnAnIgnoredRailKeyImmediatelyReleasesDeliveredButtonsAndDropsQueuedOnes() {
+        val left = controller(product = 0x2006)
+        bridge.setBackQamPressed(true)
+        bridge.onKeyEvent(key(left, KeyEvent.KEYCODE_BUTTON_L1))
+        advance(80)
+        assertTrue(pad().isDown(PadState.LB))
+        bridge.onKeyEvent(key(left, KeyEvent.KEYCODE_BUTTON_X))
+        val right = controller(11, product = 0x2007)
+        assertTrue(bridge.onKeyEvent(key(right, KeyEvent.KEYCODE_BUTTON_L1, scan = 0x136)))
+        assertFalse(pad().isDown(PadState.LB))
+        assertFalse(pad().isDown(PadState.X))
+        assertTrue(pad().isDown(PadState.QAM))
+        advance(1000)
+        assertFalse(pad().isDown(PadState.LB))
+        assertFalse(pad().isDown(PadState.X))
+    }
+
     @Test fun queuedReportsUseTheLiveStickAndStopItImmediatelyOnBackRelease() {
         bridge.setBackQamPressed(true)
         bridge.applyExternal({ it.press(PadState.X, true); it.leftY = -1f }, true)
@@ -256,8 +314,9 @@ class PadBridgeQamTest {
         assertEquals(3, promoted.size)
     }
 
-    private fun controller(id: Int = 10): InputDevice {
+    private fun controller(id: Int = 10, product: Int = 0): InputDevice {
         val builder = InputDeviceBuilder.newBuilder().setId(id).setName("QAM pad $id")
+            .setVendorId(if (product == 0) 0 else 0x057e).setProductId(product)
             .setDescriptor("qam-pad-$id").setExternal(true).setKeyboardType(InputDevice.KEYBOARD_TYPE_NON_ALPHABETIC)
             .setSources(InputDevice.SOURCE_GAMEPAD or InputDevice.SOURCE_JOYSTICK)
         for (axis in listOf(MotionEvent.AXIS_X, MotionEvent.AXIS_LTRIGGER, MotionEvent.AXIS_HAT_Y)) {
@@ -269,8 +328,8 @@ class PadBridgeQamTest {
         }
     }
 
-    private fun key(device: InputDevice, code: Int, action: Int = KeyEvent.ACTION_DOWN, repeat: Int = 0) =
-        KeyEvent(0L, 0L, action, code, repeat, 0, device.id, 0, 0, InputDevice.SOURCE_GAMEPAD)
+    private fun key(device: InputDevice, code: Int, action: Int = KeyEvent.ACTION_DOWN, repeat: Int = 0, scan: Int = 0) =
+        KeyEvent(0L, 0L, action, code, repeat, 0, device.id, scan, 0, InputDevice.SOURCE_GAMEPAD)
 
     private fun motion(device: InputDevice, axis: Int, value: Float) {
         val event = MotionEvent.obtain(0L, 0L, MotionEvent.ACTION_MOVE, 1,
