@@ -1,6 +1,7 @@
 package com.droiddeck.launcher.runtime
 
 import android.app.Application
+import android.app.NotificationManager
 import android.content.Context
 import android.media.AudioManager
 import android.os.Looper
@@ -24,20 +25,21 @@ import org.robolectric.annotation.Implementation
 import org.robolectric.shadows.ShadowSettings
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [28], manifest = Config.NONE, application = Application::class, shadows = [WriteSettingsShadow::class])
+@Config(sdk = [28, 33], manifest = Config.NONE, application = Application::class, shadows = [WriteSettingsShadow::class])
 class DeviceControlsComponentTest {
     @get:Rule val tmp = TemporaryFolder()
     private val context get() = RuntimeEnvironment.getApplication()
     private val audio get() = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private lateinit var component: DeviceControlsComponent
     private lateinit var directory: File
+    private var visible = true
 
     @Before fun start() {
         WriteSettingsShadow.writable = true
         Settings.System.putInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS, 128)
         val root = tmp.newFolder()
         directory = DeviceControlsComponent.directory(root)
-        component = DeviceControlsComponent(context, root)
+        component = DeviceControlsComponent(context, root) { visible }
         component.publish()
         component.start()
         shadowOf(Looper.getMainLooper()).idle()
@@ -83,6 +85,35 @@ class DeviceControlsComponentTest {
         Settings.System.putInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS, 255)
         tick()
         assertEquals(1.0, JSONObject(File(directory, "state.json").readText()).getDouble("brightness"), 0.0001)
+    }
+
+    @Test fun hiddenPermissionRequestOffersANotificationAndRetainsTheLatestValue() {
+        visible = false
+        WriteSettingsShadow.writable = false
+        request("brightness", "0.25")
+        request("brightness", "0.75")
+        assertNull(shadowOf(context).nextStartedActivity)
+        val notifications = context.getSystemService(NotificationManager::class.java)
+        val notification = notifications.activeNotifications.single().notification
+        notification.contentIntent.send()
+        assertEquals(Settings.ACTION_MANAGE_WRITE_SETTINGS, shadowOf(context).nextStartedActivity.action)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(121))
+        WriteSettingsShadow.writable = true
+        tick()
+        assertEquals(192, Settings.System.getInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS))
+        assertTrue(notifications.activeNotifications.isEmpty())
+    }
+
+    @Test fun stoppingClearsThePermissionNotificationAndPendingRequest() {
+        visible = false
+        WriteSettingsShadow.writable = false
+        request("brightness", "0.75")
+        component.stop()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertTrue(context.getSystemService(NotificationManager::class.java).activeNotifications.isEmpty())
+        WriteSettingsShadow.writable = true
+        tick()
+        assertEquals(128, Settings.System.getInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS))
     }
 
     @Test fun stoppedSessionsDoNotConsumeNewCommands() {

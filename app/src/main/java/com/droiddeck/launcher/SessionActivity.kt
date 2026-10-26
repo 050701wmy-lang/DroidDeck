@@ -257,7 +257,10 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     private val cursorResync = Runnable { if (syncClientCursor() && clientHidesCursor) cursorVisible = false }
     private val uiHandler = Handler(Looper.getMainLooper())
     private var pendingBackAction: Runnable? = null
-    private val backQamInput = com.droiddeck.launcher.input.BackQamInput { padBridge?.setBackQamPressed(it) }
+    private val backQamInput = com.droiddeck.launcher.input.BackQamInput(
+        setPressed = { padBridge?.setBackQamPressed(it) },
+        onTap = { performBackAction(double = it) },
+    )
     private var drawerDirectionKey = KeyEvent.KEYCODE_UNKNOWN
     private var drawerDirectionDownTime = 0L
     private var drawerDirectionDeviceId = -1

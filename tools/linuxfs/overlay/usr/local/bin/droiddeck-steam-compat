@@ -23,19 +23,21 @@ BRIGHTNESS_JS = r"""
   if (window.__droiddeckBrightness) return "present";
   const display = SteamClient.System?.Display;
   if (!display?.RegisterForBrightnessChanges || !display?.SetBrightness) return "unavailable";
-  const self = { expected: null, updating: true };
+  const self = { expected: null, updating: true, revision: 0 };
   self.set = value => {
     if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) return;
     if (!self.updating && self.expected !== null && Math.abs(value - self.expected) < 0.0001) return;
     self.expected = value;
     self.updating = true;
+    const revision = ++self.revision;
+    setTimeout(() => { if (self.revision === revision) self.updating = false; }, 500);
     display.SetBrightness(value);
   };
   self.subscription = display.RegisterForBrightnessChanges(state => {
     const value = state?.flBrightness;
     if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1 || self.expected === null) return;
     if (Math.abs(value - self.expected) < 0.0001) { self.updating = false; return; }
-    if (self.updating) return;
+    if (self.updating) { self.updating = false; return; }
     self.expected = value;
     if (typeof window.__BINDING__ === "function") window.__BINDING__(String(value));
   });
@@ -677,6 +679,7 @@ class Helper:
         self.vr_launch = None
         self.chooser = None
         self.controls_state = None
+        self.controls_installed = False
 
     def sync_controls(self):
         try:
@@ -685,9 +688,17 @@ class Helper:
             value = state.get("brightness")
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 1:
                 return
+            if not self.controls_installed:
+                self.page.call("Runtime.addBinding", {"name": BRIGHTNESS_BINDING})
+                self.controls_installed = self.page.evaluate(BRIGHTNESS_JS) in ("installed", "present")
+                if not self.controls_installed:
+                    return
             if state != self.controls_state:
-                self.page.evaluate("window.__droiddeckBrightness?.set(%s)" % json.dumps(value))
-                self.controls_state = state
+                if self.page.evaluate("!!window.__droiddeckBrightness && (window.__droiddeckBrightness.set(%s), true)" % json.dumps(value)) is True:
+                    self.controls_state = state
+                else:
+                    self.controls_installed = False
+                    self.controls_state = None
         except (OSError, ValueError, TypeError):
             pass
 
@@ -762,14 +773,13 @@ class Helper:
         try:
             if page.evaluate("typeof SteamClient === 'object' && typeof SteamClient.WebUITransport === 'object'") is not True:
                 raise LookupError("SteamClient is not ready")
-            if os.path.isfile(os.path.join(CONTROLS_DIR, "state.json")):
-                page.call("Runtime.addBinding", {"name": BRIGHTNESS_BINDING})
-                page.evaluate(BRIGHTNESS_JS)
-                self.controls_state = None
             if self.files_only:
                 page.call("Runtime.addBinding", {"name": FILE_BINDING})
                 page.evaluate(FILE_JS)
                 self.page = page
+                self.controls_state = None
+                self.controls_installed = False
+                self.sync_controls()
                 return True
             page.call("Runtime.addBinding", {"name": BINDING})
             page.call("Runtime.addBinding", {"name": VR_BINDING})
@@ -789,6 +799,9 @@ class Helper:
             page.ws.close()
             raise
         self.page = page
+        self.controls_state = None
+        self.controls_installed = False
+        self.sync_controls()
         return True
 
     def reconcile(self):

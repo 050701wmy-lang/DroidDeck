@@ -2,6 +2,10 @@ package com.droiddeck.launcher.runtime
 
 import android.content.Context
 import android.content.Intent
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.database.ContentObserver
 import android.media.AudioManager
 import android.net.Uri
@@ -12,19 +16,20 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import com.droiddeck.launcher.core.SessionPart
+import com.droiddeck.launcher.R
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import org.json.JSONObject
 import kotlin.math.roundToInt
 
-class DeviceControlsComponent(context: Context, root: File) : SessionPart() {
+class DeviceControlsComponent(context: Context, root: File, private val activityVisible: () -> Boolean = { false }) : SessionPart() {
     private val context = context.applicationContext
     private val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val directory = directory(root)
     private val handler = Handler(Looper.getMainLooper())
     private var running = false
-    private var pendingBrightness: Pair<Float, Long>? = null
+    private var pendingBrightness: Float? = null
     private var permissionRequestAt = -5_000L
     private var previous = ""
     private var revision = 0L
@@ -41,10 +46,10 @@ class DeviceControlsComponent(context: Context, root: File) : SessionPart() {
         override fun run() {
             if (!running) return
             consume()
-            pendingBrightness?.let { (value, time) ->
-                if (SystemClock.elapsedRealtime() - time > 120_000) pendingBrightness = null
-                else if (Settings.System.canWrite(context)) {
+            pendingBrightness?.let { value ->
+                if (Settings.System.canWrite(context)) {
                     pendingBrightness = null
+                    context.getSystemService(NotificationManager::class.java).cancel(PERMISSION_NOTIFICATION)
                     brightness(value)
                 }
             }
@@ -94,6 +99,7 @@ class DeviceControlsComponent(context: Context, root: File) : SessionPart() {
             requests.stopWatching()
             context.contentResolver.unregisterContentObserver(observer)
             pendingBrightness = null
+            context.getSystemService(NotificationManager::class.java).cancel(PERMISSION_NOTIFICATION)
         }
     }
 
@@ -128,13 +134,23 @@ class DeviceControlsComponent(context: Context, root: File) : SessionPart() {
 
     private fun brightness(value: Float) {
         if (!Settings.System.canWrite(context)) {
-            pendingBrightness = value to SystemClock.elapsedRealtime()
+            pendingBrightness = value
             val now = SystemClock.elapsedRealtime()
             if (now - permissionRequestAt >= 5_000) {
                 permissionRequestAt = now
                 try {
-                    context.startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS,
-                        Uri.parse("package:${context.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                        Uri.parse("package:${context.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    val manager = context.getSystemService(NotificationManager::class.java)
+                    manager.createNotificationChannel(NotificationChannel(PERMISSION_CHANNEL,
+                        context.getString(R.string.brightness_permission_title), NotificationManager.IMPORTANCE_DEFAULT))
+                    val action = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+                    manager.notify(PERMISSION_NOTIFICATION, Notification.Builder(context, PERMISSION_CHANNEL)
+                        .setSmallIcon(R.drawable.ic_stat_session)
+                        .setContentTitle(context.getString(R.string.brightness_permission_title))
+                        .setContentText(context.getString(R.string.brightness_permission_text))
+                        .setContentIntent(action).setOnlyAlertOnce(true).setAutoCancel(true).build())
+                    if (activityVisible()) context.startActivity(intent)
                 } catch (e: Exception) {
                     Log.w(TAG, "Could not open brightness permission", e)
                 }
@@ -161,6 +177,8 @@ class DeviceControlsComponent(context: Context, root: File) : SessionPart() {
 
     companion object {
         private const val TAG = "DeviceControls"
+        private const val PERMISSION_CHANNEL = "brightness_permission"
+        private const val PERMISSION_NOTIFICATION = 0x4442
         private val REQUESTS = setOf("brightness.request", "volume.request", "mute.request")
         @JvmStatic fun directory(root: File) = File(root, "etc/droiddeck-device-controls")
         @JvmStatic fun prepareBacklight(context: Context, root: File): File {

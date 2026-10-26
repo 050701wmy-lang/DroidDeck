@@ -630,7 +630,7 @@ class SessionService : Service() {
         networkLink.attach(this)
         networkLink.publish()
         components.add(networkLink)
-        val deviceControls = com.droiddeck.launcher.runtime.DeviceControlsComponent(this, root)
+        val deviceControls = com.droiddeck.launcher.runtime.DeviceControlsComponent(this, root) { activityVisible && screenOn }
         deviceControls.attach(this)
         deviceControls.publish()
         components.add(deviceControls)

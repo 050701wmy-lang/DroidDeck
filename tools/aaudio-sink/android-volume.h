@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 #include <stdio.h>
 #include <pulsecore/core-rtclock.h>
+#include <pulsecore/core-subscribe.h>
 
 struct android_volume {
     pa_sink *sink;
@@ -59,6 +60,10 @@ static void android_volume_refresh(pa_mainloop_api *api, pa_time_event *event, c
         access(processing, F_OK) != 0 && access(mute_processing, F_OK) != 0 &&
         android_volume_read(bridge->directory, &level, &maximum, &muted)) {
         pa_cvolume volume;
+        if (bridge->sink->n_volume_steps != maximum + 1) {
+            bridge->sink->n_volume_steps = maximum + 1;
+            pa_subscription_post(bridge->sink->core, PA_SUBSCRIPTION_EVENT_SINK | PA_SUBSCRIPTION_EVENT_CHANGE, bridge->sink->index);
+        }
         pa_cvolume_set(&volume, bridge->sink->sample_spec.channels, (uint64_t)level * PA_VOLUME_NORM / maximum);
         if (!pa_cvolume_equal(&volume, &bridge->sink->real_volume)) pa_sink_volume_changed(bridge->sink, &volume);
         if (bridge->sink->muted != !!muted) pa_sink_mute_changed(bridge->sink, !!muted);
@@ -72,14 +77,16 @@ static void android_volume_refresh(pa_mainloop_api *api, pa_time_event *event, c
 
 static struct android_volume *android_volume_new(pa_sink *sink, const char *directory) {
     unsigned level, maximum, muted;
-    if (!directory || !android_volume_read(directory, &level, &maximum, &muted)) return NULL;
+    if (!directory) return NULL;
     struct android_volume *bridge = pa_xnew0(struct android_volume, 1);
     bridge->sink = sink;
     bridge->directory = pa_xstrdup(directory);
-    pa_cvolume_set(&sink->real_volume, sink->sample_spec.channels, (uint64_t)level * PA_VOLUME_NORM / maximum);
-    sink->reference_volume = sink->real_volume;
-    sink->muted = !!muted;
-    sink->n_volume_steps = maximum + 1;
+    if (android_volume_read(directory, &level, &maximum, &muted)) {
+        pa_cvolume_set(&sink->real_volume, sink->sample_spec.channels, (uint64_t)level * PA_VOLUME_NORM / maximum);
+        sink->reference_volume = sink->real_volume;
+        sink->muted = !!muted;
+        sink->n_volume_steps = maximum + 1;
+    }
     pa_cvolume_reset(&sink->soft_volume, sink->sample_spec.channels);
     pa_sink_set_set_volume_callback(sink, android_volume_set);
     pa_sink_set_set_mute_callback(sink, android_volume_mute);

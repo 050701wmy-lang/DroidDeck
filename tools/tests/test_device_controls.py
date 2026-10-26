@@ -15,6 +15,8 @@ class DeviceControlsTest(unittest.TestCase):
 const assert = require('assert');
 globalThis.window = globalThis;
 const requests = [], callbacks = [];
+const timers = [];
+globalThis.setTimeout = callback => timers.push(callback);
 let current = 1;
 window.droiddeckBrightnessChanged = value => requests.push(Number(value));
 globalThis.SteamClient = { System: { Display: {
@@ -39,6 +41,16 @@ assert.deepStrictEqual(requests, [0.8]);
 for (const value of [NaN, Infinity, -1, 2, '0.5']) callbacks.forEach(cb => cb({ flBrightness: value }));
 assert.deepStrictEqual(requests, [0.8]);
 assert.strictEqual(callbacks.length, 1);
+SteamClient.System.Display.SetBrightness = value => callbacks.forEach(cb => cb({ flBrightness: value + 0.1 }));
+bridge.set(0.3);
+assert.deepStrictEqual(requests, [0.8]);
+callbacks.forEach(cb => cb({ flBrightness: 0.6 }));
+assert.deepStrictEqual(requests, [0.8, 0.6]);
+SteamClient.System.Display.SetBrightness = () => {};
+bridge.set(0.65);
+timers.forEach(callback => callback());
+callbacks.forEach(cb => cb({ flBrightness: 0.7 }));
+assert.deepStrictEqual(requests, [0.8, 0.6, 0.7]);
 """
         with tempfile.TemporaryDirectory() as directory:
             script = Path(directory) / "bridge.js"
@@ -65,7 +77,8 @@ assert.strictEqual(callbacks.length, 1);
                 globals_["CONTROLS_DIR"] = directory
                 helper = LIVE["Helper"]("/steam", 0)
                 calls = []
-                helper.page = type("Page", (), {"evaluate": lambda self, expression: calls.append(expression)})()
+                helper.controls_installed = True
+                helper.page = type("Page", (), {"evaluate": lambda self, expression: calls.append(expression) or True})()
                 path = Path(directory) / "state.json"
                 path.write_text(json.dumps({"brightness": 0.5, "revision": 1}))
                 helper.sync_controls()
@@ -74,6 +87,45 @@ assert.strictEqual(callbacks.length, 1);
                 path.write_text(json.dumps({"brightness": 0.5, "revision": 2}))
                 helper.sync_controls()
                 self.assertEqual(len(calls), 2)
+            finally:
+                globals_["CONTROLS_DIR"] = previous
+
+    def test_display_bridge_retries_binding_and_install_before_caching_state(self):
+        with tempfile.TemporaryDirectory() as directory:
+            globals_ = LIVE["Helper"].sync_controls.__globals__
+            previous = globals_["CONTROLS_DIR"]
+            try:
+                globals_["CONTROLS_DIR"] = directory
+                Path(directory, "state.json").write_text(json.dumps({"brightness": 0.5, "revision": 1}))
+                calls, installs, writes = [], ["unavailable", "installed", "present"], []
+                class Page:
+                    present = True
+                    def call(self, method, params):
+                        calls.append((method, params))
+                    def evaluate(self, expression):
+                        if expression == LIVE["BRIGHTNESS_JS"]:
+                            return installs.pop(0)
+                        writes.append(expression)
+                        return self.present
+                helper = LIVE["Helper"]("/steam", 0)
+                helper.page = Page()
+                helper.sync_controls()
+                self.assertIsNone(helper.controls_state)
+                self.assertFalse(writes)
+                helper.sync_controls()
+                helper.sync_controls()
+                self.assertEqual(len(calls), 2)
+                self.assertEqual(len(writes), 1)
+                self.assertEqual(calls[1], ("Runtime.addBinding", {"name": LIVE["BRIGHTNESS_BINDING"]}))
+                helper.page.present = False
+                Path(directory, "state.json").write_text(json.dumps({"brightness": 0.7, "revision": 2}))
+                helper.sync_controls()
+                self.assertIsNone(helper.controls_state)
+                self.assertFalse(helper.controls_installed)
+                helper.page.present = True
+                helper.sync_controls()
+                self.assertEqual(len(calls), 3)
+                self.assertEqual(helper.controls_state["brightness"], 0.7)
             finally:
                 globals_["CONTROLS_DIR"] = previous
 
