@@ -25,7 +25,7 @@ class ClientZramFocusTest(unittest.TestCase):
         stop = source.index('          nap 5', start)
         body = source[start:stop]
         harness = '''
-_bl_since=-1 _bl_packed=-1
+_bl_since=-1 _bl_since_apps= _bl_packed=-1 _bl_apps=" 413150"
 _bl_pids=(123)
 bl_game_focused() { [ "$focused" = 1 ]; }
 bl_over_cap() { return 1; }
@@ -53,8 +53,10 @@ tick 60 0 0
         start = source.index('          bl_zram_scan\n          if bl_cap_due; then')
         stop = source.index('          nap 5', start)
         return '''
-_bl_since=-1 _bl_packed=-1 _bl_measured=-1 _bl_unpack=0 _bl_capped=-1 _bl_backoff=30
+_bl_since=-1 _bl_since_apps= _bl_packed=-1 _bl_measured=-1 _bl_unpack=0 _bl_capped=-1 _bl_backoff=30
+_bl_apps=" 413150"
 _bl_pids=(123)
+step() { :; }
 bl_zram_scan() { :; }
 bl_game_focused() { [ "$focused" = 1 ]; }
 bl_cap_due() { [ "$cap_due" = 1 ]; }
@@ -74,6 +76,32 @@ tick 30 0 0 0 0
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual('', result.stderr)
         self.assertEqual('', result.stdout)
+
+    def test_a_new_game_restarts_the_compression_delay(self):
+        result = run_bash(self.monitor_harness() + '''
+tick 0 1 1 0 0
+_bl_apps=" 413150 1245620"
+tick 15 1 1 0 0
+tick 20 1 1 0 0
+echo "starting:$_bl_packed"
+tick 34 1 1 0 0
+tick 35 1 1 0 0
+''')
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual('', result.stderr)
+        self.assertEqual(['starting:-1', 'send:1:client'], result.stdout.splitlines())
+
+    def test_ram_cap_can_still_compress_an_unfocused_client(self):
+        result = run_bash(self.monitor_harness() + '''
+BL_ZRAM_CLIENT=0 BL_RAM_CAP_MB=1024
+bl_zram_usage() { _bl_rss=$((768 * 1024)); }
+tick 0 1 0 1 1
+echo "cap:$_bl_packed:$_bl_since:$_bl_backoff"
+tick 5 0 0 0 0
+''')
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual('', result.stderr)
+        self.assertEqual(['send:1:client', 'send:1:session', 'cap:0:-1:60', 'send:0:client'], result.stdout.splitlines())
 
     def test_game_exit_defers_restore_until_the_session_is_under_the_ram_cap(self):
         result = run_bash(self.monitor_harness() + '''
