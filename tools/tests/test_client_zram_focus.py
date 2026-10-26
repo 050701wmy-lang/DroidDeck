@@ -28,6 +28,7 @@ class ClientZramFocusTest(unittest.TestCase):
 _bl_since=-1 _bl_packed=-1
 _bl_pids=(123)
 bl_game_focused() { [ "$focused" = 1 ]; }
+bl_over_cap() { return 1; }
 bl_zram_send() { echo "send:$1"; }
 tick() {
   SECONDS=$1 _bl_game=$2 focused=$3
@@ -44,7 +45,49 @@ tick 60 0 0
 '''
         result = run_bash(harness)
         self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual('', result.stderr)
         self.assertEqual(['refocus:-1', 'send:1', 'send:0'], result.stdout.splitlines())
+
+    def monitor_harness(self):
+        source = SCRIPT.read_text()
+        start = source.index('          bl_zram_scan\n          if bl_cap_due; then')
+        stop = source.index('          nap 5', start)
+        return '''
+_bl_since=-1 _bl_packed=-1 _bl_measured=-1 _bl_unpack=0 _bl_capped=-1 _bl_backoff=30
+_bl_pids=(123)
+bl_zram_scan() { :; }
+bl_game_focused() { [ "$focused" = 1 ]; }
+bl_cap_due() { [ "$cap_due" = 1 ]; }
+bl_over_cap() { [ "$over_cap" = 1 ]; }
+bl_zram_send() { echo "send:$1:$3"; }
+tick() {
+  SECONDS=$1 _bl_game=$2 focused=$3 over_cap=$4 cap_due=$5
+''' + source[start:stop] + '\n}\n'
+
+    def test_client_toggle_still_disables_automatic_compression(self):
+        result = run_bash(self.monitor_harness() + '''
+BL_ZRAM_CLIENT=0
+tick 0 1 1 0 0
+tick 25 1 1 0 0
+tick 30 0 0 0 0
+''')
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual('', result.stderr)
+        self.assertEqual('', result.stdout)
+
+    def test_game_exit_defers_restore_until_the_session_is_under_the_ram_cap(self):
+        result = run_bash(self.monitor_harness() + '''
+tick 0 1 1 0 0
+tick 20 1 1 0 0
+tick 25 1 0 0 0
+tick 30 0 0 1 0
+echo "deferred:$_bl_unpack:$_bl_packed"
+tick 35 0 0 0 1
+echo "restored:$_bl_unpack"
+''')
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual('', result.stderr)
+        self.assertEqual(['send:1:client', 'deferred:1:-1', 'send:0:client', 'restored:0'], result.stdout.splitlines())
 
     def test_scan_keeps_the_running_game_and_ignores_steams_own_reaper(self):
         temp = tempfile.TemporaryDirectory()
@@ -53,10 +96,12 @@ tick 60 0 0
         self.write_cmd(root, 10, ['/usr/lib/steam/reaper', 'SteamLaunch', 'AppId=769', '--'])
         self.write_cmd(root, 20, ['/usr/bin/FEX', '/usr/lib/steam/reaper', 'SteamLaunch', 'AppId=1245620', '--'])
         self.write_cmd(root, 30, ['/home/deck/.local/share/Steam/steamrtarm64/steam'])
+        self.write_cmd(root, 40, ['/usr/bin/wine', 'game.exe'])
+        self.write_cmd(root, 50, ['/usr/bin/FEXInterpreter', '/usr/bin/steamwebhelper'])
         scan = function_source('bl_zram_scan').replace('for _d in /proc/[0-9]*', 'for _d in "$FAKE"/[0-9]*')
-        result = run_bash('FAKE=%s\n%s\nbl_zram_scan\necho "game=$_bl_game"\necho "apps=${_bl_apps# }"\necho "pids=${_bl_pids[*]}"' % (root, scan))
+        result = run_bash('FAKE=%s\n%s\nbl_zram_scan\necho "game=$_bl_game"\necho "apps=${_bl_apps# }"\necho "pids=${_bl_pids[*]}"\necho "others=${_bl_others[*]}"' % (root, scan))
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual(['game=1', 'apps=1245620', 'pids=30'], result.stdout.splitlines())
+        self.assertEqual(['game=1', 'apps=1245620', 'pids=30 50', 'others=40'], result.stdout.splitlines())
 
     def test_focus_must_be_the_running_game(self):
         focus = function_source('bl_game_focused')
