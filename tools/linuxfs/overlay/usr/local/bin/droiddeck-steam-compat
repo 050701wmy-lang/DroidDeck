@@ -959,7 +959,8 @@ class Helper:
             sources = [self.page.ws] + ([watcher] if watcher.fileno() >= 0 else [])
             if self.chooser is not None:
                 sources.append(self.chooser[1].stdout)
-            ready = [self.page.ws] if self.page.ws.pending() else select.select(sources, [], [], 0.25)[0]
+            queued = self.page.ws.pending() or bool(self.page.events)
+            ready = [self.page.ws] if queued else select.select(sources, [], [], 0.25)[0]
             if self.chooser is not None and self.chooser[1].stdout in ready:
                 self.chooser_done()
             due = False

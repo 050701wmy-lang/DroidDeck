@@ -4,12 +4,49 @@ import runpy
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 BIN = Path(__file__).resolve().parents[1] / "linuxfs/overlay/usr/local/bin"
 LIVE = runpy.run_path(str(BIN / "droiddeck-steam-compat"))
 
 
 class DeviceControlsTest(unittest.TestCase):
+    def test_sync_controls_queued_notifications_are_processed_without_another_frame(self):
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, "state.json").write_text(json.dumps({"brightness": 0.5, "revision": 1}))
+            helper = LIVE["Helper"]("/steam", 0)
+            helper.controls_installed = True
+            page = mock.Mock(events=[])
+            page.ws.pending.return_value = False
+            helper.page = page
+            payload = json.dumps({"id": 1, "options": {"strTitle": "Pick a file"}})
+            def evaluate(expression):
+                for name, value in [(LIVE["BRIGHTNESS_BINDING"], "0.4"), (LIVE["FILE_BINDING"], payload)]:
+                    page.events.append({"method": "Runtime.bindingCalled", "params": {"name": name, "payload": value}})
+                return True
+            def drain():
+                events, page.events = page.events, []
+                return events
+            page.evaluate.side_effect = evaluate
+            page.drain.side_effect = drain
+            helper.reconcile = mock.Mock()
+            helper.ensure_tools = mock.Mock(side_effect=[None, StopIteration])
+            helper.open_chooser = mock.Mock()
+            watcher = mock.Mock()
+            watcher.fileno.return_value = -1
+            watcher.changed.return_value = False
+            globals_ = LIVE["Helper"].serve.__globals__
+            with mock.patch.dict(globals_, {"CONTROLS_DIR": directory,
+                    "brightness_request": lambda value: LIVE["brightness_request"](value, directory)}), \
+                    mock.patch.dict(globals_["COMPAT"], {"state_path": lambda name: str(Path(directory, name))}), \
+                    mock.patch.object(globals_["select"], "select", return_value=([], [], [])) as select_:
+                with self.assertRaises(StopIteration):
+                    helper.serve(watcher)
+            self.assertEqual(float(Path(directory, "brightness.request").read_text()), 0.4)
+            helper.open_chooser.assert_called_once_with(payload)
+            self.assertEqual(page.events, [])
+            select_.assert_not_called()
+
     def test_native_brightness_notifications_do_not_echo_android_readback(self):
         harness = r"""
 const assert = require('assert');
