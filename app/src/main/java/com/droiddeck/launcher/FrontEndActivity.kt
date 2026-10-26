@@ -52,6 +52,7 @@ import com.droiddeck.launcher.core.PhantomProcessLimit
 import com.droiddeck.launcher.core.PhantomProcessStatus
 import com.droiddeck.launcher.core.WirelessAdbFix
 import com.droiddeck.launcher.core.WifiDiscovery
+import com.droiddeck.launcher.core.SteamIntegration
 import com.droiddeck.launcher.core.WirelessAdbPairingService
 import com.droiddeck.launcher.ui.CoreRow
 import com.droiddeck.launcher.ui.PerformancePage
@@ -197,6 +198,8 @@ class FrontEndActivity : ComponentActivity() {
     private var wifiDiscoveryLocation by mutableStateOf(false)
     private var wifiDiscoveryAsked by mutableStateOf(false)
     private var wifiDiscoveryBlocked by mutableStateOf(false)
+    private var integrationState by mutableStateOf(SteamIntegration.State())
+    private var integrationFocus by mutableStateOf<SteamIntegration.Feature?>(null)
     private val wifiLocationReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: android.content.Context?, intent: Intent?) {
             refreshWifiDiscovery()
@@ -265,7 +268,64 @@ class FrontEndActivity : ComponentActivity() {
             SessionPrefs.setWifiDiscoveryEnabled(this, false)
         }
         wifiDiscovery = SessionPrefs.wifiDiscoveryEnabled(this)
+        integrationState = readIntegration()
     }
+
+    private var shortcutsTried = false
+
+    private fun readIntegration() = SteamIntegration.read(this)
+        .copy(locationBlocked = wifiDiscoveryBlocked, shortcutsTried = shortcutsTried)
+
+    private fun openIntegration(feature: SteamIntegration.Feature? = null) {
+        SteamIntegration.dismissSuggestion(this)
+        refreshWifiDiscovery()
+        integrationState = readIntegration()
+        integrationFocus = feature
+        navRequest = "setup:integration"
+    }
+
+    private fun readIntegrationIntent(incoming: Intent) {
+        if (incoming.action != SteamIntegration.ACTION_SETUP) return
+        openIntegration(incoming.getStringExtra(SteamIntegration.EXTRA_FEATURE)?.let {
+            runCatching { SteamIntegration.Feature.valueOf(it) }.getOrNull()
+        })
+    }
+
+    private fun integrationSettings(intent: Intent, fallback: String = android.provider.Settings.ACTION_SETTINGS) {
+        try { startActivity(intent) }
+        catch (_: android.content.ActivityNotFoundException) { startActivity(Intent(fallback)) }
+        catch (_: SecurityException) { startActivity(Intent(fallback)) }
+    }
+
+    private fun configureIntegration(feature: SteamIntegration.Feature) {
+        when (feature) {
+            SteamIntegration.Feature.WIFI -> {
+                if (wifiDiscovery && wifiDiscoveryPermission) {
+                    SessionPrefs.setWifiDiscoveryEnabled(this, false)
+                } else if (wifiDiscoveryPermission) {
+                    SessionPrefs.setWifiDiscoveryEnabled(this, true)
+                } else {
+                    SessionPrefs.setWifiDiscoveryAsked(this)
+                    wifiLocationPermission.launch(WifiDiscovery.permissions)
+                }
+                refreshWifiDiscovery()
+            }
+            SteamIntegration.Feature.BRIGHTNESS -> integrationSettings(SteamIntegration.brightnessSettings(this))
+            SteamIntegration.Feature.HOME -> if (HomeApp.isDefault(this)) HomeApp.openSystemHomeSettings(this) else {
+                HomeApp.setHomeScreenEnabled(this, true)
+                refreshHomeAppState()
+                manageHomeApp()
+            }
+            SteamIntegration.Feature.SHORTCUTS -> {
+                if (!integrationState.shortcuts) shortcutsTried = true
+                if (!HomeApp.isDefault(this)) configureIntegration(SteamIntegration.Feature.HOME)
+                else integrationSettings(SteamIntegration.shortcutSettings(this), android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            }
+        }
+    }
+
+    private fun openAppInfo() =
+        integrationSettings(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
 
     private fun openWifiDiscoverySettings() {
         if (!WifiDiscovery.permissionGranted(this)) {
@@ -839,6 +899,7 @@ class FrontEndActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) readIntegrationIntent(intent)
         readGameIntent(intent)
         gameSyncFolder = GameFileSync.folder(this)
         displayManager = getSystemService(DISPLAY_SERVICE) as DisplayManager
@@ -905,6 +966,8 @@ class FrontEndActivity : ComponentActivity() {
                         isHomeApp = homeAppSelected,
                         homeScreenEnabled = homeScreenEnabled,
                         defaultHomeLabel = defaultHomeLabel,
+                        integration = integrationState,
+                        integrationFocus = integrationFocus,
                         androidApps = androidApps,
                         secondScreenDisplays = secondScreenDisplays,
                         packages = packageRows,
@@ -1144,6 +1207,14 @@ class FrontEndActivity : ComponentActivity() {
                             downloadProxy = DownloadSource.proxyHostPort(this)
                         },
                         onHomeApp = { manageHomeApp() },
+                        onSteamIntegration = ::openIntegration,
+                        onIntegration = { integrationFocus = null; configureIntegration(it) },
+                        onIntegrationAppInfo = ::openAppInfo,
+                        onIntegrationLocation = ::openWifiDiscoverySettings,
+                        onDismissIntegration = {
+                            SteamIntegration.dismissSuggestion(this)
+                            integrationState = readIntegration()
+                        },
                         onHomeScreen = { on ->
                             HomeApp.setHomeScreenEnabled(this, on)
                             refreshHomeAppState()
@@ -1336,6 +1407,10 @@ class FrontEndActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        if (intent.action == SteamIntegration.ACTION_SETUP) {
+            readIntegrationIntent(intent)
+            return
+        }
         readGameIntent(intent)
         refresh()
         startSteamAtStartupIfEnabled()
@@ -1521,6 +1596,7 @@ class FrontEndActivity : ComponentActivity() {
         homeAppSelected = homeScreenEnabled && HomeApp.isDefault(this)
         defaultHomeLabel = HomeApp.defaultLabel(this)
         androidApps = if (homeAppSelected) HomeApp.launchableApps(this) else emptyList()
+        integrationState = readIntegration()
     }
 
     private fun refreshSecondScreenDisplays() {
@@ -1844,11 +1920,7 @@ class FrontEndActivity : ComponentActivity() {
                 bootMovieCustomName = bootMovieCustomName,
                 bootMovieImporting = bootMovieImporting,
                 bootMovieProgress = bootMovieProgress,
-                wifiDiscovery = if (mode == SessionService.MODE_STEAM) wifiDiscovery else null,
-                wifiDiscoveryPermission = wifiDiscoveryPermission,
-                wifiDiscoveryLocation = wifiDiscoveryLocation,
-                wifiDiscoveryAsked = wifiDiscoveryAsked,
-                wifiDiscoveryBlocked = wifiDiscoveryBlocked,
+                integration = if (mode == SessionService.MODE_STEAM) integrationState else null,
                 deckyInstalled = if (mode == SessionService.MODE_STEAM) decky.deckyInstalled else null,
                 deckyLatestRelease = if (mode == SessionService.MODE_STEAM) decky.deckyLatest else null,
                 deckyBranch = decky.deckyBranch,
@@ -1857,21 +1929,9 @@ class FrontEndActivity : ComponentActivity() {
                 deckyEnabled = decky.deckySupervisor, deckySessionRunning = SessionState.running,
             ),
             ModeSettingsActions(
-                onWifiDiscovery = { on ->
-                    if (!on) {
-                        SessionPrefs.setWifiDiscoveryEnabled(this, false)
-                        refreshWifiDiscovery()
-                    } else if (WifiDiscovery.permissionGranted(this)) {
-                        SessionPrefs.setWifiDiscoveryEnabled(this, true)
-                        refreshWifiDiscovery()
-                    } else if (wifiDiscoveryBlocked) {
-                        openWifiDiscoverySettings()
-                    } else {
-                        SessionPrefs.setWifiDiscoveryAsked(this)
-                        wifiLocationPermission.launch(WifiDiscovery.permissions)
-                    }
-                },
-                onWifiDiscoverySettings = { openWifiDiscoverySettings() },
+                onIntegration = ::configureIntegration,
+                onIntegrationAppInfo = ::openAppInfo,
+                onIntegrationLocation = ::openWifiDiscoverySettings,
                 onResolution = { value -> SessionPrefs.setResolutionChoice(this, mode, value); resolution = value },
                 onHdr = { on -> SessionPrefs.setHdr(this, mode, on); hdrOn = on },
                 onGpuDrivers = { openComponents(focusContent = true, tab = com.droiddeck.launcher.ui.GPU_TAB) },

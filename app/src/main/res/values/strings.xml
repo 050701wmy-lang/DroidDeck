@@ -310,7 +310,7 @@
     <string name="back_double_tap_window">Double-tap window</string>
     <string name="back_tap_ms">%1$d ms</string>
     <string name="brightness_permission_title">Allow brightness control</string>
-    <string name="brightness_permission_text">Tap to allow Steam to change Android screen brightness.</string>
+    <string name="brightness_permission_text">Set up brightness control in DroidDeck.</string>
     <string name="back_menu_then_qam">Menu → QAM</string>
     <string name="back_qam_then_menu">QAM → Menu</string>
     <string name="mode_session">Session</string>
@@ -3240,4 +3240,27 @@
     <string name="stores_xbox_cloud_settings">Cloud settings</string>
     <string name="xbox_cloud_gaming" translatable="false">Xbox Cloud Gaming</string>
     <string name="xbox_filter_game_pass" translatable="false">Game Pass</string>
+    <string name="integration_title">Steam integration</string>
+    <string name="integration_count">%1$d of %2$d on</string>
+    <string name="integration_set_up">Set up</string>
+    <string name="integration_later">Not now</string>
+    <string name="integration_location">Location</string>
+    <string name="integration_app_info">App info</string>
+    <string name="integration_wifi">Wi-Fi names</string>
+    <string name="integration_brightness">Brightness</string>
+    <string name="integration_home">DroidDeck as Home</string>
+    <string name="integration_shortcuts">Home button shortcuts</string>
+    <string name="integration_wifi_hint">Show networks in Steam · needs Location access, never tracked</string>
+    <string name="integration_wifi_on">Networks show in Steam</string>
+    <string name="integration_wifi_location_off">Location is off</string>
+    <string name="integration_wifi_denied">Location denied · allow it in App info</string>
+    <string name="integration_brightness_hint">Steam’s slider sets screen brightness</string>
+    <string name="integration_home_hint">Home opens the Steam menu in a session</string>
+    <string name="integration_shortcuts_hint">Hold Home for Steam Guide chords</string>
+    <string name="integration_shortcuts_needs_home">Needs DroidDeck as Home</string>
+    <string name="integration_shortcuts_maybe_restricted">Greyed out in Android? App info → ⋮ → Allow restricted settings</string>
+    <string name="integration_shortcuts_restricted">Blocked by Android · App info → ⋮ → Allow restricted settings</string>
+    <string name="integration_shortcuts_service">DroidDeck Home button</string>
+    <string name="integration_shortcuts_service_description">Pass Home button presses to Steam Guide while a Steam session is focused and DroidDeck is the default Home app. Does not read screen content.</string>
+    <string name="integration_brightness_needed">Turn on Brightness in Setup → Steam integration</string>
 </resources>
