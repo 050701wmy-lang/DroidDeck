@@ -44,6 +44,8 @@ object SessionPrefs {
     private fun prefs(context: Context) = context.getSharedPreferences("session", Context.MODE_PRIVATE)
 
     val orientationOptions = listOf(
+        ActivityInfo.SCREEN_ORIENTATION_USER to R.string.setup_launcher_orientation_auto,
+        ActivityInfo.SCREEN_ORIENTATION_PORTRAIT to R.string.setup_orientation_portrait,
         ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE to R.string.setup_orientation_auto,
         ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE to R.string.setup_orientation_landscape,
         ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE to R.string.setup_orientation_reverse,
@@ -57,6 +59,17 @@ object SessionPrefs {
     fun setOrientation(context: Context, orientation: Int) {
         require(orientationOptions.any { it.first == orientation })
         prefs(context).edit().putInt("orientation", orientation).apply()
+    }
+
+    fun windowOrientation(context: Context, followScreen: Boolean, smallestWidthDp: Int): Int =
+        if (followScreen && smallestWidthDp >= SessionDisplay.UNFOLDED_MIN_DP && !prefs(context).contains("orientation"))
+            ActivityInfo.SCREEN_ORIENTATION_USER else orientation(context)
+
+    fun portrait(context: Context): Boolean = when (orientation(context)) {
+        ActivityInfo.SCREEN_ORIENTATION_PORTRAIT -> true
+        ActivityInfo.SCREEN_ORIENTATION_USER ->
+            context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
+        else -> false
     }
 
     fun launcherFullscreen(context: Context): Boolean = prefs(context).getBoolean("launcherFullscreen", true)
@@ -664,8 +677,10 @@ object SessionPrefs {
             parseResolution(value)?.let { return "${it.first}x${it.second}" }
         }
         if (!resolutionChosen(context, mode) && !saved.contains("shape")) return SessionDisplay.DEFAULT_RESOLUTION
-        val legacy = SessionDisplay.resolve(panel, resolutionCap(context, mode), shapeMode(context), customResolution(context, mode))
+        val custom = customResolution(context, mode)
+        val legacy = SessionDisplay.resolve(panel, resolutionCap(context, mode), shapeMode(context), custom)
         return if (legacy == SessionDisplay.screenSize(panel)) SessionDisplay.MATCH_SCREEN
+        else if (custom == null && legacy == SessionDisplay.resolve(panel, legacy.second, SHAPE_AUTO)) "${legacy.second}p"
         else "${legacy.first}x${legacy.second}"
     }
 
@@ -1116,6 +1131,18 @@ object SessionPrefs {
     }
 
     fun unfoldedControls(context: Context): Boolean = prefs(context).getBoolean("unfoldedControls", false)
+
+    fun controlsBelowWanted(context: Context, mode: String, width: Int, height: Int, pip: Boolean = false): Boolean =
+        SessionDisplay.unfoldedControlsWanted(
+            enabled = unfoldedControls(context),
+            foldable = SessionDisplay.foldable(context),
+            controllerConnected = com.droiddeck.launcher.input.PadBridge.anyControllerConnected() ||
+                com.droiddeck.launcher.input.SteamControllerBle.connected,
+            keepWithController = unfoldedControlsWithController(context),
+            gamepadAvailable = mode == SessionService.MODE_STEAM && builtinPad(context),
+            pip = pip, width = width, height = height,
+            smallestWidthDp = context.resources.configuration.smallestScreenWidthDp,
+        )
 
     fun setUnfoldedControls(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean("unfoldedControls", enabled).apply()
