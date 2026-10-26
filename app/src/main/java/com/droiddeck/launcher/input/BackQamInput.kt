@@ -37,7 +37,7 @@ class BackQamInput(private val setPressed: (Boolean) -> Unit, private val onTap:
                     if (!alreadyHeld) setPressed(true)
                 }
                 presses[device] = Press(hold, used = presses.values.any { it.held })
-                handler.postDelayed(hold, 500)
+                handler.postDelayed(hold, 700)
                 true
             }
             KeyEvent.ACTION_UP -> {

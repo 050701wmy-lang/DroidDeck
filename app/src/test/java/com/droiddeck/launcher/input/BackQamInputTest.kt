@@ -40,9 +40,9 @@ class BackQamInputTest {
         assertTrue(changes.isEmpty())
     }
 
-    @Test fun aHoldStartsAt500msAndNeverProducesATap() {
+    @Test fun aHoldStartsAt700msAndNeverProducesATap() {
         assertTrue(send(KeyEvent.ACTION_DOWN))
-        advance(499)
+        advance(699)
         assertTrue(changes.isEmpty())
         advance(1)
         for (repeat in 1..10) assertTrue(send(KeyEvent.ACTION_DOWN, repeat = repeat))
@@ -54,12 +54,21 @@ class BackQamInputTest {
         assertTrue(taps.isEmpty())
     }
 
+    @Test fun releasingBetween500And700msStillProducesASingleTap() {
+        send(KeyEvent.ACTION_DOWN)
+        advance(600)
+        send(KeyEvent.ACTION_UP)
+        advance(500)
+        assertEquals(listOf(false), taps)
+        assertTrue(changes.isEmpty())
+    }
+
     @Test fun holdingTheSecondPressCancelsTheFirstTap() {
         send(KeyEvent.ACTION_DOWN)
         send(KeyEvent.ACTION_UP)
         advance(400)
         send(KeyEvent.ACTION_DOWN)
-        advance(499)
+        advance(699)
         assertTrue(taps.isEmpty())
         advance(1)
         assertEquals(listOf(true), changes)
@@ -70,7 +79,7 @@ class BackQamInputTest {
 
     @Test fun otherButtonsAndSelectPassThroughWhileBackIsHeld() {
         send(KeyEvent.ACTION_DOWN)
-        advance(500)
+        advance(700)
         for (code in listOf(KeyEvent.KEYCODE_BUTTON_X, KeyEvent.KEYCODE_BUTTON_SELECT)) {
             for (action in listOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP)) {
                 assertFalse(input.onKeyEvent(KeyEvent(action, code), true))
@@ -90,7 +99,7 @@ class BackQamInputTest {
 
     @Test fun losingFocusReleasesQamAndConsumesTheLateRelease() {
         send(KeyEvent.ACTION_DOWN)
-        advance(500)
+        advance(700)
         input.cancel()
         input.cancel()
         assertTrue(send(KeyEvent.ACTION_DOWN, repeat = 1, enabled = false))
@@ -120,7 +129,7 @@ class BackQamInputTest {
 
     @Test fun openingAnOverlayReleasesQamBeforeRoutingItsNextKey() {
         send(KeyEvent.ACTION_DOWN)
-        advance(500)
+        advance(700)
         assertFalse(input.onKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BUTTON_B), false))
         assertTrue(send(KeyEvent.ACTION_UP, enabled = false))
         assertEquals(listOf(true, false), changes)
@@ -128,13 +137,13 @@ class BackQamInputTest {
 
     @Test fun repeatsAfterCancellationCannotReassertQam() {
         send(KeyEvent.ACTION_DOWN)
-        advance(500)
+        advance(700)
         input.cancel()
         assertTrue(send(KeyEvent.ACTION_DOWN, repeat = 1))
         advance(1000)
         assertEquals(listOf(true, false), changes)
         assertTrue(send(KeyEvent.ACTION_DOWN))
-        advance(500)
+        advance(700)
         assertTrue(send(KeyEvent.ACTION_UP))
         assertEquals(listOf(true, false, true, false), changes)
     }
@@ -151,7 +160,7 @@ class BackQamInputTest {
     @Test fun removingOneDeviceDoesNotReleaseAnotherDevicesHold() {
         send(KeyEvent.ACTION_DOWN, device = 4)
         send(KeyEvent.ACTION_DOWN, device = 5)
-        advance(500)
+        advance(700)
         input.onDeviceRemoved(4)
         assertEquals(listOf(true), changes)
         send(KeyEvent.ACTION_UP, device = 5)
