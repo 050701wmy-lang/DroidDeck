@@ -180,3 +180,14 @@ Steam 安装脚本冲突使用上游新的持久下载缓存、通道回退和�
 组件包来自同提交 Build APK run `40160697326`，产物 ZIP SHA-256 为 `e233013b675cfebe42841e8ae7b851f4b9d3784d911aea67b8f6446226b437bb`。本地合成器从当前合并源码构建，其他原生库取自此次官方 APK；184 项载荷和五个组件包摘要分别记录在 `.gradle/install/1f42f51-payload-verification.json`、`1f42f51-addon-packs.json`。新增 WebRTC 依赖为上游固定的 `io.github.webrtc-sdk:android:125.6422.07`，使用官方 Maven Central；本机 `preview-webrtc.gradle` 仅将该模块路由到该仓库。
 
 中文和 GitHub 加速检查通过。相关脚本、共享库、输入、文件对话框及原生回归检查 201 项通过、1 项跳过；文件对话框 JavaScript 用现有 Windows Node 复验，未因 WSL 缺少 Node 跳过。Xbox 云游戏设置与筛选、itch 浏览的 15 项针对性 JUnit 检查通过，发布构建与 lint 通过。APK 与设备安装状态以本机 `.gradle/install/preview-state.json` 为准，构建通过不代表已做云游戏服务或硬件串流测试。
+
+
+## 已发布预览 main-9fc4851（2026-10-26）
+
+同步 catalog 发布的 `9fc48515c13937578817645a08d9264a630d151d`，版本仍为 `0.6.0 (15)`，官方 APK SHA-256 为 `f52010bcc2c80939d8d0bb95be90edebf675c1d769d8e9aaaa8fa9ff59adb4a1`。更新包括统一低延迟模式、未开启长按时保持直接触屏按住、性能与 RAM/VRAM 设置、默认安装位置和库筛选顺序、DD-FG 流层内存优化及 GOG 原生安装器回退；补齐 39 项新增中文和格式参数。
+
+会话脚本冲突采用上游同时处理宽、高的嵌套输出尺寸和拉伸逻辑，保留现有仅在显式游戏帧率限制时传入 gamescope -r 的策略。默认中文、字体挂载、GitHub 加速、Steam 官方 CDN 与续传、AHardwareBuffer 支持、本地原生呈现统计和发布缺包检查保持。
+
+组件包来自同提交 Build APK run `40320808356`，产物 ZIP SHA-256 为 `09e9eb379cc3b436ee780c75bf4d71c560be84ed128d8076bbc59b3da707c3e9`。当前合并源码的合成器及 DD-FG 已重新编译，其余原生载荷取自此次官方 APK；195 项载荷及源码摘要保存在 `.gradle/install/9fc4851-payload-verification.json`，五个组件包来源保存在 `9fc4851-addon-packs.json`。
+
+中文与 GitHub 加速检查通过。相关脚本和原生回归检查执行 206 项；DD-FG 另 6 项在设置现有 NDK Vulkan 头及原生构建同用的 vk_layer.h 兼容头后复验通过，未为测试改动生产逻辑。触屏按住、会话手势路由与性能模式的 21 项针对性 JUnit 检查通过，发布构建与 lint 通过。实际 APK 及设备安装状态记录在本机 `.gradle/install/preview-state.json`，尚未在设备验证触屏或性能效果。
