@@ -71,4 +71,15 @@ class ItchStagingTest {
         assertFalse(File(outside, "level.dat").exists())
         assertEquals("new", File(game, "data/level.dat").readText())
     }
+
+    @Test fun theInstallRecordIsNeverReplacedByTheArchive() {
+        val game = tmp.newFolder("game")
+        val staged = tmp.newFolder("staged")
+        file(game, ".droiddeck-store.json", "record")
+        file(staged, ".droiddeck-store.json", "forged")
+        file(staged, "sub/.droiddeck-store.json", "nested")
+        ItchStaging.merge(staged, game)
+        assertEquals("record", File(game, ".droiddeck-store.json").readText())
+        assertEquals("nested", File(game, "sub/.droiddeck-store.json").readText())
+    }
 }

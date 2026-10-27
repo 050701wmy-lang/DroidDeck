@@ -94,10 +94,12 @@ internal object ItchUpdates {
                 StoresState.post { total = games.size; done = 0; checking = true }
                 val found = LinkedHashMap<String, ItchUpdate>()
                 val answered = HashSet<String>()
+                val snapshot = HashMap<String, Pair<String, String>>()
                 var failed = false
                 games.forEachIndexed { i, game ->
                     if (i > 0) Thread.sleep(GAP_MS)
                     val extra = game.sidecar.extra
+                    snapshot[game.key] = game.sidecar.installVersion to extra["uploadId"].orEmpty()
                     val gameId = extra["gameId"].orEmpty()
                     if (gameId.isNotEmpty()) {
                         val uploads = ItchApi.uploads(key, gameId, extra["downloadKeyId"].orEmpty())
@@ -113,6 +115,8 @@ internal object ItchUpdates {
                 StoresState.post {
                     if (started != generation) return@post
                     for (k in answered) {
+                        val now = StoresState.installed.firstOrNull { it.key == k } ?: continue
+                        if (snapshot[k] != now.sidecar.installVersion to now.sidecar.extra["uploadId"].orEmpty()) continue
                         val u = found[k]
                         if (u != null) available[k] = u else available.remove(k)
                     }
