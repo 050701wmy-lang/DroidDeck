@@ -163,7 +163,7 @@ internal class ItchInstaller(
         val existing = StoreGameSidecar.read(folder)
         val updating = existing != null && (existing.isInstalled || existing.state == StoreGameSidecar.STATE_UPDATING)
         work = if (updating) File(folder, ItchStaging.DIR) else folder
-        if (updating) work.deleteRecursively()
+        if (updating) ItchStaging.delete(work)
         work.mkdirs()
         if (resuming) clearPartialInstall()
         val exe = try {
@@ -179,22 +179,22 @@ internal class ItchInstaller(
             val hint = filename.substringBeforeLast('.')
             StoreExe.pick(work, hint.ifBlank { null }, item.title)
         } catch (t: Throwable) {
-            if (updating) work.deleteRecursively()
+            if (updating) ItchStaging.delete(work)
             throw t
         }
         if (exe.isBlank()) {
             handle.log("itch.io: no exe found in ${folder.name}")
-            if (updating) work.deleteRecursively()
+            if (updating) ItchStaging.delete(work)
             return null
         }
         if (updating) {
             if (cancelled.get()) {
-                work.deleteRecursively()
+                ItchStaging.delete(work)
                 return null
             }
             StoreInstalls.markUpdating(folder)
             ItchStaging.merge(work, folder)
-            work.deleteRecursively()
+            ItchStaging.delete(work)
         }
         return exe
     }

@@ -47,4 +47,28 @@ class ItchStagingTest {
         assertEquals("new", File(game, "b/inner.txt").readText())
         assertFalse(File(game, "a/inner.txt").exists())
     }
+
+    @Test fun deletingFollowsNoLinkOutOfTheTree() {
+        val outside = tmp.newFolder("outside")
+        file(outside, "keep.txt", "keep")
+        val staged = tmp.newFolder("staged")
+        file(staged, "own.txt", "x")
+        java.nio.file.Files.createSymbolicLink(File(staged, "link").toPath(), outside.toPath())
+        ItchStaging.delete(staged)
+        assertFalse(staged.exists())
+        assertEquals("keep", File(outside, "keep.txt").readText())
+    }
+
+    @Test fun aLinkInTheGameIsReplacedNotFollowed() {
+        val outside = tmp.newFolder("outside")
+        file(outside, "keep.txt", "keep")
+        val game = tmp.newFolder("game")
+        java.nio.file.Files.createSymbolicLink(File(game, "data").toPath(), outside.toPath())
+        val staged = tmp.newFolder("staged")
+        file(staged, "data/level.dat", "new")
+        ItchStaging.merge(staged, game)
+        assertEquals("keep", File(outside, "keep.txt").readText())
+        assertFalse(File(outside, "level.dat").exists())
+        assertEquals("new", File(game, "data/level.dat").readText())
+    }
 }

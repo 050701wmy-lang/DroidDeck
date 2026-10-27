@@ -34,6 +34,7 @@ internal object ItchUpdates {
 
     private val running = AtomicBoolean(false)
     private val restored = AtomicBoolean(false)
+    @Volatile private var generation = 0
 
     internal fun evaluate(uploads: JSONArray?, uploadId: String, version: String): ItchUpdate? {
         if (uploads == null || version.isBlank()) return null
@@ -66,8 +67,12 @@ internal object ItchUpdates {
 
     private fun restore(app: Context) {
         if (!restored.compareAndSet(false, true)) return
+        val started = generation
         val saved = decode(ItchPrefs.get(app).getString(KEY_FOUND, null))
-        StoresState.post { for ((k, v) in saved) if (k !in available) available[k] = v }
+        StoresState.post {
+            if (started != generation) return@post
+            for ((k, v) in saved) if (k !in available) available[k] = v
+        }
     }
 
     private fun save(app: Context) {
@@ -77,6 +82,7 @@ internal object ItchUpdates {
     fun check(context: Context, force: Boolean) {
         val app = context.applicationContext
         if (!running.compareAndSet(false, true)) return
+        val started = generation
         Thread({
             try {
                 restore(app)
@@ -103,14 +109,16 @@ internal object ItchUpdates {
                     } else failed = true
                     StoresState.post { done = i + 1 }
                 }
+                if (started != generation) return@Thread
                 StoresState.post {
+                    if (started != generation) return@post
                     for (k in answered) {
                         val u = found[k]
                         if (u != null) available[k] = u else available.remove(k)
                     }
                     save(app)
                 }
-                if (!failed) prefs.edit().putLong(KEY_AT, System.currentTimeMillis()).apply()
+                if (!failed && started == generation) prefs.edit().putLong(KEY_AT, System.currentTimeMillis()).apply()
                 StoresState.logLine("itch.io: checked ${games.size} installed games, ${found.size} with updates")
                 if (force) StoresState.post {
                     val text = if (found.isNotEmpty()) app.getString(R.string.stores_itch_updates_found, found.size) else app.getString(R.string.upd_current_status)
@@ -144,6 +152,7 @@ internal object ItchUpdates {
 
     fun clear(context: Context) {
         val app = context.applicationContext
+        generation++
         ItchPrefs.get(app).edit().remove(KEY_AT).remove(KEY_FOUND).apply()
         StoresState.post { available.clear() }
     }

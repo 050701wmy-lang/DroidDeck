@@ -15,9 +15,14 @@ internal object ItchStaging {
                 continue
             }
             if (Files.isSymbolicLink(destPath) || dest.exists()) {
-                if (dest.isDirectory && !Files.isSymbolicLink(destPath)) dest.deleteRecursively() else dest.delete()
+                delete(dest)
             }
             Files.move(child.toPath(), destPath)
         }
+    }
+
+    fun delete(file: File) {
+        if (!Files.isSymbolicLink(file.toPath()) && file.isDirectory) file.listFiles().orEmpty().forEach { delete(it) }
+        file.delete()
     }
 }
