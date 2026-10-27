@@ -149,17 +149,16 @@ class OutputRefreshTest(unittest.TestCase):
         source = (ROOT / 'tools/linuxfs/overlay/usr/local/bin/droiddeck-session').read_text()
         start = source.index('  args=(--backend wayland')
         end = source.index('  [ "$mode" = steam ]', start)
-        script = 'width=3040; height=1904; nested=$width\n' + source[start:end] + '\nprintf "%s\\n" "${args[@]}"\n'
+        script = 'width=3040; height=1904; nested=$width; nested_h=$height\n' + source[start:end] + '\nprintf "%s\\n" "${args[@]}"\n' + '\nprintf "FOLLOW:%s\\n" "${GAMESCOPE_NESTED_REFRESH_FOLLOWS_HOST:-}"\n'
         for fps, refresh in ((0, 60), (0, 120), (0, 165), (60, 165), (120, 165)):
             with self.subTest(fps=fps, refresh=refresh):
                 result = subprocess.run(['bash', '-c', script], capture_output=True, text=True,
                                         env=dict(os.environ, BL_FPS=str(fps), BL_REFRESH=str(refresh)))
                 self.assertEqual(0, result.returncode, result.stderr)
                 args = result.stdout.splitlines()
-                if fps:
-                    self.assertEqual(str(fps), args[args.index('-r') + 1])
-                else:
-                    self.assertNotIn('-r', args)
+                self.assertEqual('FOLLOW:1', args.pop())
+                self.assertEqual(str(refresh), args[args.index('-r') + 1])
+                self.assertEqual('1904', args[args.index('-h') + 1])
 
     def test_refresh_notifications_preserve_client_pacing_without_resizing(self):
         compiler = shutil.which(os.environ.get('CC', 'cc'))

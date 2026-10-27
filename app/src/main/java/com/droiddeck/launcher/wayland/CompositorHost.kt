@@ -54,7 +54,7 @@ object CompositorHost {
         return true
     }
 
-    fun updateRefreshRate(refreshHz: Float, fpsLimit: Int = SessionState.fpsLimit) {
+    fun updateRefreshRate(refreshHz: Float, fpsLimit: Int) {
         if (!refreshHz.isFinite() || refreshHz <= 1f) return
         SessionState.refreshHz = refreshHz
         WaylandCompositor.nativeSetOutputRefreshRate(refreshHz)

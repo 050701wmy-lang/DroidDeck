@@ -202,3 +202,16 @@ UpdatesMenu 只读取与刷新目录。页面的通道选择、APK 下载/安装
 此界面修改沿用已验证的 main-9fc4851 原生载荷和五个组件包、原版包名 com.droiddeck.launcher、DroidDeck 名称及既有签名。APK 与设备验证结果记录在本机 preview-state.json。
 
 日志正文也必须跟随应用语言。ChangelogNotes 按完整提交号引用 Android 字符串资源；英文原文与简体中文标题、摘要分别保存在 values 和 values-zh-rCN 的 strings_changelog_entries.xml。每次同步应补齐官方 preview/recentPreviews 的对应译文，并保留已收录的旧日志。简体中文下尚未收录的提交显示中文待翻译提示，不直接回退上游英文正文；英文显示原文。语言选择继续由 AppLanguage 和 Android 资源系统处理。
+
+
+## 已发布预览 main-43a0ce9（2026-10-27）
+
+本次仅合并官方 catalog 的已发布预览提交 `43a0ce93f9fec1ea14e7017fe0d95a7d65ba33a6`。官方 APK SHA-256 为 `47084efb2d6a6612f6f57eebf2ceb4b0ce14a3a98f89eb8058b2f9e191708723`，包名仍为 `com.droiddeck.launcher`，版本为 `0.6.0 (15)`。包含竖屏布局、Steam 集成、arm64 Steam 远程畅玩解码、帧率同步、战网安装及 Proton 组件选择修复。
+
+导航冲突采用上游共用的横竖屏导航组件，同时保留更新日志图标并移除更新角标；活动销毁时保留新启动流程的取消操作，不恢复更新安装接收器。合成器采用上游 HUD 声明迁移并保留本地内容序列与呈现统计。会话脚本采用上游新的刷新率跟随协议：gamescope 的 `-r` 表示初始屏幕刷新率，同时设置 `GAMESCOPE_NESTED_REFRESH_FOLLOWS_HOST=1`，游戏帧率限制由 Steam 管理；旧版仅在显式帧率限制时传入 `-r` 的兼容逻辑和相关测试随之调整。CompositorHost 帧率参数由调用方显式传入，不引用上游已删除的 SessionState 字段。
+
+补齐 45 项中文界面文案与 10 条近期日志的中英资源，保留已收录的 20 条日志译文、默认中文、字体挂载、GitHub 加速、Steam 官方 CDN 与续传及只读更新日志。
+
+本次载荷来自新的官方 APK，并完整重编译合并后的本地合成器及依赖，共 196 项载荷和源码摘要记录在 `.gradle/install/43a0ce9-payload-verification.json`。五个组件包取自同提交官方构建 run `40478519944` 的产物 `12721654983`，产物 ZIP SHA-256 为 `7333d48dfecd9af52421d51845922c07abb19743de977f748c03f41675a4340a`，记录在 `43a0ce9-addon-packs.json`。实际 APK、检查和设备安装状态以本机 `preview-state.json` 为准。
+
+发布构建与 lint 检查通过；310 项脚本/原生回归检查在处理旧帧率协议测试及 WSL 缺少 Node 的环境问题后通过，中文与 GitHub 下载检查另有 3 项通过。19 个相关 JUnit 测试类合计 152 项通过，已修正 fork 旧语言测试的 Robolectric API 与资源限定符顺序；组件重复发布的 4 项使用相同已编译测试在 Linux JVM 复核，以覆盖 Android 的原子重命名语义，未为 Windows 文件替换差异改动生产代码。

@@ -40,4 +40,24 @@
     <string name="changelog_summary_74a6a88df8c3371dd4570e1ce9e258832b380e11" formatted="false">修复安装桌面后，手机横屏页面的大标题与模拟器、应用卡片重叠的问题。原先卸载按钮位于商店和添加按钮下方，增加了区域高度并将标题挤入卡片。</string>
     <string name="changelog_title_dc08385411228bb1378f1eeadef317acf7672b9d" formatted="false">KDE Steam 客户端退出时停止游戏库辅助进程</string>
     <string name="changelog_summary_dc08385411228bb1378f1eeadef317acf7672b9d" formatted="false">修复在 KDE 中退出 Steam 桌面客户端后，必须重启会话才能再次打开的问题。原先第二次启动会一直等待，随后报告桌面客户端未就绪。</string>
+    <string name="changelog_title_43a0ce93f9fec1ea14e7017fe0d95a7d65ba33a6" formatted="false">修复帧率限制同步与静止画面的刷新率跟随</string>
+    <string name="changelog_summary_43a0ce93f9fec1ea14e7017fe0d95a7d65ba33a6" formatted="false">根据 CodeRabbit 对 #1650 的审查补充两项修复。</string>
+    <string name="changelog_title_07a0a7e34433882f6fba2cd722783e63e03b4f40" formatted="false">仅在手势模式下显示手势设置</string>
+    <string name="changelog_summary_07a0a7e34433882f6fba2cd722783e63e03b4f40" formatted="false">会话抽屉现在仅在触摸模式设为手势时显示触摸手势设置，并移除其下方的解释文字。</string>
+    <string name="changelog_title_c25d54acedcd0db899ce569751a9adfc76156e6a" formatted="false">后安装的 Proton 构建保留游戏的 FEX/DXVK 选择</string>
+    <string name="changelog_summary_c25d54acedcd0db899ce569751a9adfc76156e6a" formatted="false">修复从商店安装的战网《星际争霸》启动后立即退出的问题。32 位客户端在 ClientSdk.dll 的 DllMain 中发生执行访问异常（c0000005，info 8，由 libwow64fex.dll 引发），每次启动都报告战网在游戏启动前已关闭。</string>
+    <string name="changelog_title_4c7e59ed8b58c570e6b8220c356dad39e9a34ad3" formatted="false">由 Steam 管理帧率上限，gamescope 随屏幕刷新率调整</string>
+    <string name="changelog_summary_4c7e59ed8b58c570e6b8220c356dad39e9a34ad3" formatted="false">移除性能模式开关，会话统一采用原性能模式的行为。Steam 快捷访问菜单的帧率上限成为唯一限制。屏幕刷新率改变时，若原上限仍可选则保留，并相应更新滑块。</string>
+    <string name="changelog_title_0e9a31ccfe4fcce2828d067c7fa0e6db79badea5" formatted="false">为受信任贡献者自动发布测试构建</string>
+    <string name="changelog_summary_0e9a31ccfe4fcce2828d067c7fa0e6db79badea5" formatted="false">对列入 .github/trusted-test-builds.txt 的贡献者所提交的 fork PR，自动发布带正式签名的测试构建，不受推送者影响。初始名单包含 FX192、kingokksa 和 ovurrsl；同仓库 PR 及成功重跑仍按现有方式自动签名。</string>
+    <string name="changelog_title_8749154cbf3974d6f9de7966ce2a106657b49ad7" formatted="false">避免 AYN 系统按键触发主屏幕键快捷操作</string>
+    <string name="changelog_summary_8749154cbf3974d6f9de7966ce2a106657b49ad7" formatted="false">修复 AYN Thor 开启主屏幕键快捷操作后，下屏的 AYN 按钮被识别为持续按住 Steam Guide、无法打开 AYN 面板的问题。</string>
+    <string name="changelog_title_bb9a64fa5fc08ddfa0f5fad6e8a38bf78e88d757" formatted="false">arm64 Steam 客户端支持解码远程畅玩串流</string>
+    <string name="changelog_summary_bb9a64fa5fc08ddfa0f5fad6e8a38bf78e88d757" formatted="false">修复从电脑向平板 arm64 Steam 客户端进行远程畅玩的问题（#381、#1075）。</string>
+    <string name="changelog_title_9555cb9f650dabd79a542cebfe6239831648937f" formatted="false">以 D3D12 功能级别 12_1 运行 ReSkate</string>
+    <string name="changelog_summary_9555cb9f650dabd79a542cebfe6239831648937f" formatted="false">上游说明：在 ReSkate 测试人员确认前不要合并。</string>
+    <string name="changelog_title_70d8fc6559c41910c8d48056987e7c52516259a5" formatted="false">Windows 游戏仅识别为其分配的 CPU 核心</string>
+    <string name="changelog_summary_70d8fc6559c41910c8d48056987e7c52516259a5" formatted="false">Discord 问题 DD-277：《虐杀原形》只能在限制为两个 CPU 核心时运行。此前将游戏核心数设为两个后，仍经常卡在启动画面。</string>
+    <string name="changelog_title_d905f03bf725090e62340492b192591cbb035652" formatted="false">游戏库支持按 itch.io 收藏集筛选</string>
+    <string name="changelog_summary_d905f03bf725090e62340492b192591cbb035652" formatted="false">itch 标签页顶部新增收藏集按钮，可选择账号中的收藏集，只显示其中的游戏。未安装游戏显示在现有的未安装区域，选择全部可恢复完整游戏库。</string>
 </resources>

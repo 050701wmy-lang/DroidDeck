@@ -14,10 +14,10 @@ import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], manifest = Config.NONE, application = Application::class,
-    qualifiers = "en-rUS-land-hdpi-night")
+    qualifiers = "en-rUS-land-night-hdpi")
 class AppLanguageTest {
     @Test fun englishDeviceGetsChineseWithoutChangingItsDisplayConfiguration() {
-        val base = RuntimeEnvironment.getApplication<Application>()
+        val base = RuntimeEnvironment.getApplication()
         base.getSharedPreferences("language", 0).edit().clear().commit()
         val localized = AppLanguage.wrap(base)
         assertEquals(Locale.SIMPLIFIED_CHINESE, localized.resources.configuration.locales[0])
@@ -29,7 +29,7 @@ class AppLanguageTest {
     }
 
     @Test fun recreatedContextRemainsChineseAfterSystemLanguageChanges() {
-        val base = RuntimeEnvironment.getApplication<Application>()
+        val base = RuntimeEnvironment.getApplication()
         val changed = base.createConfigurationContext(Configuration().apply {
             setLocales(LocaleList(Locale.forLanguageTag("es-ES")))
         })
