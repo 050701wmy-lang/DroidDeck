@@ -160,6 +160,7 @@ internal object ItchUpdates {
 
     fun start(context: Context, game: InstalledStoreGame, update: ItchUpdate) {
         val app = context.applicationContext
+        if (StoresState.uninstalling.containsKey(game.key)) return
         val root = game.folder.parentFile?.parentFile ?: return
         val extra = game.sidecar.extra + ("uploadId" to update.uploadId)
         val item = CatalogItem(
