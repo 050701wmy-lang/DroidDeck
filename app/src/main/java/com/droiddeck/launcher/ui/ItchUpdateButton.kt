@@ -2,6 +2,8 @@ package com.droiddeck.launcher.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,6 +19,14 @@ import com.droiddeck.launcher.R
 import com.droiddeck.launcher.stores.InstalledStoreGame
 import com.droiddeck.launcher.stores.itch.ItchUpdate
 import com.droiddeck.launcher.stores.itch.ItchUpdates
+
+@Composable
+internal fun ItchCheckButton(installed: InstalledStoreGame) {
+    val ctx = LocalContext.current
+    IconAction(Icons.Filled.Refresh, stringResource(R.string.store_check_updates), "game:check-updates", enabled = ItchUpdates.checkingKey == null) {
+        ItchUpdates.checkGame(ctx, installed)
+    }
+}
 
 @Composable
 internal fun ItchUpdateButton(installed: InstalledStoreGame, enabled: Boolean) {

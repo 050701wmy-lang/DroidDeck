@@ -3,7 +3,6 @@ package com.droiddeck.launcher.stores.itch
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -25,11 +24,7 @@ internal object ItchUpdates {
     private const val GAP_MS = 1_000L
 
     val available = mutableStateMapOf<String, ItchUpdate>()
-    var checking by mutableStateOf(false)
-        private set
-    var done by mutableIntStateOf(0)
-        private set
-    var total by mutableIntStateOf(0)
+    var checkingKey by mutableStateOf<String?>(null)
         private set
 
     private val running = AtomicBoolean(false)
@@ -79,7 +74,7 @@ internal object ItchUpdates {
         ItchPrefs.get(app).edit().putString(KEY_FOUND, encode(available.toMap())).apply()
     }
 
-    fun check(context: Context, force: Boolean) {
+    fun check(context: Context) {
         val app = context.applicationContext
         if (!running.compareAndSet(false, true)) return
         val started = generation
@@ -87,11 +82,10 @@ internal object ItchUpdates {
             try {
                 restore(app)
                 val prefs = ItchPrefs.get(app)
-                if (!force && System.currentTimeMillis() - prefs.getLong(KEY_AT, 0L) < THROTTLE_MS) return@Thread
+                if (System.currentTimeMillis() - prefs.getLong(KEY_AT, 0L) < THROTTLE_MS) return@Thread
                 val key = ItchAuth.key(app)
                 if (key.isBlank()) return@Thread
                 val games = StoresState.installed.toList().filter { it.sidecar.store == Store.ITCH && it.sidecar.isInstalled }
-                StoresState.post { total = games.size; done = 0; checking = true }
                 val found = LinkedHashMap<String, ItchUpdate>()
                 val answered = HashSet<String>()
                 val snapshot = HashMap<String, Pair<String, String>>()
@@ -109,7 +103,6 @@ internal object ItchUpdates {
                             evaluate(uploads, extra["uploadId"].orEmpty(), game.sidecar.installVersion)?.let { found[game.key] = it }
                         }
                     } else failed = true
-                    StoresState.post { done = i + 1 }
                 }
                 if (started != generation) return@Thread
                 StoresState.post {
@@ -124,15 +117,45 @@ internal object ItchUpdates {
                 }
                 if (!failed && started == generation) prefs.edit().putLong(KEY_AT, System.currentTimeMillis()).apply()
                 StoresState.logLine("itch.io: checked ${games.size} installed games, ${found.size} with updates")
-                if (force) StoresState.post {
-                    val text = if (found.isNotEmpty()) app.getString(R.string.stores_itch_updates_found, found.size) else app.getString(R.string.upd_current_status)
-                    Toast.makeText(app, text, Toast.LENGTH_SHORT).show()
-                }
             } finally {
                 running.set(false)
-                StoresState.post { checking = false }
             }
         }, "itch-updates").start()
+    }
+
+    fun checkGame(context: Context, game: InstalledStoreGame) {
+        val app = context.applicationContext
+        if (checkingKey != null) return
+        checkingKey = game.key
+        val started = generation
+        val version = game.sidecar.installVersion
+        val uploadId = game.sidecar.extra["uploadId"].orEmpty()
+        Thread({
+            try {
+                val key = ItchAuth.key(app)
+                val extra = game.sidecar.extra
+                val gameId = extra["gameId"].orEmpty()
+                val uploads = if (key.isBlank() || gameId.isEmpty()) null else ItchApi.uploads(key, gameId, extra["downloadKeyId"].orEmpty())
+                val found = evaluate(uploads, uploadId, version)
+                StoresState.post {
+                    if (started != generation) return@post
+                    val now = StoresState.installed.firstOrNull { it.key == game.key }
+                    if (uploads != null && now != null && now.sidecar.installVersion == version && now.sidecar.extra["uploadId"].orEmpty() == uploadId) {
+                        if (found != null) available[game.key] = found else available.remove(game.key)
+                        save(app)
+                    }
+                    val text = when {
+                        uploads == null -> app.getString(R.string.stores_sync_failed)
+                        found != null -> app.getString(R.string.stores_itch_updates_found, 1)
+                        else -> app.getString(R.string.upd_current_status)
+                    }
+                    Toast.makeText(app, text, Toast.LENGTH_SHORT).show()
+                }
+                StoresState.logLine("itch.io: checked ${game.sidecar.title}, ${if (found != null) "update available" else "up to date"}")
+            } finally {
+                StoresState.post { checkingKey = null }
+            }
+        }, "itch-update-check").start()
     }
 
     fun start(context: Context, game: InstalledStoreGame, update: ItchUpdate) {

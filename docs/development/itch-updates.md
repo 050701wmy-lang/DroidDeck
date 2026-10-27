@@ -2,7 +2,7 @@
 
 An installed itch game is checked against the uploads itch lists for it. A game with an update shows an
 Update label on its Library tile and an Update button on its game page. A Check for updates button sits
-in the Library header while the itch chip is selected.
+in the top right of an installed itch game's page, next to the delete button, and checks that game only.
 
 ## Detection
 
@@ -15,9 +15,10 @@ The install record (`.droiddeck-store.json`) keeps three things from the install
 - an install without an `uploadId` compares the newest Windows upload's stamp;
 - an unknown installed version or no answer from itch never reports an update.
 
-The check walks the installed itch games one at a time, one second apart, and logs
+The automatic check walks the installed itch games one at a time, one second apart, and logs
 `itch.io: checked <n> installed games, <m> with updates`. It runs when the itch tab opens, at most every
-six hours, and whenever the header button is pressed. A game itch did not answer for keeps its last
+six hours. The button on a game page checks only that game, at any time, answers with a toast ("Update
+available", "Up to date" or "Sync failed") and logs `itch.io: checked <title>, ...`. A game itch did not answer for keeps its last
 result, and the six-hour clock only advances after a fully answered pass. Results are kept in the itch
 preferences until the update is installed or the account signs out.
 

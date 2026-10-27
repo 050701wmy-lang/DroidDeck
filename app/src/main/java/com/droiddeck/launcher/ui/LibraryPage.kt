@@ -38,7 +38,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.ViewModule
@@ -198,7 +197,7 @@ internal fun LibraryPage(s: FrontEndState, a: FrontEndActions, selected: String,
     val xboxFilter = if (source == Store.XBOX.id) XboxLibraryFilter.current else XboxLibraryFilter.ALL
     LaunchedEffect(source, itchSignedIn) { if (source == Store.ITCH.id && itchSignedIn) {
         ItchCollections.load(ctx)
-        ItchUpdates.check(ctx, false)
+        ItchUpdates.check(ctx)
     } }
     val collection = if (source == Store.ITCH.id) ItchCollections.chosen() else null
     val pool = if (collection == null) all else collectionEntries(all, ItchCollections.gamesOf(collection.id).orEmpty())
@@ -473,10 +472,7 @@ private fun LibraryHeader(
         },
     ) {
         if (showUninstalled != null || xbox) LibraryFilterButton(showUninstalled, onShowUninstalled, xbox)
-        if (collections) {
-            CollectionsButton()
-            UpdatesButton()
-        }
+        if (collections) CollectionsButton()
         SortButton(s, a)
         ViewButton(s, a)
         GameFileFolderActions(s, a)
@@ -729,14 +725,6 @@ private fun LibraryFilterButton(showUninstalled: Boolean?, onShowUninstalled: (B
             })
         }
     }
-}
-
-@Composable
-private fun UpdatesButton() {
-    val ctx = LocalContext.current
-    val title = stringResource(R.string.store_check_updates)
-    val description = if (ItchUpdates.checking) title + " · " + ItchUpdates.done + "/" + ItchUpdates.total else title
-    HeaderIconButton(description, Icons.Filled.Refresh, "itch-updates") { ItchUpdates.check(ctx, true) }
 }
 
 @Composable
