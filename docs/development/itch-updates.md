@@ -24,6 +24,16 @@ preferences until the update is installed or the account signs out.
 ## Installing
 
 The Update button reruns the normal install over the game's own folder, keeping its storage location.
-For a replaced build the game page asks first and names the new file. The installer marks the install
-record as updating before it touches files, so a failure leaves a resumable record, and the finished
-record carries the new `installVersion` and `uploadId`.
+For a replaced build the game page asks first and names the new file.
+
+An update never extracts into the live game. The download goes to the scratch folder, as for any
+install, and the archive is unpacked into `.droiddeck-update` inside the game folder. The new build is
+checked there (an executable must be found) before a single game file is touched. A failed or cancelled
+download or extraction removes the staging folder and leaves the game as it was.
+
+Only then does `ItchStaging.merge` move the staged files into place, which are renames inside one
+folder: a staged file replaces the file with the same path, directories are merged, and anything the new
+build does not contain (saves, settings, the install record, launcher and art) stays. The install record
+is marked updating just before the move, so an interruption in that short step is resumable, and the
+finished record carries the new `installVersion` and `uploadId`. Free space for one extra copy of the
+build is needed while the update runs.
