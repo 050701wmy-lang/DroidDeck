@@ -224,7 +224,7 @@ object AppUpdates {
                 catalog.recentPreviews.any { matchesInstalledCommit(it.commit, me.commit) }
             )
         if (stable?.version?.let { compareVersions(me.version, it) < 0 } == true) return Guess(Follow(Channel.STABLE), !publishedPreview)
-        return Guess(Follow(if (publishedPreview) Channel.NIGHTLY else Channel.STABLE), publishedPreview)
+        return Guess(Follow(if (publishedPreview) Channel.NIGHTLY else Channel.STABLE), false)
     }
 
     fun setFollow(context: Context, follow: Follow) {
