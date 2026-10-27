@@ -52,6 +52,8 @@ internal object ItchUploads {
         return (0 until uploads.length()).mapNotNull { uploads.optJSONObject(it) }.firstOrNull { it.optString("id") == id }
     }
 
+    fun updatedAt(upload: JSONObject): String = upload.optString("updated_at", upload.optString("updatedAt"))
+
     fun size(upload: JSONObject): Long = upload.optLong("size", upload.optLong("size_bytes"))
 
     fun filename(upload: JSONObject): String = upload.optString("filename").substringAfterLast('/')

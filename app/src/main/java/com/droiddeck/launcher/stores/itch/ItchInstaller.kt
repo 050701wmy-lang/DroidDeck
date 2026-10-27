@@ -58,6 +58,7 @@ internal class ItchInstaller(
             download(key, downloadKeyId, uploadId, upload.optString("updated_at", upload.optString("updatedAt")), archive, size, handle)
             if (cancelled.get()) return null
             handle.stage(DownloadStage.INSTALL)
+            if (StoreGameSidecar.read(folder)?.isInstalled == true) StoreInstalls.markUpdating(folder)
             install(archive, filename, handle, resuming)
         } catch (t: Throwable) {
             if (!cancelled.get()) StoreInstalls.discard(app, folder, listOf(scratch))
@@ -83,6 +84,7 @@ internal class ItchInstaller(
             cloud = false,
         )
         StoreInstalls.complete(app, folder, sidecar) { done, steps -> handle.stageProgress(done.toLong(), steps.toLong()) }
+        ItchUpdates.applied(app, item.key)
         return folder.path
     }
 
