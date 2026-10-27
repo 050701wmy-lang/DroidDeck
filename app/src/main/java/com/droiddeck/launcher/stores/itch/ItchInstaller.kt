@@ -35,6 +35,8 @@ internal class ItchInstaller(
     private val cancelled = AtomicBoolean(false)
     private var work: File = folder
     private var updating = false
+    private var previous: StoreGameSidecar? = null
+    private val commit = Any()
 
     override fun run(handle: DownloadQueue.JobHandle): String? {
         val key = ItchAuth.key(app)
@@ -43,6 +45,7 @@ internal class ItchInstaller(
         if (downloadKeyId.isBlank() && !item.isFree) throw IllegalStateException(app.getString(R.string.stores_itch_not_owned))
         val gameId = ItchGame.resolveId(item) ?: throw IllegalStateException(app.getString(R.string.stores_itch_no_game))
         val before = StoreGameSidecar.read(folder)
+        previous = before
         updating = before != null && (before.isInstalled || before.state == StoreGameSidecar.STATE_UPDATING)
         val resuming = before?.let { it.state == StoreGameSidecar.STATE_INSTALLING && it.id == item.id } == true
         StoreInstalls.begin(folder, Store.ITCH, item.id, item.title, item.imageUrl, item.imageUrl)
@@ -79,6 +82,8 @@ internal class ItchInstaller(
             id = item.id,
             title = item.title,
             exe = exe,
+            args = previous?.args.orEmpty(),
+            env = previous?.env.orEmpty(),
             installVersion = upload.optString("updated_at", upload.optString("updatedAt")),
             installedAt = System.currentTimeMillis(),
             cover = item.imageUrl,
@@ -101,8 +106,10 @@ internal class ItchInstaller(
             StoreInstalls.discard(app, folder, listOf(scratch))
             return
         }
-        StoreInstalls.deleteTree(scratch)
-        ItchStaging.delete(File(folder, ItchStaging.DIR))
+        synchronized(commit) {
+            StoreInstalls.deleteTree(scratch)
+            ItchStaging.delete(File(folder, ItchStaging.DIR))
+        }
     }
 
     private fun download(key: String, downloadKeyId: String, uploadId: String, version: String, target: File, expected: Long,
@@ -197,7 +204,7 @@ internal class ItchInstaller(
             if (updating) ItchStaging.delete(work)
             return null
         }
-        if (updating) {
+        if (updating) synchronized(commit) {
             if (cancelled.get()) {
                 ItchStaging.delete(work)
                 return null
