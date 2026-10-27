@@ -220,7 +220,6 @@ object DesktopCatalog {
                     if (!LinuxRuntimeInstaller.extract(context, download, root, report)) return context.getString(R.string.deskpkg_extract_failed)
                 }
             }
-            if (cancelled?.getAsBoolean() == true) return context.getString(R.string.user_apps_download_failed)
             if (entry.id == DESKTOP_ID) {
                 cleanLegacy(context, report)
                 val pending = File(root, DesktopRemoval.PENDING)
