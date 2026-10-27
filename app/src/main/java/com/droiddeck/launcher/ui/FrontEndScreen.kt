@@ -255,6 +255,8 @@ class FrontEndActions(
     val onCopyPhantomCommand: (Boolean) -> Unit = {},
     val onDismissPhantomGate: () -> Unit = {},
     val onStartWirelessAdbPairing: () -> Unit = {},
+    val onStartPairingGuide: (Int?) -> Boolean = { false },
+    val onShowPhantomGate: () -> Unit = {},
     val onOpenNotificationSettings: () -> Unit = {},
     val controller: ControllerActions? = null,
     val updates: UpdatesActions = UpdatesActions(),
@@ -425,6 +427,7 @@ private fun FrontEndScreenBody(s: FrontEndState, a: FrontEndActions, page: (@Com
     }
     var showWirelessAdbFix by rememberSaveable { mutableStateOf(false) }
     var showDeveloperDisplayChoice by rememberSaveable { mutableStateOf(false) }
+    var developerChoiceGuided by rememberSaveable { mutableStateOf(false) }
     var wirelessAdbDesiredEnabled by rememberSaveable { mutableStateOf(false) }
     var appToChooseDisplay by remember { mutableStateOf<HomeApp.LaunchableApp?>(null) }
     val colors = MaterialTheme.colorScheme
@@ -433,8 +436,35 @@ private fun FrontEndScreenBody(s: FrontEndState, a: FrontEndActions, page: (@Com
     val phantomGateVisible = s.showPhantomGate && PhantomProcessLimit.blocksSteam(s.phantomProcessStatus)
     val processSettingsPageVisible = phantomGateVisible || showWirelessAdbFix || showDeveloperDisplayChoice
     val requestDeveloperOptions = {
+        developerChoiceGuided = false
         if (s.secondScreenDisplays.isEmpty()) a.onOpenDeveloperOptions(null)
         else showDeveloperDisplayChoice = true
+    }
+    val openDeveloperOptionsOn: (Int?) -> Unit = { displayId ->
+        if (developerChoiceGuided) a.onStartWirelessAdbPairing()
+        if (!developerChoiceGuided || !a.onStartPairingGuide(displayId)) a.onOpenDeveloperOptions(displayId)
+        developerChoiceGuided = false
+    }
+    val startGuidedPairing = {
+        if (!com.droiddeck.launcher.core.WirelessAdbPairingService.notificationsEnabled(ctx)) {
+            wirelessAdbDesiredEnabled = false
+            showWirelessAdbFix = true
+        } else {
+            developerChoiceGuided = true
+            if (s.secondScreenDisplays.isEmpty()) openDeveloperOptionsOn(null)
+            else showDeveloperDisplayChoice = true
+        }
+    }
+    var applyingSavedPairing by remember { mutableStateOf(false) }
+    val fixPhantomLimit = {
+        if (!s.adbPaired || !com.droiddeck.launcher.core.GlobalSettings.wirelessDebuggingOn(ctx)) startGuidedPairing()
+        else if (!applyingSavedPairing) {
+            applyingSavedPairing = true
+            a.onSetPhantomProcessLimit(false) { error ->
+                applyingSavedPairing = false
+                if (error != null) startGuidedPairing()
+            }
+        }
     }
     val requestWirelessAdbFix: (Boolean) -> Unit = { enabled ->
         wirelessAdbDesiredEnabled = enabled
@@ -586,6 +616,7 @@ private fun FrontEndScreenBody(s: FrontEndState, a: FrontEndActions, page: (@Com
                     },
                     onOpenDeveloperOptions = requestDeveloperOptions,
                     onRequestWirelessAdb = requestWirelessAdbFix,
+                    onPairWirelessDebugging = startGuidedPairing,
                 )
         }
 
@@ -619,10 +650,8 @@ private fun FrontEndScreenBody(s: FrontEndState, a: FrontEndActions, page: (@Com
                     status = s.phantomProcessStatus,
                     onDismiss = a.onDismissPhantomGate,
                     onOpenDeveloperOptions = requestDeveloperOptions,
-                    onFixWithWirelessDebugging = {
-                        a.onStartWirelessAdbPairing()
-                        requestDeveloperOptions()
-                    },
+                    applyingSavedPairing = applyingSavedPairing,
+                    onFixWithWirelessDebugging = fixPhantomLimit,
                     onEnterAddressManually = { requestWirelessAdbFix(false) },
                     onCopyCommand = { a.onCopyPhantomCommand(false) },
                     onOpenNotificationSettings = a.onOpenNotificationSettings,
@@ -648,13 +677,16 @@ private fun FrontEndScreenBody(s: FrontEndState, a: FrontEndActions, page: (@Com
                 },
                 onMainScreen = {
                     showDeveloperDisplayChoice = false
-                    a.onOpenDeveloperOptions(null)
+                    openDeveloperOptionsOn(null)
                 },
                 onSecondaryScreen = { displayId ->
                     showDeveloperDisplayChoice = false
-                    a.onOpenDeveloperOptions(displayId)
+                    openDeveloperOptionsOn(displayId)
                 },
-                onDismiss = { showDeveloperDisplayChoice = false },
+                onDismiss = {
+                    showDeveloperDisplayChoice = false
+                    developerChoiceGuided = false
+                },
             )
         }
     }

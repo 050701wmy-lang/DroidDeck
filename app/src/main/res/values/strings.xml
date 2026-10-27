@@ -990,6 +990,12 @@
     <string name="gate_step1">Open Settings → Developer options → Wireless debugging and turn it on</string>
     <string name="gate_step2">Tap “Pair device with pairing code”</string>
     <string name="gate_step3">Type the code into the DroidDeck notification</string>
+    <string name="pairguide_build_number">In About phone, tap Build number 7 times</string>
+    <string name="pairguide_wireless">Turn on Wireless debugging</string>
+    <string name="pairguide_pair">Open Wireless debugging, then tap “Pair device with pairing code”</string>
+    <string name="pairguide_row_build_number">Build number</string>
+    <string name="pairguide_row_wireless">Wireless debugging</string>
+    <string name="pairguide_row_pair">Pair device with pairing code</string>
     <string name="gate_waiting">Waiting for the pairing pop-up…</string>
     <string name="gate_code_needed">Pop-up found. Enter its code in the notification.</string>
     <string name="gate_status">Status</string>
@@ -1849,6 +1855,7 @@
     <string name="adbpair_applying">Applying the setting…</string>
     <string name="adbpair_command_failed">Wireless debugging command failed</string>
     <string name="adbpair_channel_name">Wireless debugging setup</string>
+    <string name="adbpair_progress_channel_name">Wireless debugging setup progress</string>
     <string name="adbpair_channel_description">Asks for the Wireless debugging pairing code while Settings is open</string>
     <string name="adbpair_title_pair">Pair Wireless debugging</string>
     <string name="adbpair_waiting_text">Turn on Wireless debugging, then tap “Pair device with pairing code”.</string>
