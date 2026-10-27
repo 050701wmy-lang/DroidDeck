@@ -10,7 +10,7 @@ internal object ItchStaging {
         for (child in from.listFiles().orEmpty()) {
             val dest = File(to, child.name)
             val destPath = dest.toPath()
-            if (child.isDirectory && dest.isDirectory && !Files.isSymbolicLink(destPath)) {
+            if (child.isDirectory && !Files.isSymbolicLink(child.toPath()) && dest.isDirectory && !Files.isSymbolicLink(destPath)) {
                 merge(child, dest)
                 continue
             }

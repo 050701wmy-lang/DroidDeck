@@ -57,7 +57,8 @@ internal object ItchUpdates {
         val out = LinkedHashMap<String, ItchUpdate>()
         for (key in json.keys()) {
             val u = json.optJSONObject(key) ?: continue
-            val id = u.optString("uploadId").ifBlank { continue }
+            val id = u.optString("uploadId")
+            if (id.isBlank()) continue
             out[key] = ItchUpdate(id, u.optString("updatedAt"), u.optString("filename"), u.optBoolean("replaced"))
         }
         return out
