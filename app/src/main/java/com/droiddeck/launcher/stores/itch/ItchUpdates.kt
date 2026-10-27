@@ -100,7 +100,7 @@ internal object ItchUpdates {
                             answered += game.key
                             evaluate(uploads, extra["uploadId"].orEmpty(), game.sidecar.installVersion)?.let { found[game.key] = it }
                         }
-                    }
+                    } else failed = true
                     StoresState.post { done = i + 1 }
                 }
                 StoresState.post {
