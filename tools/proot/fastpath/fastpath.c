@@ -1828,3 +1828,5 @@ struct passwd *getpwuid(uid_t uid) {
   missed(__func__, AT_FDCWD, "(passwd)");
   return real_getpwuid(uid);
 }
+
+#include "svc-patch.h"
