@@ -34,6 +34,7 @@ internal class ItchInstaller(
 ) : DownloadQueue.DownloadJob {
     private val cancelled = AtomicBoolean(false)
     private var work: File = folder
+    private var updating = false
 
     override fun run(handle: DownloadQueue.JobHandle): String? {
         val key = ItchAuth.key(app)
@@ -41,7 +42,9 @@ internal class ItchInstaller(
         val downloadKeyId = item.extra["downloadKeyId"].orEmpty()
         if (downloadKeyId.isBlank() && !item.isFree) throw IllegalStateException(app.getString(R.string.stores_itch_not_owned))
         val gameId = ItchGame.resolveId(item) ?: throw IllegalStateException(app.getString(R.string.stores_itch_no_game))
-        val resuming = StoreGameSidecar.read(folder)?.let { it.state == StoreGameSidecar.STATE_INSTALLING && it.id == item.id } == true
+        val before = StoreGameSidecar.read(folder)
+        updating = before != null && (before.isInstalled || before.state == StoreGameSidecar.STATE_UPDATING)
+        val resuming = before?.let { it.state == StoreGameSidecar.STATE_INSTALLING && it.id == item.id } == true
         StoreInstalls.begin(folder, Store.ITCH, item.id, item.title, item.imageUrl, item.imageUrl)
         handle.stage(DownloadStage.MANIFEST)
         val uploads = ItchApi.uploads(key, gameId, downloadKeyId)
@@ -61,12 +64,12 @@ internal class ItchInstaller(
             handle.stage(DownloadStage.INSTALL)
             install(archive, filename, handle, resuming)
         } catch (t: Throwable) {
-            if (!cancelled.get()) StoreInstalls.discard(app, folder, listOf(scratch))
+            if (!cancelled.get()) dropCaches(scratch)
             throw t
         }
         if (exe == null) {
             if (cancelled.get()) return null
-            StoreInstalls.discard(app, folder, listOf(scratch))
+            dropCaches(scratch)
             throw IllegalStateException(app.getString(R.string.stores_itch_no_exe))
         }
         archive.delete()
@@ -90,7 +93,16 @@ internal class ItchInstaller(
 
     override fun cancel(deleteFiles: Boolean) {
         cancelled.set(true)
-        if (deleteFiles) StoreInstalls.discard(app, folder, listOf(StoreInstallRoot.scratchDir(app, Store.ITCH, item.id)))
+        if (deleteFiles) dropCaches(StoreInstallRoot.scratchDir(app, Store.ITCH, item.id))
+    }
+
+    private fun dropCaches(scratch: File) {
+        if (!updating) {
+            StoreInstalls.discard(app, folder, listOf(scratch))
+            return
+        }
+        StoreInstalls.deleteTree(scratch)
+        ItchStaging.delete(File(folder, ItchStaging.DIR))
     }
 
     private fun download(key: String, downloadKeyId: String, uploadId: String, version: String, target: File, expected: Long,
@@ -160,8 +172,6 @@ internal class ItchInstaller(
     }
 
     private fun install(archive: File, filename: String, handle: DownloadQueue.JobHandle, resuming: Boolean): String? {
-        val existing = StoreGameSidecar.read(folder)
-        val updating = existing != null && (existing.isInstalled || existing.state == StoreGameSidecar.STATE_UPDATING)
         work = if (updating) File(folder, ItchStaging.DIR) else folder
         if (updating) ItchStaging.delete(work)
         work.mkdirs()
