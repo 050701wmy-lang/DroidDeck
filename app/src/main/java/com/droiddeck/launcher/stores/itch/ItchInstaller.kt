@@ -192,7 +192,12 @@ internal class ItchInstaller(
                 ItchStaging.delete(work)
                 return null
             }
-            StoreInstalls.markUpdating(folder)
+            try {
+                StoreInstalls.markUpdating(folder)
+            } catch (t: Throwable) {
+                ItchStaging.delete(work)
+                throw t
+            }
             ItchStaging.merge(work, folder)
             ItchStaging.delete(work)
         }
