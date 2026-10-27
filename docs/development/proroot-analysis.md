@@ -134,10 +134,11 @@ netlink and SysV shm (`netif.c` and `sysv.c` already cover these); and the long-
 
 ## First implementation and Thor validation (2026-10-27)
 
-`tools/proot/fastpath/svc-patch.h`, included by `fastpath.c`, implements an opt-in first
-slice of item 1. Set `PROOT_FP_PATCH_SVC=1` in a fresh process using the replacement
-`libblfastpath.so`. The ordinary fast-path configuration and tracer-key check must also
-succeed. It is disabled by default, skips processes that already have multiple threads,
+`tools/proot/fastpath/svc-patch.h`, included by `fastpath.c`, implements the first
+slice of item 1. It runs automatically in fresh processes using the replacement
+`libblfastpath.so` when the ordinary fast-path configuration and tracer-key check
+succeed. Set `PROOT_FP_PATCH_SVC=0` to disable it for troubleshooting or comparisons;
+`PROOT_FP_PATCH_SVC=1` also explicitly enables it. It skips processes that already have multiple threads,
 and declines SVE/SME hardware because the relay preserves the base ARM64 register state.
 
 The scanner visits executable segments of the loaded `libc.so.6` and
@@ -179,6 +180,11 @@ actual emitted relay and checks raw success/error results, errno, x1–x30, q0�
 NZCV, FPCR/FPSR, four simultaneous threads, the multi-thread patching guard, and fork.
 Null arguments and unsupported flags fall back to PRoot. The instruction decoder
 and exact ±128 MiB branch limits also have a host regression test.
+
+Default-policy validation on the Thor confirmed that an unset `PROOT_FP_PATCH_SVC`
+and explicit `1` both patched 14 sites; explicit `0` left all 415 libc and 56 linker
+syscall sites unchanged. The register/thread/fork check also passed with the
+environment flag unset.
 
 Five alternating pairs of `bench/svc-workload.c` runs compared the same replacement
 library with patching off/on, with fast-path stats enabled in both. The workload
@@ -234,7 +240,7 @@ the start and completed with `No Error`. Existing installed games were retained.
 The repeat off/on pair used the exact same replacement library, SHA-256
 `ab605c021aee271cd49fa1cb337d7ff0c762dbac198b711e9818639c0cd4b17d`.
 The first off run used the earlier adjacent-only build, with patching disabled.
-Only the opt-in environment flag changed for the final pair. Times below come
+Only the patching environment flag changed for the final pair. Times below come
 from Steam's one-second-resolution `content_log.txt`; total starts at Reconfiguring
 and ends at scheduler completion, excluding session startup:
 
@@ -281,7 +287,7 @@ The installed PRoot pack emitted no profiling start/counter records despite the
 queued profiling setting; the profiler report had `hasCounters: false`. That is a
 measurement gap, not evidence of zero remaining traps.
 
-Before enabling this by default: validate signal/cancellation/unwind behavior,
+Further validation includes signal/cancellation/unwind behavior,
 additional glibc builds and workloads, startup cost and Steam/CEF tree RSS; obtain
 matching patch-0018 tracer measurements; and resolve the existing SD socket mismatch.
 Additional syscall families, Android-blocked syscall emulation and build-id caching
@@ -305,7 +311,7 @@ Run `svc-probe` inside the app's guest environment, not from `adb shell`.
 `svc-check` embeds the fast path and requires its normal enabled tracer environment.
 For `svc-workload`, pass a prepared directory containing `file` and a `link` symlink
 to it; add any second argument to enable timing. Use the documented library override
-workflow in [proot-performance](proot-performance.md) for a fresh session, adding
-`PROOT_FP_PATCH_SVC=1` through `droiddeckctl env set` before starting it.
+workflow in [proot-performance](proot-performance.md) for a fresh session. No extra
+environment setting is needed; use `PROOT_FP_PATCH_SVC=0` for the unpatched comparison.
 `svc-storage` takes a new, unused directory name; it creates and removes its own test
 files and directory. It writes 64 MiB plus 16 MiB of file extensions per run.

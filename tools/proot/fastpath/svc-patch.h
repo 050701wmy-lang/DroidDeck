@@ -207,7 +207,7 @@ static void svc_stats(void) {
 
 __attribute__((constructor)) static void svc_patch_init(void) {
   const char *enabled = getenv("PROOT_FP_PATCH_SVC");
-  if (!enabled || strcmp(enabled, "1") || !fp_ready()) return;
+  if ((enabled && strcmp(enabled, "1")) || !fp_ready()) return;
   if (getauxval(AT_HWCAP) & HWCAP_SVE) return;
 #ifdef HWCAP2_SME
   if (getauxval(AT_HWCAP2) & HWCAP2_SME) return;
