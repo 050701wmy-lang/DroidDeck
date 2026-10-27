@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.Proxy;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -151,11 +152,16 @@ public final class Downloader {
             // A cancel is not a source failure: no other mirror, and no DownloadSource.failed().
             if (outcome == Outcome.CANCELLED) return false;
             if (outcome == Outcome.DONE) {
-                if (expectedSha256 != null && !expectedSha256.equalsIgnoreCase(Hashes.sha256(destination))) {
-                    Log.w(TAG, "checksum mismatch from " + source + "; trying another source");
-                    if (!discardPartial(destination, identity)) return false;
-                    continue;
+                if (expectedSha256 != null) {
+                    String actualSha256 = Hashes.sha256(destination);
+                    if (isCancelled(cancelled)) return false;
+                    if (!expectedSha256.equalsIgnoreCase(actualSha256)) {
+                        Log.w(TAG, "checksum mismatch from " + source + "; trying another source");
+                        if (!discardPartial(destination, identity)) return false;
+                        continue;
+                    }
                 }
+                if (isCancelled(cancelled)) return false;
                 resumeFile(destination).delete();
                 DownloadSource.INSTANCE.succeeded(source);
                 if (progress != null) progress.accept(1f);
@@ -384,7 +390,10 @@ public final class Downloader {
     }
 
     private static HttpURLConnection open(String url, int readTimeoutMs) throws java.io.IOException {
-        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+        // An explicit Proxy routes the connection through the app setting instead of the system-wide proxy.
+        Proxy proxy = DownloadSource.INSTANCE.httpProxy();
+        HttpURLConnection connection = (HttpURLConnection) (proxy != null
+                ? new URL(url).openConnection(proxy) : new URL(url).openConnection());
         connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
         connection.setReadTimeout(readTimeoutMs);
         connection.setInstanceFollowRedirects(true);

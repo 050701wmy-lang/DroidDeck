@@ -71,9 +71,22 @@ object DesktopCatalog {
     }
 
     fun resumeInterrupted(context: Context, listener: LinuxRuntimeInstaller.ProgressListener?): String? = synchronized(installLock) {
+        resumeInterrupted(context, null, listener)
+    }
+
+    fun resumeInterrupted(
+        context: Context,
+        cancelled: Downloader.Cancellation?,
+        listener: LinuxRuntimeInstaller.ProgressListener?,
+    ): String? = synchronized(installLock) {
         for (entry in interrupted(context)) {
             Log.w(TAG, "finishing the interrupted install of ${entry.id} ${entry.version}")
-            install(context, entry, listener)?.let { return it }
+            val problem = if (cancelled == null) {
+                install(context, entry, listener)
+            } else {
+                install(context, entry, cancelled, listener)
+            }
+            if (problem != null) return problem
         }
         null
     }
