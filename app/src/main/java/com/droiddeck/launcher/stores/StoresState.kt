@@ -285,6 +285,7 @@ object StoresState {
                 main.post {
                     installed = installed.filterNot { it.folder.absolutePath == game.folder.absolutePath }
                     uninstalling.remove(key)
+                    if (game.sidecar.store == Store.ITCH) com.droiddeck.launcher.stores.itch.ItchUpdates.applied(app, key)
                 }
             })
             main.post(onDone)
