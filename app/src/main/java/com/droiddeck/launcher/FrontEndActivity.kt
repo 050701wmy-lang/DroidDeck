@@ -495,6 +495,21 @@ class FrontEndActivity : ComponentActivity() {
     private var homeScreenEnabled by mutableStateOf(false)
     private var defaultHomeLabel by mutableStateOf<String?>(null)
     private var androidApps by mutableStateOf<List<HomeApp.LaunchableApp>>(emptyList())
+    private var androidAppsListing = 0
+    private val packageCallback = object : android.content.pm.LauncherApps.Callback() {
+        private fun changed() {
+            refreshAndroidApps()
+            if (HomeWidgets.providers != null) HomeWidgets.refreshProviders(this@FrontEndActivity)
+        }
+        override fun onPackageRemoved(packageName: String, user: android.os.UserHandle) = changed()
+        override fun onPackageAdded(packageName: String, user: android.os.UserHandle) = changed()
+        override fun onPackageChanged(packageName: String, user: android.os.UserHandle) = changed()
+        override fun onPackagesAvailable(packageNames: Array<out String>, user: android.os.UserHandle, replacing: Boolean) = changed()
+        override fun onPackagesUnavailable(packageNames: Array<out String>, user: android.os.UserHandle, replacing: Boolean) = changed()
+        override fun onShortcutsChanged(packageName: String, shortcuts: MutableList<android.content.pm.ShortcutInfo>, user: android.os.UserHandle) {
+            if (homeAppSelected) HomePins.refresh(this@FrontEndActivity)
+        }
+    }
     private var secondScreenDisplays by mutableStateOf<List<SecondScreenDisplay>>(emptyList())
     private lateinit var displayManager: DisplayManager
     private val secondScreenDisplayListener = object : DisplayManager.DisplayListener {
@@ -1568,6 +1583,15 @@ class FrontEndActivity : ComponentActivity() {
         })
         displayManager.registerDisplayListener(secondScreenDisplayListener, ui)
         refreshSecondScreenDisplays()
+        getSystemService(android.content.pm.LauncherApps::class.java).registerCallback(packageCallback, ui)
+        HomeWidgets.startListening(this)
+    }
+
+    @Suppress("OVERRIDE_DEPRECATION")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (HomeWidgets.onActivityResult(this, requestCode, resultCode)) return
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -1593,6 +1617,8 @@ class FrontEndActivity : ComponentActivity() {
     override fun onStop() {
         unregisterReceiver(wifiLocationReceiver)
         unregisterReceiver(mediaReceiver)
+        getSystemService(android.content.pm.LauncherApps::class.java).unregisterCallback(packageCallback)
+        HomeWidgets.stopListening(this)
         ui.removeCallbacks(mediaRefresh)
         com.droiddeck.launcher.stores.StoresState.libraryListener = null
         com.droiddeck.launcher.stores.battlenet.BattleNetClient.opener = null
@@ -1608,8 +1634,22 @@ class FrontEndActivity : ComponentActivity() {
         homeScreenEnabled = HomeApp.isHomeScreenEnabled(this)
         homeAppSelected = homeScreenEnabled && HomeApp.isDefault(this)
         defaultHomeLabel = HomeApp.defaultLabel(this)
-        androidApps = if (homeAppSelected) HomeApp.launchableApps(this) else emptyList()
+        refreshAndroidApps()
         integrationState = readIntegration()
+    }
+
+    private fun refreshAndroidApps() {
+        if (!homeAppSelected) {
+            ++androidAppsListing
+            androidApps = emptyList()
+            return
+        }
+        val seq = ++androidAppsListing
+        HomePins.refresh(this)
+        Thread({
+            val apps = runCatching { HomeApp.launchableApps(this) }.getOrDefault(emptyList())
+            ui.post { if (seq == androidAppsListing) androidApps = apps }
+        }, "home-apps").start()
     }
 
     private fun refreshSecondScreenDisplays() {
