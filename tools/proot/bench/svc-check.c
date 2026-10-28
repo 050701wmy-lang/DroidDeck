@@ -3,7 +3,7 @@ static void interruption_hook(const long *);
 #define FP_SVC_TEST_HOOK interruption_hook
 #endif
 #include "../fastpath/fastpath.c"
-#include <assert.h>
+#include "checks.h"
 #include <sys/wait.h>
 #include <linux/futex.h>
 #include <signal.h>

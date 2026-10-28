@@ -1,5 +1,5 @@
 #define _GNU_SOURCE
-#include <assert.h>
+#include "checks.h"
 #include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -59,8 +59,9 @@ int main(int argc, char **argv) {
   }
   assert(fts_close(fts) == 0);
   printf("fts: %u files %u dirs %u links\n", files, dirs, links);
-  char resolved[4096];
-  assert(realpath(link, resolved) && !strcmp(resolved, path));
+  char resolved[4096], canonical[4096];
+  assert(realpath(path, canonical));
+  assert(realpath(link, resolved) && !strcmp(resolved, canonical));
   struct passwd pw, *found;
   char buf[16384];
   r = getpwnam_r("root", &pw, buf, sizeof buf, &found);

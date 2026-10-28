@@ -70,7 +70,7 @@ handles the same constraint with `libproot-loader.so`.
 | path calls from glibc internals (ld.so, fts, realpath, nss, `__open_nocancel`) and raw `svc` | **still go to proot (15–60 µs)** | **patched svc sites** |
 | Android-blocked syscalls (`set_robust_list`, `faccessat2`, `clone3`, ...) | SIGSYS stop answered by proot (0016 etc.), one ptrace round trip and one signal round trip each | in-process |
 | `brk` | proot emulation, a trap per call (mitigated by `top_pad`) | in-process emulation |
-| correctness fallback | proot is always there | none: anything missed runs unconfined or is emulated wrongly |
+| correctness fallback | proot is always there | limited in-process seccomp/SIGSYS handling; no general tracer fallback, so calls outside the filter can run unconfined or be emulated incorrectly |
 | long Unix socket paths | fast path `/proc/self/fd/N/name` aliases | short socket aliases (`proroot_create_short_unix_socket_alias`) |
 | rseq | `GLIBC_TUNABLES=glibc.pthread.rseq=0` | trampoline |
 
@@ -533,3 +533,15 @@ PID. Per-run Steam/CEF medians ranged 1,217.9–1,240.9 MiB off and
 variation, but it is not evidence of zero memory cost. PSS avoids counting shared
 pages in full for each process. Startup and memory comparisons used one unchanged
 APK; no downloads or games were initiated during them.
+
+CodeRabbit follow-up: the workload now compares canonical paths, so relative and
+absolute fixture arguments agree. All SVC bench tools keep their checks active
+under NDEBUG; their clock, syscall and thread operations cannot silently disappear.
+Both cases were rebuilt with -DNDEBUG and checked on Thor. The memory-file-denial
+test now blocks only O_RDWR opens and asserts the single-thread check still works,
+so it reaches the intended /proc/self/mem failure. The initial proroot comparison
+also distinguishes its limited in-process fallback from a general tracer.
+The request to return to default-off was addressed through the interruption/unwind
+fixes and tests while retaining the requested default. The proposed readlink count
+change was not applied because exact boundary tests reproduce the current PRoot
+behavior; changing that inherited policy belongs in a separate correctness change.

@@ -1,5 +1,5 @@
 #include "../fastpath/fastpath.c"
-#include <assert.h>
+#include "checks.h"
 #include <linux/filter.h>
 #include <linux/seccomp.h>
 #include <sys/prctl.h>

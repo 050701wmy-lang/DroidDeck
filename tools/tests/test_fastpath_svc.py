@@ -14,10 +14,21 @@ class FastPathSvcEncodingTest(unittest.TestCase):
             self.skipTest("cc is not available")
         with tempfile.TemporaryDirectory() as directory:
             program = Path(directory) / "check.c"
-            program.write_text(source.replace('"HEADER"', '"' + HEADER.with_name(header).as_posix() + '"'))
+            program.write_text(source.replace('"HEADER"', '"' + (HEADER.parent / header).as_posix() + '"'))
             output = Path(directory) / "check"
             subprocess.run(["cc", "-O2", "-Wall", "-Wextra", "-Werror", str(program), "-o", str(output)], check=True)
             subprocess.run([str(output)], check=True, timeout=10)
+
+    def test_benchmark_checks_execute_with_ndebug(self):
+        self.compile_check(r'''
+#define NDEBUG
+#include "HEADER"
+int main(void) {
+  int calls = 0;
+  assert(++calls == 1);
+  return calls != 1;
+}
+''', "../bench/checks.h")
 
     def test_stack_bounds_and_alternate_stack_fallback(self):
         self.compile_check(r'''

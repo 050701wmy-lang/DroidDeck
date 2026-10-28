@@ -1,5 +1,5 @@
 #define _GNU_SOURCE
-#include <assert.h>
+#include "checks.h"
 #include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
