@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 static struct { unsigned ticks; } g_perf;
+static struct { uint64_t ticks, ticks_late_2ms; int64_t tick_late_ns, tick_late_max_ns; } g_pace;
 static int64_t clock_ns, g_previous_frame_ns, g_last_vsync_ns, g_tick_vsync_ns;
 static int64_t g_refresh_ns = 8333333;
 static int g_output_refresh_mhz;
@@ -23,6 +24,7 @@ int main(void) {
     }
     assert(g_refresh_ns == 8333333);
     assert(renders == 120 && g_perf.ticks == 120);
+    assert(g_pace.ticks == 120 && g_pace.ticks_late_2ms == 80);
     int64_t last = g_tick_vsync_ns;
     on_vsync(last - 1);
     assert(renders == 120 && g_tick_vsync_ns == last);

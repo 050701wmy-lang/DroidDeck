@@ -60,4 +60,24 @@
     <string name="changelog_summary_70d8fc6559c41910c8d48056987e7c52516259a5" formatted="false">Discord 问题 DD-277：《虐杀原形》只能在限制为两个 CPU 核心时运行。此前将游戏核心数设为两个后，仍经常卡在启动画面。</string>
     <string name="changelog_title_d905f03bf725090e62340492b192591cbb035652" formatted="false">游戏库支持按 itch.io 收藏集筛选</string>
     <string name="changelog_summary_d905f03bf725090e62340492b192591cbb035652" formatted="false">itch 标签页顶部新增收藏集按钮，可选择账号中的收藏集，只显示其中的游戏。未安装游戏显示在现有的未安装区域，选择全部可恢复完整游戏库。</string>
+    <string name="changelog_title_8c4f97a1705d34f042d79a8f1d31c401f0872d4e" formatted="false">gamescope 在一次主循环中处理已完成的游戏帧</string>
+    <string name="changelog_summary_8c4f97a1705d34f042d79a8f1d31c401f0872d4e" formatted="false">此前每个完成的游戏帧需要两次主循环：Xwayland 提交时导入缓冲区并复制同步栅栏，等待线程发现栅栏完成后再唤醒主循环。现在优化为在一次循环中处理已完成的帧，减少高帧率下的调度开销。</string>
+    <string name="changelog_title_8549ac9ce8128a036075e9402419de6eec103dfd" formatted="false">合成器在新帧到达时立即绘制</string>
+    <string name="changelog_summary_8549ac9ce8128a036075e9402419de6eec103dfd" formatted="false">此前合成器要等到下一个屏幕节拍才绘制新游戏帧，在 144 Hz 下平均等待 1.9–3.5 毫秒。使用 FIFO 时，在节拍到达才绘制的帧会比到达即绘制晚一次刷新显示。</string>
+    <string name="changelog_title_213c2da57e67e6062afcbd4db531c9c909059da8" formatted="false">无需启动 Wine 即可响应 Steam 的 D3D 驱动查询</string>
+    <string name="changelog_summary_213c2da57e67e6062afcbd4db531c9c909059da8" formatted="false">Steam 启动时会通过各个 Proton 工具运行 d3ddriverquery64.exe，执行着色器预缓存查询。此前 DroidDeck 上的 948 次查询全部失败，多数返回退出码 1，最终显示未知着色器缓存类型并忽略。</string>
+    <string name="changelog_title_f4656ad83aeb9764e6c75beffb062bd411ed24d7" formatted="false">Steam 音量滑块显示长按音量键的每一步变化</string>
+    <string name="changelog_summary_f4656ad83aeb9764e6c75beffb062bd411ed24d7" formatted="false">修复长按音量键时，Steam 快捷访问菜单的音量滑块起初停顿、随后不均匀跳动，无法跟随 Android 连续调节的问题。</string>
+    <string name="changelog_title_8164f9fae137d4d7d41193f124535b41fb9bf0c8" formatted="false">会话菜单新增手动暂停按钮</string>
+    <string name="changelog_summary_8164f9fae137d4d7d41193f124535b41fb9bf0c8" formatted="false">会话菜单顶部、画中画按钮左侧新增暂停按钮。所有后台行为模式均可手动暂停，并保持到点击恢复为止；离开应用后返回也不会自动解除暂停。</string>
+    <string name="changelog_title_374d4783fc76828b2456ba15003d236c769808ec" formatted="false">避免选择不兼容的 Turnip，并说明 Steam 启动失败原因</string>
+    <string name="changelog_summary_374d4783fc76828b2456ba15003d236c769808ec" formatted="false">此前两种启动失败都只显示通用的会话停止提示：#1376 报告安装后 Steam 因非法指令、状态码 132 退出；#1368 报告非 Adreno 的 MT6993 设备选择 Turnip 后，gamescope 找不到 Vulkan 设备。</string>
+    <string name="changelog_title_3716c8acdf80011a700ceffbd6e59b0a7d234ac4" formatted="false">不再因未经确认的通道推断将稳定版用户切换至预览版</string>
+    <string name="changelog_summary_3716c8acdf80011a700ceffbd6e59b0a7d234ac4" formatted="false">无法确定用户安装的更新通道时，不再悄悄将稳定版用户切换到 Nightly（预览）通道。</string>
+    <string name="changelog_title_eceda6e84087756170652637e694f407fee2ba34" formatted="false">新增可选的游戏调试日志，并限制日志分享规模</string>
+    <string name="changelog_summary_eceda6e84087756170652637e694f407fee2ba34" formatted="false">此项工作也源于上游的 #570 PR。</string>
+    <string name="changelog_title_82c07c4be79a52a6a310b570b8993a462ac83ef8" formatted="false">关闭商店标签页后仍保留游戏库的拥有和安装筛选</string>
+    <string name="changelog_summary_82c07c4be79a52a6a310b570b8993a462ac83ef8" formatted="false">此前禁用商店标签页会隐藏游戏库的已安装、全部拥有游戏筛选。现在无论商店开关如何都显示该筛选，在快捷方式选择器中仍保持隐藏。</string>
+    <string name="changelog_title_4ef6b53eb09f9cd5150f288be49c5c740e400e48" formatted="false">将最快的核心映射为 Windows CPU 0</string>
+    <string name="changelog_summary_4ef6b53eb09f9cd5150f288be49c5c740e400e48" formatted="false">此前在相同设置、DXVK 和 FEX 下，《侠盗猎车手 IV》在 DroidDeck 中约为 32 帧，而 Bannerlator 为 64–66 帧。</string>
 </resources>
