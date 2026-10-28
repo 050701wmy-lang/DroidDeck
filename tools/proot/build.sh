@@ -26,7 +26,7 @@ fetch() {
   local name=$1 primary=$2 sha=$3 url fetched=0
   shift 3
   for url in "$primary" "$@"; do
-    if curl -fsSL --connect-timeout 15 --max-time 90 --retry 3 --retry-max-time 120 -o "$WORK/$name" "$url" &&
+    if curl -fsSL --connect-timeout 15 --max-time 90 --retry 3 --retry-all-errors --retry-max-time 120 -o "$WORK/$name" "$url" &&
         printf '%s  %s\n' "$sha" "$WORK/$name" | shasum -a 256 -c -; then
       fetched=1
       break
