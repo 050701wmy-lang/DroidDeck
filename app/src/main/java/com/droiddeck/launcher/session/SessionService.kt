@@ -400,10 +400,10 @@ class SessionService : Service() {
     }
 
     private fun collectSessionArtifacts(dir: File, steamArch: String?) {
+        SessionLogCapture.stopFor(dir)
         try {
             SessionArtifacts.collect(this, dir, "session stopped", steamArch)
         } finally {
-            SessionLogCapture.stopFor(dir)
             SessionPaths.release(this, dir)
         }
     }
@@ -476,13 +476,20 @@ class SessionService : Service() {
         SessionFiles.stage(this, root, startsSession = true)
         // Earlier sessions' reports still read the Steam logs and VAC marker this session replaces.
         SessionArtifacts.awaitCollections()
-        SessionArtifacts.finishAbandoned(this)
+        SessionArtifacts.finishAbandoned(this, beforeGuestStart = true)
         VacDiagnostics.arm(this)
         com.droiddeck.launcher.agent.AgentGuest.reset(this)
         com.droiddeck.launcher.stores.gog.GogComet.begin()
         com.droiddeck.launcher.stores.StoreLaunchRequests.start(this)
 
         val sessionDir = openSessionFolder()
+        try {
+            GameEnvironmentStore.publish(this)
+        } catch (e: Exception) {
+            Log.e(TAG, "could not publish the game environment", e)
+            stopSession(-1)
+            return
+        }
         val sessionLog = File(sessionDir, "session.log")
         val prootLine = "== proot: ${LinuxRuntime.prootBinary(this).path} (${LinuxRuntime.prootSource(this)})"
         Log.i(TAG, prootLine)
@@ -1725,44 +1732,48 @@ class SessionService : Service() {
         }.onFailure { Log.w(TAG, "could not request Steam wake", it) }
     }
 
-    private fun finishSessionStop(status: Int, stoppedGen: Int) {
+    private fun finishSessionStop(status: Int, stoppedGen: Int, afterStopped: () -> Unit = {}) {
         mainHandler.post {
-            if (stoppedGen != sessionGen || SessionState.running) {
-                Log.i(TAG, "session $stoppedGen finished stopping after a new one started")
-                return@post
+            try {
+                if (stoppedGen != sessionGen || SessionState.running) {
+                    Log.i(TAG, "session $stoppedGen finished stopping after a new one started")
+                    return@post
+                }
+                SessionState.suspended = false
+                SessionState.resumeRequested = false
+                SessionState.resuming = false
+                SessionState.resumeFailed = false
+                manualHold = false
+                SessionState.manualPause = false
+                SessionState.pipActive = false
+                pipTask = false
+                SessionState.guestPid = -1
+                com.droiddeck.launcher.agent.AgentGuest.stop()
+                com.droiddeck.launcher.stores.StoreLaunchRequests.stop()
+                Thread({ com.droiddeck.launcher.stores.CloudSaves.uploadAllDirty(applicationContext, "session-end", running = false) }, "cloud-session-end").start()
+                runCatching { com.droiddeck.launcher.agent.AgentEnv.endSession(this) }
+                    .onFailure { Log.w(TAG, "clearing the agent's session environment", it) }
+                releaseLocks()
+                MemoryLog.stop()
+                com.droiddeck.launcher.core.BackgroundAppLimit.restoreAsync(applicationContext)
+                if (status == 0) {
+                    SessionEvents.transition(SessionPhase.IDLE, "session.stopped", mapOf("status" to status))
+                } else {
+                    val code = SessionState.failureCode ?: "GUEST_EXIT"
+                    val message = SessionState.failureMessage ?: "Session guest exited with status $status"
+                    val failureStatus = SessionState.failureStatus ?: status
+                    SessionEvents.fail(code, message, failureStatus)
+                }
+                SessionState.steamVr = false
+                com.droiddeck.launcher.glasses.Glasses.cancelSteamVrStart()
+                com.droiddeck.launcher.glasses.Glasses.setVrActive(false)
+                com.droiddeck.launcher.glasses.Glasses.set3dForVr(false)
+                SessionState.notifyEnded(status)
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            } finally {
+                afterStopped()
             }
-            SessionState.suspended = false
-            SessionState.resumeRequested = false
-            SessionState.resuming = false
-            SessionState.resumeFailed = false
-            manualHold = false
-            SessionState.manualPause = false
-            SessionState.pipActive = false
-            pipTask = false
-            SessionState.guestPid = -1
-            com.droiddeck.launcher.agent.AgentGuest.stop()
-            com.droiddeck.launcher.stores.StoreLaunchRequests.stop()
-            Thread({ com.droiddeck.launcher.stores.CloudSaves.uploadAllDirty(applicationContext, "session-end", running = false) }, "cloud-session-end").start()
-            runCatching { com.droiddeck.launcher.agent.AgentEnv.endSession(this) }
-                .onFailure { Log.w(TAG, "clearing the agent's session environment", it) }
-            releaseLocks()
-            MemoryLog.stop()
-            com.droiddeck.launcher.core.BackgroundAppLimit.restoreAsync(applicationContext)
-            if (status == 0) {
-                SessionEvents.transition(SessionPhase.IDLE, "session.stopped", mapOf("status" to status))
-            } else {
-                val code = SessionState.failureCode ?: "GUEST_EXIT"
-                val message = SessionState.failureMessage ?: "Session guest exited with status $status"
-                val failureStatus = SessionState.failureStatus ?: status
-                SessionEvents.fail(code, message, failureStatus)
-            }
-            SessionState.steamVr = false
-            com.droiddeck.launcher.glasses.Glasses.cancelSteamVrStart()
-            com.droiddeck.launcher.glasses.Glasses.setVrActive(false)
-            com.droiddeck.launcher.glasses.Glasses.set3dForVr(false)
-            SessionState.notifyEnded(status)
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
         }
     }
 
@@ -1793,7 +1804,9 @@ class SessionService : Service() {
             SessionEvents.record("guest.exited", mapOf("status" to status))
             SessionEvents.transition(SessionPhase.STOPPING, "session.stopping", mapOf("status" to status))
             SessionState.running = false
-            SessionPaths.take() to SessionState.steamClientArch
+            val ended = SessionPaths.take()
+            if (ended != null) SessionArtifacts.collectionStarted(ended)
+            ended to SessionState.steamClientArch
         }
         SessionState.micAvailable = false
         SessionState.micEnabled = false
@@ -1822,8 +1835,6 @@ class SessionService : Service() {
         suspendController = null
         if (ended != null) {
             VacDiagnostics.snapshot(this, ended)
-            SessionArtifacts.collectionStarted(ended)
-            Thread({ collectSessionArtifacts(ended, endedArch) }, "session-collect").start()
         }
         components.reversed().forEach {
             try {
@@ -1833,6 +1844,9 @@ class SessionService : Service() {
             }
         }
         components.clear()
+        val collectEnded = {
+            if (ended != null) Thread({ collectSessionArtifacts(ended, endedArch) }, "session-collect").start()
+        }
         FakeInputWriter.releaseAllRingSlots()
         com.droiddeck.launcher.input.SteamTouchDevice.release()
         val steamClientMayRun = SessionState.mode == MODE_STEAM || SessionState.mode == MODE_DESKTOP
@@ -1844,13 +1858,13 @@ class SessionService : Service() {
                     auxiliary.forEach { (pid, started) -> teardown(pid, started) }
                     if (prootPid > 1) teardown(prootPid)
                     killGuestLeftovers()
-                    finishSessionStop(status, stoppedGen)
+                    finishSessionStop(status, stoppedGen, collectEnded)
                     if (launcherEnded) importLauncherGames()
                 }, "session-teardown").start()
             } else {
                 Thread({
                     com.droiddeck.launcher.stores.gog.GogComet.end(stoppedSession)
-                    finishSessionStop(status, stoppedGen)
+                    finishSessionStop(status, stoppedGen, collectEnded)
                     if (launcherEnded) importLauncherGames()
                 }, "gog-session-stop").start()
             }
