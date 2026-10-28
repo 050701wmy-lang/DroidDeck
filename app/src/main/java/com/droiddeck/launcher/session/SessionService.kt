@@ -1556,7 +1556,7 @@ class SessionService : Service() {
             manualPauseRequested = false
         }
         val controller = suspendController ?: return
-        if (downloadsBlockingSuspend) acquireLocks()
+        if (downloadsBlockingSuspend && !manualHold) acquireLocks()
         val steamPause = SessionState.mode == MODE_STEAM && (manualHold || !downloadsBlockingSuspend && when (suspendPolicy) {
             SessionPrefs.SUSPEND_AUTO, SessionPrefs.SUSPEND_NATIVE -> hidden
             SessionPrefs.SUSPEND_MANUAL -> manualPauseRequested

@@ -109,6 +109,10 @@ fun SessionPausedOverlay(
         when {
             suspended && !engaged -> {
                 if (!shown && animateIn) {
+                    if (currentFrame == null) {
+                        onFrameNeeded()
+                        withTimeoutOrNull(FRAME_WAIT_MS) { snapshotFlow { currentFrame }.first { it != null } }
+                    }
                     shown = true
                     launch { press.animateTo(1f, Motion.sp(0.5f, Spring.StiffnessMedium)) }
                     launch { ring.animateTo(0f, Motion.tw(200)) }

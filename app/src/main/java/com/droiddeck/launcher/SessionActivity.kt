@@ -3116,7 +3116,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     private fun capturePausedFrame(manual: Boolean = false) {
         if (!SessionState.running || pipUi || isInPictureInPictureMode || glassesOutputActive) return
         if (SessionState.suspended && pausedFrame != null) return
-        if ((suspendPolicy == SessionPrefs.SUSPEND_NEVER && !manual) || !::surfaceView.isInitialized) return
+        if ((suspendPolicy == SessionPrefs.SUSPEND_NEVER && !manual && !SessionState.manualPause) || !::surfaceView.isInitialized) return
         if (surfaceView.holder.surface?.isValid != true) return
         val width = surfaceView.width
         val height = surfaceView.height
