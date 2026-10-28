@@ -328,14 +328,90 @@ microseconds and open/close at 41.2→6.4 microseconds, with 10,000→0 voluntar
 context switches over both loops. The earlier SD/download tables above describe
 the initial 14-site revision and must not be attributed to this expanded build.
 
+Five alternating pairs of `svc-threads` additionally measured thread create/join
+at 138→113 microseconds, libc faccessat at 51.6→14.7 microseconds, and libc getcwd
+at 46.8→4.1 microseconds. Each run creates 128 threads and executes 2,000 calls
+to each libc entry point, bypassing the exported preload wrappers with dlsym.
+The access call includes glibc's faccessat2 fallback.
+
+Repeated `/usr/bin/true` launches expose the startup tradeoff. Five batches of
+40 children per mode measured medians of 3.834 ms with wrappers only, 4.882 ms
+with uncached patching and 4.731 ms with cached patching, including subprocess
+launch/wait and enabled exit statistics. Discovery across the 200 launches per
+patched mode fell from a median 496 to 59 microseconds; publishing patches took
+261/267 microseconds. The cache removes scanning work, but constructor setup and
+patching still cost time for very short programs. No overall exec speedup is claimed.
+
+Three alternating storage pairs with the expanded library measured:
+
+| SD phase | wrappers only | expanded relays |
+|---|---:|---:|
+| create/extend/close 64 files | 1.556 s | 1.514 s |
+| 1,000 internal stats | 73.2 ms | 12.5 ms |
+| 64 MiB write calls | 54.2 ms | 55.1 ms |
+| final fdatasync | 2.799 s | 2.730 s |
+
+These phase medians do not establish a general write-speed improvement. Internal
+allocation was 7.1→3.6 ms and internal stats 49.8→7.7 ms; the SD filesystem's
+allocation and flush waits remain much larger than the interception savings.
+
+### Expanded-build Steam SD comparison
+
+Owned, initially uninstalled Half-Life (70) supplies a larger file tree: 4,525
+installed files / 589,603,955 bytes, BuildID 15961492. Each fresh trial initially
+scheduled 294,238,640 download bytes, 589,603,955 staged bytes and 4,488 preallocated
+files on `/mnt/droiddeck-sd`. Steam reported successful installation in every run.
+Local client `0` telemetry was selected. Times use one-second content-log timestamps;
+total runs from the first main-app Reconfiguring event to scheduler completion.
+
+| trial | patching | initial preallocate | transfer/stage window | final commit | total |
+|---|---|---:|---:|---:|---:|
+| first baseline | off | 90 s | 52 s | 204 s | 350 s |
+| expanded, default setting | on | 94 s | 48 s | 184 s | 326 s |
+| repeat baseline | off | 97 s | 69 s | 175 s | 341 s |
+
+The patched and repeat-baseline trials use the same final library SHA-256
+`af4f66680dcfbd5002f641ffe206cdc7bd89400be169d3ef21c4e0ee7f979589`.
+The first baseline used the preceding build with patching disabled; the only
+subsequent production change corrected explicitly cleared robust-list TLS state.
+All initial download records showed zero stored/reused/delta bytes. Shader updates
+interrupted the main download in each trial; the transfer window includes those
+pauses. On the repeat baseline, reconfiguration retained two small files already
+downloaded during that same trial, so the final resumed job scheduled 294,236,672
+download / 589,599,865 stage bytes and committed 4,572 entries rather than 4,574.
+This is not pre-existing payload reuse; the earlier fresh schedule is retained
+in the measurement records.
+
+The observed whole-install difference does not establish a reliable SD speedup:
+the repeat baseline committed faster than the patched run, while its transfer
+window was slower. Allocation also did not improve. The 326 versus 341–350 second
+totals combine network, shader scheduling and SD variability. The syscall gains
+are demonstrated independently; these samples do not show that they fix Steam's
+SD allocation/commit bottleneck. The test title was removed between trials; an
+interrupted first uninstall left a repair queue, which was cleared by removing
+only that task-created title while Steam was stopped before the subsequent fresh
+trial. Existing installed games were retained.
+
 The expanded ABI matrix passes raw return values, errno, all x1–x30 and q0–q31,
-NZCV/FPCR/FPSR, four concurrent threads with distinct robust heads, fork, 100
-signals on an alternate stack, deferred cancellation and 32 thread create/join
+NZCV and non-default FPCR/FPSR, four concurrent threads with distinct robust heads, fork, 100
+signals on an alternate stack, deferred cancellation, cancellation/cleanup of a
+blocked libc FIFO open, clearing/restoring a robust head, and 32 thread create/join
 cycles. Constructor patching still refuses a process with multiple live threads.
 Host tests exercise corrupted cache entries, invalid offsets/opcodes, mismatched
 API/version, unsafe file modes, symlinks and truncation. The Android unit test
 checks API forwarding. The existing preload/agent selection passed 79 tests with
 two skips before the cache regression test was added.
+API-selection probes patch 45 sites with an unknown SDK, 49 with API 33 and 48
+with simulated API 35; unset and explicit 1 agree, and explicit 0 leaves the
+original sites intact. This does not substitute for testing on Android 15 hardware.
+
+CI at 40b7c480 passed 1,427 Python/native tests (49 skips), 2,630 Android tests and
+162 Rust host tests, plus APK compilation. A local release APK built successfully,
+passed runtime-payload/native-library checks and was signed with the installed
+release certificate. The full local Windows JVM run reported 150 failures / 2,568
+tests (eight skips), including Unix-path, symlink and permission assumptions;
+the four ProotFastPath tests passed in both local variants. The passing full
+suite evidence is the Linux CI run, not a clean Windows full-suite result.
 
 Internal fts/realpath/NSS/dlopen and the normalized first equivalence suite still
 match PRoot at both cache TTLs. The write suite still matches wrapper-only output
@@ -357,10 +433,16 @@ aarch64-linux-gnu-gcc -O2 -Wall -Wextra \
   -o svc-workload tools/proot/bench/svc-workload.c -ldl
 aarch64-linux-gnu-gcc -O2 -Wall -Wextra \
   -o svc-storage tools/proot/bench/svc-storage.c -ldl
+aarch64-linux-gnu-gcc -O2 -Wall -Wextra -pthread \
+  -o svc-threads tools/proot/bench/svc-threads.c -ldl
 ```
 
 Run `svc-probe` inside the app's guest environment, not from `adb shell`.
 `svc-check` embeds the fast path and requires its normal enabled tracer environment.
+For that embedded-library check, start with PROOT_FP_PATCH_SVC=0 when the session
+also preloads a fast-path library (including through /etc/ld.so.preload). The check
+then enables its own copy at main before creating threads, keeping another copy
+from owning the glibc patch sites. The other tools use the normal preload.
 For `svc-workload`, pass a prepared directory containing `file` and a `link` symlink
 to it; add any second argument to enable timing. Use the documented library override
 workflow in [proot-performance](proot-performance.md) for a fresh session. No extra

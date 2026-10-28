@@ -41,8 +41,10 @@ __asm__(
 
 static long probe(const long *args) {
   struct snapshot out = {0};
-  unsigned long fpcr, fpsr;
-  __asm__ volatile("mrs %0, fpcr\nmrs %1, fpsr" : "=r"(fpcr), "=r"(fpsr));
+  unsigned long saved_fpcr, saved_fpsr;
+  __asm__ volatile("mrs %0, fpcr\nmrs %1, fpsr" : "=r"(saved_fpcr), "=r"(saved_fpsr));
+  unsigned long fpcr = saved_fpcr ^ (1UL << 22), fpsr = saved_fpsr | (1UL << 27);
+  __asm__ volatile("msr fpcr, %0\nmsr fpsr, %1" : : "r"(fpcr), "r"(fpsr));
   errno = 123;
   svc_register_probe(&out, args);
   assert(errno == 123);
@@ -54,6 +56,7 @@ static long probe(const long *args) {
     for (int j = 0; j < 16; j++) assert(out.q[i][j] == 0x5a);
   assert(out.nzcv == 0xa0000000UL);
   assert(out.fpcr == fpcr && out.fpsr == fpsr);
+  __asm__ volatile("msr fpcr, %0\nmsr fpsr, %1" : : "r"(saved_fpcr), "r"(saved_fpsr));
   return out.x[0];
 }
 
@@ -273,12 +276,18 @@ static void signal_checks(void) {
     assert(pthread_create(&thread, NULL, thread_check, NULL) == 0);
     assert(pthread_join(thread, NULL) == 0);
   }
-  puts("PASS: signal reentry on alternate stack, deferred cancellation, thread churn");
+  puts("PASS: signal reentry on alternate stack, deferred/FIFO cancellation with cleanup, thread churn");
 }
 
 int main(void) {
   assert(fp_ready());
+  const char *mode = getenv("PROOT_FP_PATCH_SVC");
+  if (!svc_sites && mode && !strcmp(mode, "0")) {
+    assert(setenv("PROOT_FP_PATCH_SVC", "1", 1) == 0);
+    svc_patch_init();
+  }
   printf("platform: android %d, patched %u sites\n", svc_android_api, svc_sites);
+  assert(svc_sites > 0);
   assert(svc_single_thread());
   size_t page = sysconf(_SC_PAGESIZE);
   uint32_t *relay = svc_relay_page((uintptr_t)&svc_check_site, page), branch;
