@@ -356,6 +356,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     private var glassesOutputActive by mutableStateOf(false)
     private var pausedFrame by mutableStateOf<com.droiddeck.launcher.ui.PausedFrame?>(null)
     private var pausedFrameWanted = false
+    private var pauseAnimated by mutableStateOf(false)
     private var trackingRecovery by mutableStateOf<TrackingRecovery?>(null)
     private var glasses3dForVr = false
     private var ended = false
@@ -1106,6 +1107,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                     pipSupported = com.droiddeck.launcher.session.SessionPipController.supported(this@SessionActivity),
                     pipAutoEnter = pipAutoEnter,
                     onPip = { pip.enter() },
+                    onPause = ::pauseNow,
                     onPipAutoEnter = { on ->
                         SessionPrefs.setPipAutoEnter(this@SessionActivity, on)
                         pipAutoEnter = on
@@ -1175,17 +1177,22 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                 com.droiddeck.launcher.ui.AchievementNotificationOverlay()
                 // Auto and Native resume on their own as the session comes back; only a failed resume needs the button.
                 val autoResume = suspendPolicy == SessionPrefs.SUSPEND_AUTO || suspendPolicy == SessionPrefs.SUSPEND_NATIVE
+                LaunchedEffect(SessionState.manualPause, SessionState.suspended) {
+                    if (!SessionState.manualPause && !SessionState.suspended) pauseAnimated = false
+                }
                 SessionPausedOverlay(
-                    suspended = SessionState.suspended && (!autoResume || SessionState.resumeFailed),
+                    suspended = SessionState.suspended && (!autoResume || SessionState.resumeFailed || SessionState.manualPause),
                     engaged = SessionState.resumeRequested || SessionState.resuming,
                     failures = SessionState.resumeFailures,
                     frame = pausedFrame,
+                    animateIn = pauseAnimated,
                     title = pausedTitle(),
                     onResume = { SessionService.resume(this@SessionActivity) },
                     onFrameNeeded = ::requestPausedFrame,
                     onHidden = {
                         pausedFrame = null
                         pausedFrameWanted = false
+                        pauseAnimated = false
                     },
                 )
                 if (leaving) com.droiddeck.launcher.ui.FloodSpread(
@@ -3114,10 +3121,10 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     }
 
     // The frozen game cannot draw again, so the paused overlay shows a copy taken while the surface still holds its frame.
-    private fun capturePausedFrame() {
+    private fun capturePausedFrame(manual: Boolean = false) {
         if (!SessionState.running || pipUi || isInPictureInPictureMode || glassesOutputActive) return
         if (SessionState.suspended && pausedFrame != null) return
-        if (suspendPolicy == SessionPrefs.SUSPEND_NEVER || !::surfaceView.isInitialized) return
+        if ((suspendPolicy == SessionPrefs.SUSPEND_NEVER && !manual && !SessionState.manualPause) || !::surfaceView.isInitialized) return
         if (surfaceView.holder.surface?.isValid != true) return
         val width = surfaceView.width
         val height = surfaceView.height
@@ -3147,6 +3154,15 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         } catch (_: IllegalArgumentException) {
             bitmap.recycle()
         }
+    }
+
+    private fun pauseNow() {
+        if (!SessionState.running || SessionState.suspended) return
+        pauseAnimated = true
+        drawerOpen = false
+        pausedFrame = null
+        capturePausedFrame(manual = true)
+        SessionService.pause(this)
     }
 
     // Sessions that froze from picture-in-picture, or before onPause could copy a frame, have none; the
