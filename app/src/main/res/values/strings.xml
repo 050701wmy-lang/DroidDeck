@@ -3294,6 +3294,8 @@
     <string name="library_in">In Library</string>
     <string name="xbox_filter_show">Show</string>
     <string name="itch_collections">Collections</string>
+    <string name="stores_itch_updates_found">Updates available: %1$d</string>
+    <string name="stores_itch_update_replaced">The developer replaced this build with %1$s. Update to it?</string>
     <string name="xbox_filter_cloud">Cloud</string>
     <string name="stores_xbox_cloud_settings">Cloud settings</string>
     <string name="xbox_cloud_gaming" translatable="false">Xbox Cloud Gaming</string>
