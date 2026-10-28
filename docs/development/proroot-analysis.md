@@ -287,12 +287,64 @@ The installed PRoot pack emitted no profiling start/counter records despite the
 queued profiling setting; the profiler report had `hasCounters: false`. That is a
 measurement gap, not evidence of zero remaining traps.
 
-Further validation includes signal/cancellation/unwind behavior,
-additional glibc builds and workloads, startup cost and Steam/CEF tree RSS; obtain
-matching patch-0018 tracer measurements; and resolve the existing SD socket mismatch.
-Additional syscall families, Android-blocked syscall emulation and build-id caching
-remain follow-ups. In particular this implementation does not remove startup loader
-traps before the preload constructor, nor patch raw calls in arbitrary guest ELFs.
+### Expanded relay coverage
+
+The subsequent revision keeps patching enabled by default and shares the existing
+wrapper translators with 20 path syscall numbers: openat, newfstatat, statx,
+readlinkat, faccessat, mkdirat, unlinkat, renameat, renameat2, symlinkat, fchmodat,
+utimensat, truncate, statfs, getxattr, lgetxattr, listxattr, llistxattr,
+inotify_add_watch and getcwd. This is an allowlist of safely recognized sites, not
+a claim that every glibc implementation contains every site. Unsupported paths,
+flags, instructions and inaccessible pointers still use the original PRoot route.
+Input/output copies use process_vm_readv/writev rather than dereferencing arbitrary
+guest pointers. The device matrix checks error priority, protected buffers and a
+NUL-terminated path ending at a page boundary.
+
+The app forwards its Android SDK as `PROOT_FP_ANDROID_API`. With a known SDK,
+set_robust_list retains the head in TLS and returns ENOSYS, matching patch 0016;
+self get_robust_list uses that head. Uncaptured heads and other TIDs fall back to
+PRoot. This does not implement kernel robust-mutex owner-death recovery. faccessat2
+returns ENOSYS for glibc's fallback. clone3 returns ENOSYS only before API 35;
+it is never executed from the C relay, since successful clone3 would change the
+child's stack. The [Android 14 allowlist](https://android.googlesource.com/platform/bionic/+/refs/heads/android14-release/libc/SECCOMP_ALLOWLIST_COMMON.TXT)
+omits clone3 and the [Android 15 allowlist](https://android.googlesource.com/platform/bionic/+/refs/heads/android15-release/libc/SECCOMP_ALLOWLIST_COMMON.TXT)
+includes it. Unknown platforms leave these sites untouched. Existing droiddeck-fsync
+handling of futex_waitv is unchanged.
+
+Build-ID tables in `/tmp/.droiddeck-svc-v1-<api>-<build-id>` cache relative site
+offsets. Every hit revalidates executable-segment bounds, alignment, the current
+SVC opcode and the recognized syscall number. Missing, malformed, truncated,
+overly permissive or symlinked tables trigger a rescan; writes use a private
+temporary file and atomic rename. Images without a readable GNU build-ID still
+scan normally. `PROOT_FP_SVC_CACHE=0` disables caching for comparison. Changes to
+the accepted instruction/syscall set must bump the cache version.
+
+On the Thor's glibc 2.43 / Android 13, 49 sites patch across libc and the loader.
+Warm cached discovery took 60–63 microseconds in two samples versus roughly
+0.6–0.7 milliseconds for the earlier uncached scan; patch publication took about
+0.28 milliseconds. These are constructor phases, not whole Steam startup times.
+Five alternating expanded-library pairs measured median internal stat at 39.5→4.9
+microseconds and open/close at 41.2→6.4 microseconds, with 10,000→0 voluntary
+context switches over both loops. The earlier SD/download tables above describe
+the initial 14-site revision and must not be attributed to this expanded build.
+
+The expanded ABI matrix passes raw return values, errno, all x1–x30 and q0–q31,
+NZCV/FPCR/FPSR, four concurrent threads with distinct robust heads, fork, 100
+signals on an alternate stack, deferred cancellation and 32 thread create/join
+cycles. Constructor patching still refuses a process with multiple live threads.
+Host tests exercise corrupted cache entries, invalid offsets/opcodes, mismatched
+API/version, unsafe file modes, symlinks and truncation. The Android unit test
+checks API forwarding. The existing preload/agent selection passed 79 tests with
+two skips before the cache regression test was added.
+
+Internal fts/realpath/NSS/dlopen and the normalized first equivalence suite still
+match PRoot at both cache TTLs. The write suite still matches wrapper-only output
+and reproduces the same existing SD Unix-socket mismatch described above.
+No in-process RET_TRAP filter is installed, so the proposed SIGSYS mask/handler
+machinery is not applicable. Startup loader traps before the constructor and
+raw calls in arbitrary guest ELFs remain outside the patch scope. Additional
+glibc builds, Android versions, unwind behavior, Steam/CEF tree RSS and matching
+patch-0018 tracer measurements remain coverage gaps.
 
 Build the tools with the same ARM64 glibc toolchain as the fast path:
 

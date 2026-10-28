@@ -1,6 +1,8 @@
 #include "../fastpath/fastpath.c"
 #include <assert.h>
 #include <sys/wait.h>
+#include <linux/futex.h>
+#include <signal.h>
 
 #if defined(__aarch64__)
 struct snapshot { long x[32]; unsigned char q[32][16]; unsigned long nzcv, fpcr, fpsr; };
@@ -37,14 +39,13 @@ __asm__(
   "add sp, sp, #1072\nret\n.size svc_register_probe, .-svc_register_probe\n"
 );
 
-static void check(const long *args, long want) {
+static long probe(const long *args) {
   struct snapshot out = {0};
   unsigned long fpcr, fpsr;
   __asm__ volatile("mrs %0, fpcr\nmrs %1, fpsr" : "=r"(fpcr), "=r"(fpsr));
   errno = 123;
   svc_register_probe(&out, args);
   assert(errno == 123);
-  assert(out.x[0] == want);
   for (int i = 1; i <= 30; i++) {
     long expected = i <= 5 ? args[i] : i == 8 ? args[6] : i;
     if (out.x[i] != expected) { fprintf(stderr, "x%d: %lx != %lx\n", i, out.x[i], expected); abort(); }
@@ -53,11 +54,127 @@ static void check(const long *args, long want) {
     for (int j = 0; j < 16; j++) assert(out.q[i][j] == 0x5a);
   assert(out.nzcv == 0xa0000000UL);
   assert(out.fpcr == fpcr && out.fpsr == fpsr);
+  return out.x[0];
+}
+
+static void check(const long *args, long want) {
+  long got = probe(args);
+  if (got != want) { fprintf(stderr, "syscall %ld: got %ld, expected %ld\n", args[6], got, want); abort(); }
+}
+
+static long raw(long nr, long a, long b, long c, long d, long e, long f) {
+  long args[] = {a, b, c, d, e, f, nr};
+  return probe(args);
+}
+
+static void fault(long nr, long a, long b, long c, long d, long e, long f) {
+  long args[] = {a, b, c, d, e, f, 0, 0, nr};
+  long want = svc_original(args);
+  long call[] = {a, b, c, d, e, f, nr};
+  check(call, want);
+}
+
+static void path_checks(void) {
+  char work[] = "/tmp/proot-expanded-check-XXXXXX";
+  assert(mkdtemp(work));
+  int cwd = open(".", O_RDONLY | O_DIRECTORY);
+  assert(cwd >= 0 && chdir(work) == 0);
+  assert(raw(SYS_mkdirat, AT_FDCWD, (long)"dir", 0700, 0, 0, 0) == 0);
+  long fd = raw(SYS_openat, AT_FDCWD, (long)"dir/file", O_CREAT | O_RDWR | O_EXCL, 0600, 0, 0);
+  assert(fd >= 0 && write((int)fd, "hello", 5) == 5);
+  struct stat st;
+  struct statx sx;
+  assert(raw(SYS_newfstatat, AT_FDCWD, (long)"dir/file", (long)&st, 0, 0, 0) == 0 && st.st_size == 5);
+  assert(raw(SYS_statx, AT_FDCWD, (long)"dir/file", 0, STATX_BASIC_STATS, (long)&sx, 0) == 0 && sx.stx_size == 5);
+  assert(raw(SYS_faccessat, AT_FDCWD, (long)"dir/file", R_OK, 0, 0, 0) == 0);
+  assert(raw(SYS_symlinkat, (long)"file", AT_FDCWD, (long)"dir/link", 0, 0, 0) == 0);
+  char text[PATH_MAX];
+  memset(text, '#', sizeof text);
+  assert(raw(SYS_readlinkat, AT_FDCWD, (long)"dir/link", (long)text, sizeof text, 0, 0) == 4);
+  assert(!memcmp(text, "file#", 5));
+  assert(raw(SYS_fchmodat, AT_FDCWD, (long)"dir/file", 0640, 0, 0, 0) == 0);
+  struct timespec times[] = {{1000, 0}, {2000, 0}};
+  assert(raw(SYS_truncate, (long)"dir/file", 11, 0, 0, 0, 0) == 0);
+  assert(raw(SYS_utimensat, AT_FDCWD, (long)"dir/file", (long)times, 0, 0, 0) == 0);
+  assert(raw(SYS_newfstatat, AT_FDCWD, (long)"dir/file", (long)&st, 0, 0, 0) == 0);
+  assert(st.st_size == 11 && (st.st_mode & 0777) == 0640 && st.st_mtime == 2000);
+  assert(raw(SYS_renameat, AT_FDCWD, (long)"dir/file", AT_FDCWD, (long)"dir/moved", 0, 0) == 0);
+  assert(raw(SYS_renameat2, AT_FDCWD, (long)"dir/moved", AT_FDCWD, (long)"dir/file", RENAME_NOREPLACE, 0) == 0);
+  struct statfs fs;
+  assert(raw(SYS_statfs, (long)"dir/file", (long)&fs, 0, 0, 0, 0) == 0);
+  long x = raw(SYS_getxattr, (long)"dir/file", (long)"user.proot-missing", (long)text, sizeof text, 0, 0);
+  assert(x == -ENODATA || x == -EOPNOTSUPP);
+  x = raw(SYS_lgetxattr, (long)"dir/link", (long)"user.proot-missing", (long)text, sizeof text, 0, 0);
+  assert(x == -ENODATA || x == -EOPNOTSUPP);
+  assert(raw(SYS_listxattr, (long)"dir/file", (long)text, sizeof text, 0, 0, 0) >= 0);
+  assert(raw(SYS_llistxattr, (long)"dir/link", (long)text, sizeof text, 0, 0, 0) >= 0);
+  int in = inotify_init1(IN_CLOEXEC);
+  assert(in >= 0 && raw(SYS_inotify_add_watch, in, (long)"dir", IN_CREATE, 0, 0, 0) >= 0);
+  close(in);
+  long n = raw(SYS_getcwd, (long)text, sizeof text, 0, 0, 0, 0);
+  assert(n == (long)strlen(work) + 1 && !strcmp(text, work));
+  size_t page = sysconf(_SC_PAGESIZE);
+  char *guard = mmap(NULL, page * 2, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  assert(guard != MAP_FAILED && mprotect(guard + page, page, PROT_NONE) == 0);
+  strcpy(guard + page - 2, ".");
+  assert(raw(SYS_newfstatat, AT_FDCWD, (long)(guard + page - 2), (long)&st, 0, 0, 0) == 0);
+  long bad = (long)(guard + page);
+  fault(SYS_openat, AT_FDCWD, bad, O_RDONLY, 0, 0, 0);
+  fault(SYS_newfstatat, AT_FDCWD, (long)"dir/file", bad, 0, 0, 0);
+  fault(SYS_statx, AT_FDCWD, (long)"dir/file", 0, STATX_BASIC_STATS, bad, 0);
+  fault(SYS_readlinkat, AT_FDCWD, (long)"dir/link", bad, 16, 0, 0);
+  fault(SYS_getcwd, bad, PATH_MAX, 0, 0, 0, 0);
+  fault(SYS_utimensat, AT_FDCWD, (long)"missing", bad, 0, 0, 0);
+  fault(SYS_inotify_add_watch, -1, (long)"missing", IN_CREATE, 0, 0, 0);
+  fault(SYS_renameat2, AT_FDCWD, (long)"dir/file", AT_FDCWD, (long)"dir/nope", 0x80000000, 0);
+  assert(munmap(guard, page * 2) == 0);
+  close((int)fd);
+  assert(raw(SYS_unlinkat, AT_FDCWD, (long)"dir/link", 0, 0, 0, 0) == 0);
+  assert(raw(SYS_unlinkat, AT_FDCWD, (long)"dir/file", 0, 0, 0, 0) == 0);
+  assert(raw(SYS_unlinkat, AT_FDCWD, (long)"dir", AT_REMOVEDIR, 0, 0, 0) == 0);
+  assert(fchdir(cwd) == 0 && close(cwd) == 0 && rmdir(work) == 0);
+  puts("PASS: path families, dirfds, flags, symlinks, protected pointers, page boundary");
+}
+
+static void robust_checks(void) {
+  if (!svc_android_api) return;
+  long original = 0;
+  size_t size = 0;
+  assert(raw(SYS_get_robust_list, 0, (long)&original, (long)&size, 0, 0, 0) == 0);
+  struct robust_list_head head = {0};
+  assert(raw(SYS_set_robust_list, (long)&head, sizeof head, 0, 0, 0, 0) == -ENOSYS);
+  long got = 0;
+  assert(raw(SYS_get_robust_list, gettid(), (long)&got, (long)&size, 0, 0, 0) == 0);
+  assert(got == (long)&head && size == sizeof head);
+  assert(raw(SYS_get_robust_list, 0, 1, (long)&size, 0, 0, 0) == -EFAULT);
+  assert(raw(SYS_set_robust_list, original, sizeof head, 0, 0, 0, 0) == -ENOSYS);
+  assert(raw(SYS_faccessat2, AT_FDCWD, (long)"/usr/lib/libc.so.6", R_OK, 0, 0, 0) == -ENOSYS);
+  if (svc_android_api < 35) assert(raw(SYS_clone3, 0, 0, 0, 0, 0, 0) == -ENOSYS);
+  int api = svc_android_api;
+  svc_android_api = 35;
+  assert(!svc_supported(SYS_clone3));
+  svc_android_api = 0;
+  assert(!svc_supported(SYS_clone3) && !svc_supported(SYS_set_robust_list));
+  svc_android_api = api;
+  puts("PASS: robust-list TLS, errors, faccessat2, clone3 platform guard");
 }
 
 static void *thread_check(void *unused) {
   (void)unused;
   struct stat st;
+  if (svc_android_api) {
+    long head;
+    size_t size;
+    assert(raw(SYS_get_robust_list, 0, (long)&head, (long)&size, 0, 0, 0) == 0 && head && size == 3 * sizeof(long));
+    struct robust_list_head private = {0};
+    assert(raw(SYS_set_robust_list, (long)&private, sizeof private, 0, 0, 0, 0) == -ENOSYS);
+    for (int i = 0; i < 10; i++) {
+      long got;
+      sched_yield();
+      assert(raw(SYS_get_robust_list, 0, (long)&got, (long)&size, 0, 0, 0) == 0 && got == (long)&private);
+    }
+    assert(raw(SYS_set_robust_list, head, sizeof private, 0, 0, 0, 0) == -ENOSYS);
+  }
   const long args[] = {AT_FDCWD, (long)"/usr/lib/libc.so.6", (long)&st, 0, 0, 0, SYS_newfstatat};
   for (int i = 0; i < 100; i++) check(args, 0);
   return NULL;
@@ -71,8 +188,70 @@ static void *thread_probe(void *unused) {
   return NULL;
 }
 
+static volatile sig_atomic_t signals_seen;
+static void on_signal(int signal) {
+  (void)signal;
+  int saved = errno;
+  struct stat st;
+  assert(raw(SYS_newfstatat, AT_FDCWD, (long)"/usr/lib/libc.so.6", (long)&st, 0, 0, 0) == 0);
+  signals_seen++;
+  errno = saved;
+}
+
+struct signal_sender { pthread_t target; int done; };
+static void *send_signals(void *arg) {
+  struct signal_sender *sender = arg;
+  const struct timespec delay = {0, 100000};
+  for (int i = 0; i < 100; i++) {
+    assert(pthread_kill(sender->target, SIGUSR1) == 0);
+    nanosleep(&delay, NULL);
+  }
+  __atomic_store_n(&sender->done, 1, __ATOMIC_RELEASE);
+  return NULL;
+}
+
+static void *cancel_worker(void *unused) {
+  (void)unused;
+  struct stat st;
+  for (;;) {
+    assert(raw(SYS_newfstatat, AT_FDCWD, (long)"/usr/lib/libc.so.6", (long)&st, 0, 0, 0) == 0);
+    pthread_testcancel();
+  }
+}
+
+static void signal_checks(void) {
+  stack_t old_stack, stack = {.ss_sp = malloc(128 * 1024), .ss_size = 128 * 1024};
+  assert(stack.ss_sp && sigaltstack(&stack, &old_stack) == 0);
+  struct sigaction old, action = {.sa_handler = on_signal, .sa_flags = SA_ONSTACK};
+  sigemptyset(&action.sa_mask);
+  assert(sigaction(SIGUSR1, &action, &old) == 0);
+  sigset_t deliver, old_mask;
+  sigemptyset(&deliver);
+  sigaddset(&deliver, SIGUSR1);
+  assert(pthread_sigmask(SIG_UNBLOCK, &deliver, &old_mask) == 0);
+  struct signal_sender sender = {.target = pthread_self()};
+  pthread_t thread;
+  assert(pthread_create(&thread, NULL, send_signals, &sender) == 0);
+  struct stat st;
+  for (int i = 0; i < 2000 || !__atomic_load_n(&sender.done, __ATOMIC_ACQUIRE); i++)
+    assert(raw(SYS_newfstatat, AT_FDCWD, (long)"/usr/lib/libc.so.6", (long)&st, 0, 0, 0) == 0);
+  assert(pthread_join(thread, NULL) == 0 && signals_seen > 0);
+  assert(sigaction(SIGUSR1, &old, NULL) == 0 && sigaltstack(&old_stack, NULL) == 0);
+  assert(pthread_sigmask(SIG_SETMASK, &old_mask, NULL) == 0);
+  free(stack.ss_sp);
+  void *result;
+  assert(pthread_create(&thread, NULL, cancel_worker, NULL) == 0);
+  assert(pthread_cancel(thread) == 0 && pthread_join(thread, &result) == 0 && result == PTHREAD_CANCELED);
+  for (int i = 0; i < 32; i++) {
+    assert(pthread_create(&thread, NULL, thread_check, NULL) == 0);
+    assert(pthread_join(thread, NULL) == 0);
+  }
+  puts("PASS: signal reentry on alternate stack, deferred cancellation, thread churn");
+}
+
 int main(void) {
   assert(fp_ready());
+  printf("platform: android %d, patched %u sites\n", svc_android_api, svc_sites);
   assert(svc_single_thread());
   size_t page = sysconf(_SC_PAGESIZE);
   uint32_t *relay = svc_relay_page((uintptr_t)&svc_check_site, page), branch;
@@ -100,6 +279,8 @@ int main(void) {
   check(args, 0);
   args[3] = 0x40000000;
   check(args, -EINVAL);
+  path_checks();
+  robust_checks();
   pthread_t threads[4];
   assert(pthread_barrier_init(&barrier, NULL, 5) == 0);
   for (int i = 0; i < 4; i++) assert(pthread_create(&threads[i], NULL, thread_probe, NULL) == 0);
@@ -113,6 +294,7 @@ int main(void) {
   if (!pid) { thread_check(NULL); _exit(0); }
   int status;
   assert(waitpid(pid, &status, 0) == pid && WIFEXITED(status) && WEXITSTATUS(status) == 0);
+  signal_checks();
   puts("PASS: raw results, errno, x1-x30, q0-q31, NZCV, FPCR/FPSR, 4 threads, fork");
   return 0;
 }

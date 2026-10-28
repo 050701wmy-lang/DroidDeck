@@ -7,17 +7,23 @@ static inline int svc_number(uint32_t insn) {
 
 static inline int svc_argument_instruction(uint32_t insn) {
   if (insn == 0xd503201fU) return 1;
-  if ((insn & 0xffc003e0U) == 0x290003e0U ||
-      (insn & 0xffc003e0U) == 0xa90003e0U) return 1;
+  if ((insn & 0xffc00000U) == 0x29000000U ||
+      (insn & 0xffc00000U) == 0xa9000000U ||
+      (insn & 0xffc00000U) == 0xb9000000U ||
+      (insn & 0xffc00000U) == 0xf9000000U) return 1;
   if ((insn & 31) == 8) return 0;
   return (insn & 0xffe0ffe0U) == 0xaa0003e0U ||
          (insn & 0xffe0ffe0U) == 0x2a0003e0U ||
          (insn & 0xfffffc00U) == 0x93407c00U ||
          (insn & 0x7f800000U) == 0x52800000U ||
          (insn & 0x7f800000U) == 0x12800000U ||
-         (insn & 0xffc003e0U) == 0xb94003e0U ||
-         (insn & 0xffc003e0U) == 0xf94003e0U ||
-         (insn & 0xffc003e0U) == 0xb98003e0U;
+         (insn & 0xffc00000U) == 0xb9400000U ||
+         (insn & 0xffc00000U) == 0xf9400000U ||
+         (insn & 0xffc00000U) == 0xb9800000U ||
+         (insn & 0xff000000U) == 0x91000000U ||
+         (insn & 0xff000000U) == 0xd1000000U ||
+         (insn & 0xff000000U) == 0x11000000U ||
+         (insn & 0xff000000U) == 0x51000000U;
 }
 
 static inline int svc_site_number(const uint32_t *text, size_t at) {
@@ -40,10 +46,14 @@ static inline int svc_branch(uintptr_t from, uintptr_t to, uint32_t *out) {
 #if defined(__aarch64__) && !defined(FP_SVC_ENCODINGS_ONLY)
 #include <asm/hwcap.h>
 #include <link.h>
+#include <sys/uio.h>
 
 static __thread int svc_busy __attribute__((tls_model("initial-exec")));
 static unsigned svc_sites, svc_pages;
 static unsigned long svc_fast, svc_slow;
+static unsigned long long svc_scan_ns, svc_patch_ns;
+
+#include "svc-dispatch.h"
 
 static long svc_original(const long *r) {
   register long x0 __asm__("x0") = r[0];
@@ -60,20 +70,16 @@ static long svc_original(const long *r) {
 __attribute__((used, visibility("hidden")))
 long fp_svc_dispatch(const long *r) {
   int saved_errno = errno;
-  long result = FP_SLOW;
-  if (!svc_busy) {
+  long result = svc_blocked(r);
+  if (result == FP_SLOW && !svc_busy) {
     svc_busy = 1;
-    if (r[8] == SYS_openat)
-      result = fp_open((int)r[0], (const char *)r[1], (int)r[2], (mode_t)r[3]);
-    else if (r[8] == SYS_newfstatat && r[2])
-      result = fp_stat((int)r[0], (const char *)r[1], (int)r[3], (struct stat *)r[2]);
-    if (result != FP_SLOW) __atomic_fetch_add(&svc_fast, 1, __ATOMIC_RELAXED);
+    result = svc_path_call(r);
     svc_busy = 0;
   }
   if (result == FP_SLOW) {
     __atomic_fetch_add(&svc_slow, 1, __ATOMIC_RELAXED);
     result = svc_original(r);
-  }
+  } else __atomic_fetch_add(&svc_fast, 1, __ATOMIC_RELAXED);
   errno = saved_errno;
   return result;
 }
@@ -141,12 +147,19 @@ struct svc_site { uint32_t *site; uint32_t branch; };
 static struct svc_site svc_plan[256];
 static size_t svc_planned;
 
+#include "svc-cache.h"
+
 static int svc_object(struct dl_phdr_info *info, size_t size, void *unused) {
   (void)size;
   (void)unused;
   const char *name = strrchr(info->dlpi_name, '/');
   name = name ? name + 1 : info->dlpi_name;
   if (strcmp(name, "libc.so.6") && strcmp(name, "ld-linux-aarch64.so.1")) return 0;
+  char cache[224];
+  int cached = svc_cache_name(info, cache, sizeof cache);
+  if (cached && svc_cache_read(info, cache)) { svc_cache_hits++; return 0; }
+  if (cached) svc_cache_misses++;
+  size_t first = svc_planned;
   for (int i = 0; i < info->dlpi_phnum; i++) {
     const ElfW(Phdr) *ph = &info->dlpi_phdr[i];
     if (ph->p_type != PT_LOAD || !(ph->p_flags & PF_X)) continue;
@@ -154,10 +167,11 @@ static int svc_object(struct dl_phdr_info *info, size_t size, void *unused) {
     for (size_t j = 1; j < ph->p_memsz / 4 && svc_planned < 256; j++) {
       if (text[j] != 0xd4000001U) continue;
       int nr = svc_site_number(text, j);
-      if (nr != SYS_openat && nr != SYS_newfstatat) continue;
+      if (!svc_supported(nr)) continue;
       svc_plan[svc_planned++].site = &text[j];
     }
   }
+  if (cached) svc_cache_write(info, cache, first);
   return 0;
 }
 
@@ -199,11 +213,19 @@ done:
 }
 
 static void svc_stats(void) {
-  char line[160];
-  int n = snprintf(line, sizeof line, "fastpath-svc[%d]: %u sites, %u relay pages, %lu fast, %lu to proot\n",
-                   getpid(), svc_sites, svc_pages, svc_fast, svc_slow);
-  if (write(2, line, n) < 0) {}
+  char line[256];
+  int n = snprintf(line, sizeof line, "fastpath-svc[%d]: %u sites, %u relay pages, %lu fast, %lu to proot; scan %llu us, patch %llu us, android %d, cache %u hit %u miss\n",
+                   getpid(), svc_sites, svc_pages, svc_fast, svc_slow, svc_scan_ns / 1000, svc_patch_ns / 1000, svc_android_api, svc_cache_hits, svc_cache_misses);
+  if (n > 0 && write(2, line, n < (int)sizeof line ? n : (int)sizeof line - 1) < 0) {}
 }
+
+static unsigned long long svc_clock(void) {
+  struct timespec t;
+  if (sc(SYS_clock_gettime, CLOCK_MONOTONIC, (long)&t, 0, 0, 0) < 0) return 0;
+  return (unsigned long long)t.tv_sec * 1000000000ULL + t.tv_nsec;
+}
+
+static void svc_child(void) { svc_busy = 0; }
 
 __attribute__((constructor)) static void svc_patch_init(void) {
   const char *enabled = getenv("PROOT_FP_PATCH_SVC");
@@ -213,11 +235,16 @@ __attribute__((constructor)) static void svc_patch_init(void) {
   if (getauxval(AT_HWCAP2) & HWCAP2_SME) return;
 #endif
   if (!svc_single_thread()) return;
+  if (pthread_atfork(NULL, NULL, svc_child)) return;
+  svc_android_api = svc_host_android_api();
   size_t page = (size_t)sysconf(_SC_PAGESIZE);
   if (page < 4096 || (page & (page - 1))) return;
   int mem = (int)sc(SYS_openat, AT_FDCWD, (long)"/proc/self/mem", O_RDWR | O_CLOEXEC, 0, 0);
   if (mem < 0) return;
+  unsigned long long start = svc_clock();
   dl_iterate_phdr(svc_object, NULL);
+  svc_scan_ns = svc_clock() - start;
+  start = svc_clock();
   for (size_t first = 0; first < svc_planned;) {
     uint32_t *relay = svc_relay_page((uintptr_t)svc_plan[first].site, page);
     if (!relay) { first++; continue; }
@@ -245,6 +272,7 @@ __attribute__((constructor)) static void svc_patch_init(void) {
     first = end;
   }
   sc(SYS_close, mem, 0, 0, 0, 0);
+  svc_patch_ns = svc_clock() - start;
   if (getenv("PROOT_FP_STATS")) atexit(svc_stats);
 }
 #endif
