@@ -287,7 +287,7 @@ The installed PRoot pack emitted no profiling start/counter records despite the
 queued profiling setting; the profiler report had `hasCounters: false`. That is a
 measurement gap, not evidence of zero remaining traps.
 
-### Expanded relay coverage
+### Expanded relay coverage (before the safety follow-up)
 
 The subsequent revision keeps patching enabled by default and shares the existing
 wrapper translators with 20 path syscall numbers: openat, newfstatat, statx,
@@ -449,3 +449,87 @@ workflow in [proot-performance](proot-performance.md) for a fresh session. No ex
 environment setting is needed; use `PROOT_FP_PATCH_SVC=0` for the unpatched comparison.
 `svc-storage` takes a new, unused directory name; it creates and removes its own test
 files and directory. It writes 64 MiB plus 16 MiB of file extensions per run.
+
+### Safety follow-up (2026-10-28)
+
+Path patching remains enabled by default. Robust-list registration/query sites are
+now deliberately excluded: a device regression test reproduced disagreement
+between the relay's private TLS head and an unpatched raw get_robust_list call in
+the preceding implementation. Both directions now use the existing PRoot/kernel
+route, including cleared heads. This preserves the host's actual return policy:
+the installed Thor runtime accepts set_robust_list with zero, whereas the removed
+emulation returned ENOSYS. PRoot patch 0016 can instead return ENOSYS when Android
+blocks registration; neither policy is replaced by private relay state.
+
+The build-ID cache is version 2 because the accepted syscall set changed. The
+current glibc 2.43/API-33 build patches 47 sites rather than 49. faccessat2 and
+pre-Android-15 clone3 fallback acceleration remain; droiddeck-fsync is unchanged.
+The earlier 138-to-113-microsecond thread result belongs to the retired robust-list
+implementation and must not be claimed for the current code.
+
+Relays now save the original post-SVC program counter and supply unwind metadata
+for the saved caller registers. Device tests force an unwind from inside the
+translator through a patched libc frame and verify caller cleanup. A signal handler
+also exits with siglongjmp; a later call recovers the abandoned recursion guard
+and resumes acceleration. These tests supplement deferred and blocked-FIFO
+cancellation; they are not a claim of arbitrary asynchronous-cancellation safety.
+
+Compiler stack-usage output identified multiple nested PATH_MAX-sized frames.
+Before entering them, a small dispatcher checks the active alternate signal stack
+and cached writable stack mapping. Alternate-stack calls and calls with less than
+96 KiB remaining use PRoot. Main-stack growth respects the current RLIMIT_STACK
+and leaves space above the preceding mapping. The implementation adds only a few
+TLS words, not a large private translation stack. Tests cover a restricted thread
+stack, normal/alternate-stack signals, main-stack growth and a reduced/unavailable
+stack limit. User-managed stacks and arbitrary mid-helper non-local exits remain
+broader compatibility risks, not proven consequence-free cases.
+
+On Thor/Android 13, the embedded and shared-PIC matrices pass on glibc 2.43;
+the shared-PIC matrix also passes with a separately loaded glibc 2.39. They cover register/FP/errno preservation, mixed raw
+and relay robust calls, pointer and page boundaries, readlink buffers of target
+length minus one through plus two, thread churn, fork, signal/non-local exits,
+forced unwinding and limited stack space. Readlink preserves PRoot's existing
+translated-link length behavior; bytes beyond the reported payload are unspecified.
+
+Test-process seccomp filters separately deny opening /proc/self/mem, nearby relay
+mappings, executable mprotect and patch writes. All four device cases leave zero
+patched sites and a working original libc syscall. Host injection additionally
+checks that one failed site write permits other sites to install. Concurrent
+atomic symlink replacement passes 3,000 internal stat/readlink iterations at both
+zero and default cache TTLs. These are bounded tests; they do not prove every
+possible filesystem race or reproduce a real SELinux execmod denial.
+
+Five new alternating pairs measured:
+
+| operation | wrappers only | hardened relays |
+|---|---:|---:|
+| libc-internal stat | 50.1 us | 5.9 us |
+| libc-internal open/close | 51.9 us | 7.1 us |
+| libc faccessat | 52.0 us | 20.2 us |
+| libc getcwd | 51.7 us | 4.6 us |
+| thread create/join | 129 us | 144 us |
+| complete tiny exec/wait | 5.04 ms | 5.96 ms |
+
+The metadata gains survive the safety checks. This run shows no thread-creation
+gain, and the roughly 0.9 ms tiny-exec cost remains. The earlier SD download and
+flush results are historical measurements of the preceding build; no new claim
+that SD media writes or whole Steam installs become reliably faster follows from
+these syscall results. Android 15+ ARM64 and 16 KiB-page hardware remain untested.
+
+Three alternating pairs also measured session start through the Steam Big Picture
+Home page becoming ready, using its DOM/Recent Games content rather than merely
+the compositor's first frame. Off runs took 48.76/43.47/47.02 seconds; on runs took
+43.43/45.25/50.40 seconds. The 47.02-to-45.25-second medians sit within overlapping
+run-to-run variation and do not establish a reliable whole-client startup win.
+These use the signed bundled-library build without overrides; the final stack-gap
+guard only increases the reserved distance above other mappings.
+
+At Home-ready plus 20 seconds, three one-second-spaced process-memory samples per
+run gave Steam/CEF-only median PSS of 1,223.1 MiB off and 1,233.9 MiB on. Including
+their active Python/Wine descendants gave 1,243.7/1,254.6 MiB. The five Steam/CEF
+processes were selected by executable name; descendants were included by parent
+PID. Per-run Steam/CEF medians ranged 1,217.9–1,240.9 MiB off and
+1,194.8–1,244.9 MiB on. The roughly 11 MiB median increase is smaller than this
+variation, but it is not evidence of zero memory cost. PSS avoids counting shared
+pages in full for each process. Startup and memory comparisons used one unchanged
+APK; no downloads or games were initiated during them.

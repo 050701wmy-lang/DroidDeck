@@ -9,6 +9,120 @@ HEADER = Path(__file__).resolve().parents[1] / "proot/fastpath/svc-patch.h"
 
 
 class FastPathSvcEncodingTest(unittest.TestCase):
+    def compile_check(self, source, header):
+        if shutil.which("cc") is None:
+            self.skipTest("cc is not available")
+        with tempfile.TemporaryDirectory() as directory:
+            program = Path(directory) / "check.c"
+            program.write_text(source.replace('"HEADER"', '"' + HEADER.with_name(header).as_posix() + '"'))
+            output = Path(directory) / "check"
+            subprocess.run(["cc", "-O2", "-Wall", "-Wextra", "-Werror", str(program), "-o", str(output)], check=True)
+            subprocess.run([str(output)], check=True, timeout=10)
+
+    def test_stack_bounds_and_alternate_stack_fallback(self):
+        self.compile_check(r'''
+#define _GNU_SOURCE
+#include <assert.h>
+#include <stdint.h>
+#include <stddef.h>
+#include <signal.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <sys/resource.h>
+static rlim_t stack_limit = 1024 * 1024;
+static long sc(long n, long a, long b, long c, long d, long e) {
+  if (n == SYS_prlimit64) {
+    if (!stack_limit) return -1;
+    ((struct rlimit *)d)->rlim_cur = stack_limit;
+    return 0;
+  }
+  return syscall(n,a,b,c,d,e);
+}
+#include "HEADER"
+int main(void) {
+  uintptr_t low, high;
+  assert(svc_stack_line("1000-9000 rw-p 00000000 00:00 0", 0x8000, &low, &high));
+  assert(low == 0x1000 && high == 0x9000);
+  assert(!svc_stack_line("1000-9000 r--p", 0x8000, &low, &high));
+  assert(!svc_stack_line("1000-9000 rw-p", 0x9000, &low, &high));
+  assert(!svc_stack_line("9000-1000 rw-p", 0x8000, &low, &high));
+  assert(!svc_stack_line("fffffffffffffffff-9000 rw-p", 0x8000, &low, &high));
+  assert(!svc_stack_line("", 0x8000, &low, &high));
+  char local;
+  assert(svc_stack_find((uintptr_t)&local));
+  assert((uintptr_t)&local >= svc_stack_low && (uintptr_t)&local < svc_stack_high);
+  svc_stack_main = 0; svc_stack_low = 0x1000; svc_stack_high = 0x100000;
+  assert(!svc_stack_room(0x1000 + 96 * 1024 - 1));
+  assert(svc_stack_room(0x1000 + 96 * 1024));
+  svc_stack_main = 1; svc_stack_low = 0xf0000; svc_stack_gap = 0x1000;
+  assert(svc_stack_room(0xff000));
+  stack_limit = 64 * 1024;
+  assert(!svc_stack_room(0xff000));
+  stack_limit = 0;
+  assert(!svc_stack_room(0xff000));
+  return 0;
+}
+''', "svc-stack.h")
+
+    def test_patch_publication_failure_and_partial_success(self):
+        self.compile_check(r'''
+#define _GNU_SOURCE
+#include <assert.h>
+#include <stdint.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/syscall.h>
+static struct svc_site { uint32_t *site; uint32_t branch; } svc_plan[3];
+static size_t svc_planned = 3;
+static unsigned svc_sites, svc_pages;
+static int fail_alloc, fail_emit, fail_rx, fail_write, writes, live, rx;
+static uint32_t *svc_relay_page(uintptr_t site, size_t page) {
+  (void)site;
+  if (fail_alloc) return NULL;
+  live++; rx = 0;
+  return calloc(1, page);
+}
+static int svc_emit(uint32_t *code, uint32_t *site, uint32_t *branch) {
+  (void)code; (void)site;
+  *branch = 0x14000001;
+  return !fail_emit;
+}
+static int mock_rx(void *p, size_t size, int prot) {
+  (void)p; (void)size;
+  assert(prot == (PROT_READ | PROT_EXEC));
+  if (fail_rx) return -1;
+  rx = 1;
+  return 0;
+}
+static int mock_unmap(void *p, size_t size) { (void)size; free(p); live--; return 0; }
+static long sc(long nr, long fd, long buf, long len, long at, long unused) {
+  (void)fd; (void)unused;
+  assert(nr == SYS_pwrite64 && len == 4 && rx);
+  if (++writes == fail_write) return -1;
+  memcpy((void *)at, (void *)buf, len);
+  return len;
+}
+#define mprotect mock_rx
+#define munmap mock_unmap
+#include "HEADER"
+int main(void) {
+  static uint32_t sites[3];
+  for (int mode = 0; mode < 5; mode++) {
+    for (int i=0; i<3; i++) { sites[i]=0xd4000001; svc_plan[i].site=&sites[i]; }
+    svc_sites=svc_pages=writes=live=rx=0;
+    fail_alloc=mode==0; fail_emit=mode==1; fail_rx=mode==2; fail_write=mode==3 ? 2 : 0;
+    svc_publish(7,4096);
+    if (mode<3) assert(!svc_sites && !svc_pages && !writes && !live);
+    else assert(svc_sites==(mode==3 ? 2U : 3U) && svc_pages==1 && live==1);
+    for (int i=0; i<3; i++) assert(sites[i]==(mode<3 || (mode==3 && i==1) ? 0xd4000001 : 0x14000001));
+  }
+  return 0;
+}
+''', "svc-publish.h")
+
     def test_instruction_decoding_and_branch_limits(self):
         if shutil.which("cc") is None:
             self.skipTest("cc is not available")

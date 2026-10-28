@@ -1,10 +1,25 @@
+#if defined(__aarch64__)
+static void interruption_hook(const long *);
+#define FP_SVC_TEST_HOOK interruption_hook
+#endif
 #include "../fastpath/fastpath.c"
 #include <assert.h>
 #include <sys/wait.h>
 #include <linux/futex.h>
 #include <signal.h>
+#include <setjmp.h>
 
 #if defined(__aarch64__)
+static void (*interrupt_path)(void);
+static void interruption_hook(const long *r) {
+  (void)r;
+  if (interrupt_path) {
+    void (*hook)(void) = interrupt_path;
+    interrupt_path = NULL;
+    hook();
+  }
+}
+
 struct snapshot { long x[32]; unsigned char q[32][16]; unsigned long nzcv, fpcr, fpsr; };
 extern uint32_t svc_check_site;
 extern void svc_register_probe(struct snapshot *, const long *);
@@ -77,6 +92,23 @@ static void fault(long nr, long a, long b, long c, long d, long e, long f) {
   check(call, want);
 }
 
+static void readlink_boundaries(const char *path) {
+  char expected[PATH_MAX + 8], actual[PATH_MAX + 8];
+  long args[] = {AT_FDCWD, (long)path, (long)expected, PATH_MAX, 0, 0, 0, 0, SYS_readlinkat};
+  long length = svc_original(args);
+  assert(length > 0 && length < PATH_MAX - 2);
+  for (long size = length - 1; size <= length + 2; size++) {
+    memset(expected, 0x5a, sizeof expected); memset(actual, 0x5a, sizeof actual);
+    args[3] = size;
+    long want = svc_original(args);
+    long got = raw(SYS_readlinkat, AT_FDCWD, (long)path, (long)actual, size, 0, 0);
+    if (got != want || (want > 0 && memcmp(expected, actual, (size_t)want)))
+      fprintf(stderr, "readlink %s size %ld: relay %ld, proot %ld\n", path, size, got, want);
+    assert(got == want && (want <= 0 || !memcmp(expected, actual, (size_t)want)));
+    for (size_t i = (size_t)size; i < sizeof actual; i++) assert(actual[i] == 0x5a);
+  }
+}
+
 static void path_checks(void) {
   char work[] = "/tmp/proot-expanded-check-XXXXXX";
   assert(mkdtemp(work));
@@ -91,6 +123,8 @@ static void path_checks(void) {
   assert(raw(SYS_statx, AT_FDCWD, (long)"dir/file", 0, STATX_BASIC_STATS, (long)&sx, 0) == 0 && sx.stx_size == 5);
   assert(raw(SYS_faccessat, AT_FDCWD, (long)"dir/file", R_OK, 0, 0, 0) == 0);
   assert(raw(SYS_symlinkat, (long)"file", AT_FDCWD, (long)"dir/link", 0, 0, 0) == 0);
+  readlink_boundaries("dir/link");
+  readlink_boundaries("/proc/self/exe");
   char text[PATH_MAX];
   memset(text, '#', sizeof text);
   assert(raw(SYS_readlinkat, AT_FDCWD, (long)"dir/link", (long)text, sizeof text, 0, 0) == 4);
@@ -145,14 +179,21 @@ static void robust_checks(void) {
   size_t size = 0;
   assert(raw(SYS_get_robust_list, 0, (long)&original, (long)&size, 0, 0, 0) == 0);
   struct robust_list_head head = {0};
-  assert(raw(SYS_set_robust_list, (long)&head, sizeof head, 0, 0, 0, 0) == -ENOSYS);
+  long set_result = raw(SYS_set_robust_list, (long)&head, sizeof head, 0, 0, 0, 0);
+  assert(set_result == 0 || set_result == -ENOSYS);
+  long raw_head = 0;
+  long direct[] = {0, (long)&raw_head, (long)&size, 0, 0, 0, 0, 0, SYS_get_robust_list};
+  assert(svc_original(direct) == 0 && raw_head == (long)&head);
   long got = 0;
   assert(raw(SYS_get_robust_list, gettid(), (long)&got, (long)&size, 0, 0, 0) == 0);
   assert(got == (long)&head && size == sizeof head);
   assert(raw(SYS_get_robust_list, 0, 1, (long)&size, 0, 0, 0) == -EFAULT);
-  assert(raw(SYS_set_robust_list, 0, sizeof head, 0, 0, 0, 0) == -ENOSYS);
-  assert(raw(SYS_get_robust_list, 0, (long)&got, (long)&size, 0, 0, 0) == -ENOSYS);
-  assert(raw(SYS_set_robust_list, original, sizeof head, 0, 0, 0, 0) == -ENOSYS);
+  assert(raw(SYS_set_robust_list, 0, sizeof head, 0, 0, 0, 0) == set_result);
+  long cleared = raw(SYS_get_robust_list, 0, (long)&got, (long)&size, 0, 0, 0);
+  assert(cleared == -ENOSYS || (cleared == 0 && got == 0));
+  direct[0] = original; direct[1] = sizeof head; direct[8] = SYS_set_robust_list;
+  assert(svc_original(direct) == set_result);
+  assert(raw(SYS_get_robust_list, 0, (long)&got, (long)&size, 0, 0, 0) == 0 && original == got);
   assert(raw(SYS_faccessat2, AT_FDCWD, (long)"/usr/lib/libc.so.6", R_OK, 0, 0, 0) == -ENOSYS);
   if (svc_android_api < 35) assert(raw(SYS_clone3, 0, 0, 0, 0, 0, 0) == -ENOSYS);
   int api = svc_android_api;
@@ -161,7 +202,8 @@ static void robust_checks(void) {
   svc_android_api = 0;
   assert(!svc_supported(SYS_clone3) && !svc_supported(SYS_set_robust_list));
   svc_android_api = api;
-  puts("PASS: robust-list TLS, errors, faccessat2, clone3 platform guard");
+  assert(!svc_supported(SYS_set_robust_list) && !svc_supported(SYS_get_robust_list));
+  puts("PASS: mixed relay/raw robust-list callers, errors, faccessat2, clone3 platform guard");
 }
 
 static void *thread_check(void *unused) {
@@ -172,13 +214,14 @@ static void *thread_check(void *unused) {
     size_t size;
     assert(raw(SYS_get_robust_list, 0, (long)&head, (long)&size, 0, 0, 0) == 0 && head && size == 3 * sizeof(long));
     struct robust_list_head private = {0};
-    assert(raw(SYS_set_robust_list, (long)&private, sizeof private, 0, 0, 0, 0) == -ENOSYS);
+    long result = raw(SYS_set_robust_list, (long)&private, sizeof private, 0, 0, 0, 0);
+    assert(result == 0 || result == -ENOSYS);
     for (int i = 0; i < 10; i++) {
       long got;
       sched_yield();
       assert(raw(SYS_get_robust_list, 0, (long)&got, (long)&size, 0, 0, 0) == 0 && got == (long)&private);
     }
-    assert(raw(SYS_set_robust_list, head, sizeof private, 0, 0, 0, 0) == -ENOSYS);
+    assert(raw(SYS_set_robust_list, head, sizeof private, 0, 0, 0, 0) == result);
   }
   const long args[] = {AT_FDCWD, (long)"/usr/lib/libc.so.6", (long)&st, 0, 0, 0, SYS_newfstatat};
   for (int i = 0; i < 100; i++) check(args, 0);
@@ -201,6 +244,75 @@ static void on_signal(int signal) {
   assert(raw(SYS_newfstatat, AT_FDCWD, (long)"/usr/lib/libc.so.6", (long)&st, 0, 0, 0) == 0);
   signals_seen++;
   errno = saved;
+}
+
+static sigjmp_buf interrupted;
+static void jump_signal(int signal) { (void)signal; siglongjmp(interrupted, 1); }
+static void jump_path(void) { assert(raise(SIGUSR2) == 0); abort(); }
+static void exit_path(void) { pthread_exit(PTHREAD_CANCELED); }
+static void mark_cleanup(void *arg) { *(int *)arg = 1; }
+struct unwind_check { int cleaned; int (*stat)(int, const char *, struct stat *, int); };
+static void *unwind_worker(void *arg) {
+  struct unwind_check *test = arg;
+  struct stat st;
+  pthread_cleanup_push(mark_cleanup, &test->cleaned);
+  interrupt_path = exit_path;
+  test->stat(AT_FDCWD, "/usr/lib/libc.so.6", &st, 0);
+  pthread_cleanup_pop(1);
+  abort();
+}
+
+static void interruption_checks(void) {
+  void *libc = dlopen("libc.so.6", RTLD_NOW);
+  struct unwind_check test = {.stat = dlsym(libc, "fstatat")};
+  assert(test.stat);
+  struct sigaction old, action = {.sa_handler = jump_signal};
+  sigemptyset(&action.sa_mask);
+  assert(sigaction(SIGUSR2, &action, &old) == 0);
+  sigset_t deliver, old_mask;
+  sigemptyset(&deliver); sigaddset(&deliver, SIGUSR2);
+  assert(pthread_sigmask(SIG_UNBLOCK, &deliver, &old_mask) == 0);
+  if (!sigsetjmp(interrupted, 1)) {
+    struct stat st;
+    interrupt_path = jump_path;
+    test.stat(AT_FDCWD, "/usr/lib/libc.so.6", &st, 0);
+    abort();
+  }
+  assert(svc_busy);
+  struct stat st;
+  unsigned long before = svc_fast;
+  assert(test.stat(AT_FDCWD, "/usr/lib/libc.so.6", &st, 0) == 0);
+  assert(!svc_busy && svc_fast > before);
+  assert(sigaction(SIGUSR2, &old, NULL) == 0 && pthread_sigmask(SIG_SETMASK, &old_mask, NULL) == 0);
+  pthread_t thread;
+  void *result;
+  assert(pthread_create(&thread, NULL, unwind_worker, &test) == 0);
+  assert(pthread_join(thread, &result) == 0 && result == PTHREAD_CANCELED && test.cleaned);
+  assert(dlclose(libc) == 0);
+  puts("PASS: signal siglongjmp recovery, forced unwind through patched libc with caller cleanup");
+}
+
+static void *small_stack_worker(void *unused) {
+  size_t consume = (size_t)(uintptr_t)unused - 48 * 1024;
+  volatile char *padding = __builtin_alloca(consume);
+  padding[0] = padding[consume - 1] = 1;
+  struct stat st;
+  unsigned long before = svc_fast;
+  for (int i = 0; i < 20; i++)
+    assert(raw(SYS_newfstatat, AT_FDCWD, (long)"/usr/lib/libc.so.6", (long)&st, 0, 0, 0) == 0);
+  assert(svc_fast == before && !svc_busy);
+  return NULL;
+}
+
+static void small_stack_checks(void) {
+  pthread_attr_t attr;
+  pthread_t thread;
+  size_t size = PTHREAD_STACK_MIN;
+  if (size < 128 * 1024) size = 128 * 1024;
+  assert(pthread_attr_init(&attr) == 0 && pthread_attr_setstacksize(&attr, size) == 0);
+  assert(pthread_create(&thread, &attr, small_stack_worker, (void *)(uintptr_t)size) == 0);
+  assert(pthread_join(thread, NULL) == 0 && pthread_attr_destroy(&attr) == 0);
+  puts("PASS: limited remaining thread stack delegates path calls to PRoot");
 }
 
 struct signal_sender { pthread_t target; int done; };
@@ -237,7 +349,7 @@ static void *cancel_fifo(void *arg) {
 }
 
 static void signal_checks(void) {
-  stack_t old_stack, stack = {.ss_sp = malloc(128 * 1024), .ss_size = 128 * 1024};
+  stack_t old_stack, stack = {.ss_sp = malloc(SIGSTKSZ), .ss_size = SIGSTKSZ};
   assert(stack.ss_sp && sigaltstack(&stack, &old_stack) == 0);
   struct sigaction old, action = {.sa_handler = on_signal, .sa_flags = SA_ONSTACK};
   sigemptyset(&action.sa_mask);
@@ -292,7 +404,7 @@ int main(void) {
   size_t page = sysconf(_SC_PAGESIZE);
   uint32_t *relay = svc_relay_page((uintptr_t)&svc_check_site, page), branch;
   assert(relay && svc_emit(relay, &svc_check_site, &branch));
-  __builtin___clear_cache((char *)relay, (char *)relay + 32);
+  __builtin___clear_cache((char *)relay, (char *)relay + 40);
   assert(mprotect(relay, page, PROT_READ | PROT_EXEC) == 0);
   int mem = open("/proc/self/mem", O_RDWR | O_CLOEXEC);
   assert(mem >= 0 && pwrite(mem, &branch, 4, (off_t)(uintptr_t)&svc_check_site) == 4);
@@ -331,6 +443,8 @@ int main(void) {
   int status;
   assert(waitpid(pid, &status, 0) == pid && WIFEXITED(status) && WEXITSTATUS(status) == 0);
   signal_checks();
+  interruption_checks();
+  small_stack_checks();
   puts("PASS: raw results, errno, x1-x30, q0-q31, NZCV, FPCR/FPSR, 4 threads, fork");
   return 0;
 }

@@ -47,13 +47,15 @@ static inline int svc_branch(uintptr_t from, uintptr_t to, uint32_t *out) {
 #include <asm/hwcap.h>
 #include <link.h>
 #include <sys/uio.h>
+#include <signal.h>
 
-static __thread int svc_busy __attribute__((tls_model("initial-exec")));
+static __thread uintptr_t svc_busy __attribute__((tls_model("initial-exec")));
 static unsigned svc_sites, svc_pages;
 static unsigned long svc_fast, svc_slow;
 static unsigned long long svc_scan_ns, svc_patch_ns;
 
 #include "svc-dispatch.h"
+#include "svc-stack.h"
 
 static long svc_original(const long *r) {
   register long x0 __asm__("x0") = r[0];
@@ -71,10 +73,12 @@ __attribute__((used, visibility("hidden")))
 long fp_svc_dispatch(const long *r) {
   int saved_errno = errno;
   long result = svc_blocked(r);
-  if (result == FP_SLOW && !svc_busy) {
-    svc_busy = 1;
-    result = svc_path_call(r);
-    svc_busy = 0;
+  uintptr_t frame = (uintptr_t)r;
+  if (result == FP_SLOW && (!svc_busy || frame >= svc_busy)) {
+    uintptr_t previous = svc_busy;
+    svc_busy = frame;
+    if (svc_stack_room(frame)) { result = svc_path_call(r); svc_busy = 0; }
+    else svc_busy = previous;
   }
   if (result == FP_SLOW) {
     __atomic_fetch_add(&svc_slow, 1, __ATOMIC_RELAXED);
@@ -88,7 +92,8 @@ void fp_svc_entry(void) __attribute__((visibility("hidden")));
 /* A replaced svc may have live values in every register, including NZCV and SIMD. */
 __asm__(
   ".text\n.p2align 4\n.hidden fp_svc_entry\n.type fp_svc_entry,%function\nfp_svc_entry:\n"
-  "bti j\nsub sp, sp, #800\n"
+  ".cfi_startproc\n.cfi_def_cfa sp, 16\n.cfi_return_column 16\n"
+  "bti j\nsub sp, sp, #800\n.cfi_def_cfa_offset 816\n"
   "stp x0, x1, [sp, #0]\nstp x2, x3, [sp, #16]\n"
   "stp x4, x5, [sp, #32]\nstp x6, x7, [sp, #48]\n"
   "stp x8, x9, [sp, #64]\nstp x10, x11, [sp, #80]\n"
@@ -97,6 +102,13 @@ __asm__(
   "stp x22, x23, [sp, #160]\nstp x24, x25, [sp, #176]\n"
   "stp x26, x27, [sp, #192]\nstp x28, x29, [sp, #208]\n"
   "stp x30, x17, [sp, #224]\nmrs x0, nzcv\nstr x0, [sp, #240]\n"
+  "ldr x0, [x17, #8]\nstr x0, [sp, #784]\n"
+  ".cfi_offset 16, -32\n.cfi_offset 19, -680\n.cfi_offset 20, -672\n"
+  ".cfi_offset 21, -664\n.cfi_offset 22, -656\n.cfi_offset 23, -648\n"
+  ".cfi_offset 24, -640\n.cfi_offset 25, -632\n.cfi_offset 26, -624\n"
+  ".cfi_offset 27, -616\n.cfi_offset 28, -608\n.cfi_offset 29, -600\n.cfi_offset 30, -592\n"
+  ".cfi_offset 72, -432\n.cfi_offset 73, -416\n.cfi_offset 74, -400\n.cfi_offset 75, -384\n"
+  ".cfi_offset 76, -368\n.cfi_offset 77, -352\n.cfi_offset 78, -336\n.cfi_offset 79, -320\n"
   "mrs x0, fpcr\nstr x0, [sp, #768]\nmrs x0, fpsr\nstr x0, [sp, #776]\n"
   "stp q0, q1, [sp, #256]\nstp q2, q3, [sp, #288]\n"
   "stp q4, q5, [sp, #320]\nstp q6, q7, [sp, #352]\n"
@@ -125,7 +137,7 @@ __asm__(
   "ldp x22, x23, [sp, #160]\nldp x24, x25, [sp, #176]\n"
   "ldp x26, x27, [sp, #192]\nldp x28, x29, [sp, #208]\n"
   "ldr x30, [sp, #224]\nldr x16, [sp, #232]\n"
-  "add sp, sp, #800\nbr x16\n.size fp_svc_entry, .-fp_svc_entry\n"
+  "add sp, sp, #800\n.cfi_def_cfa_offset 16\nbr x16\n.cfi_endproc\n.size fp_svc_entry, .-fp_svc_entry\n"
 );
 
 static int svc_emit(uint32_t *code, uint32_t *site, uint32_t *branch) {
@@ -133,13 +145,15 @@ static int svc_emit(uint32_t *code, uint32_t *site, uint32_t *branch) {
   if (!svc_branch((uintptr_t)site, (uintptr_t)code, branch) ||
       !svc_branch((uintptr_t)(code + 5), (uintptr_t)(site + 1), &back)) return 0;
   code[0] = 0xa9bf47f0U; /* stp x16, x17, [sp, #-16]! */
-  code[1] = 0x580000b0U; /* ldr x16, literal at +24 */
+  code[1] = 0x580000f0U; /* ldr x16, literal at +32 */
   code[2] = 0x10000051U; /* adr x17, +8 */
   code[3] = 0xd61f0200U; /* br x16 */
   code[4] = 0xa8c147f0U; /* ldp x16, x17, [sp], #16 */
   code[5] = back;
   uintptr_t entry = (uintptr_t)fp_svc_entry;
-  memcpy(code + 6, &entry, sizeof entry);
+  uintptr_t resume = (uintptr_t)(site + 1);
+  memcpy(code + 6, &resume, sizeof resume);
+  memcpy(code + 8, &entry, sizeof entry);
   return 1;
 }
 
@@ -189,6 +203,8 @@ static uint32_t *svc_relay_page(uintptr_t site, size_t page) {
   }
   return NULL;
 }
+
+#include "svc-publish.h"
 
 static int svc_single_thread(void) {
   struct entry { uint64_t ino; int64_t off; unsigned short len; unsigned char type; char name[]; };
@@ -245,32 +261,7 @@ __attribute__((constructor)) static void svc_patch_init(void) {
   dl_iterate_phdr(svc_object, NULL);
   svc_scan_ns = svc_clock() - start;
   start = svc_clock();
-  for (size_t first = 0; first < svc_planned;) {
-    uint32_t *relay = svc_relay_page((uintptr_t)svc_plan[first].site, page);
-    if (!relay) { first++; continue; }
-    size_t end = first;
-    for (; end < svc_planned && (end - first + 1) * 32 <= page; end++) {
-      uint32_t *code = relay + (end - first) * 8;
-      if (!svc_emit(code, svc_plan[end].site, &svc_plan[end].branch)) break;
-    }
-    __builtin___clear_cache((char *)relay, (char *)relay + page);
-    if (end == first || mprotect(relay, page, PROT_READ | PROT_EXEC)) {
-      munmap(relay, page);
-      first++;
-      continue;
-    }
-    unsigned patched = 0;
-    for (size_t i = first; i < end; i++) {
-      struct svc_site *s = &svc_plan[i];
-      long written = sc(SYS_pwrite64, mem, (long)&s->branch, sizeof s->branch, (long)s->site, 0);
-      if (written != sizeof s->branch) continue;
-      __builtin___clear_cache((char *)s->site, (char *)(s->site + 1));
-      patched++;
-    }
-    if (patched) { svc_sites += patched; svc_pages++; }
-    else munmap(relay, page);
-    first = end;
-  }
+  svc_publish(mem, page);
   sc(SYS_close, mem, 0, 0, 0, 0);
   svc_patch_ns = svc_clock() - start;
   if (getenv("PROOT_FP_STATS")) atexit(svc_stats);

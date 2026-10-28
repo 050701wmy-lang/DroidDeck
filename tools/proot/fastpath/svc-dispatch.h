@@ -1,5 +1,4 @@
 static int svc_android_api;
-static __thread struct { long head, tid; } svc_robust __attribute__((tls_model("initial-exec")));
 
 static int svc_host_android_api(void) {
   const char *value = getenv("PROOT_FP_ANDROID_API");
@@ -34,7 +33,7 @@ static int svc_supported(int nr) {
   case SYS_truncate: case SYS_statfs: case SYS_getxattr: case SYS_lgetxattr:
   case SYS_listxattr: case SYS_llistxattr: case SYS_inotify_add_watch: case SYS_getcwd:
     return 1;
-  case SYS_set_robust_list: case SYS_get_robust_list: case SYS_faccessat2:
+  case SYS_faccessat2:
     return svc_android_api > 0;
   case SYS_clone3:
     return svc_android_api > 0 && svc_android_api < 35;
@@ -45,24 +44,13 @@ static int svc_supported(int nr) {
 static long svc_blocked(const long *r) {
   if (!svc_android_api) return FP_SLOW;
   if (r[8] == SYS_faccessat2 || (r[8] == SYS_clone3 && svc_android_api < 35)) return -ENOSYS;
-  if (r[8] == SYS_set_robust_list) {
-    svc_robust.head = r[0];
-    svc_robust.tid = sc(SYS_gettid, 0, 0, 0, 0, 0);
-    return -ENOSYS;
-  }
-  if (r[8] == SYS_get_robust_list) {
-    long tid = sc(SYS_gettid, 0, 0, 0, 0, 0);
-    if ((r[0] && r[0] != tid) || svc_robust.tid != tid) return FP_SLOW;
-    if (!svc_robust.head) return -ENOSYS;
-    size_t size = 3 * sizeof(long);
-    if (svc_memory(&svc_robust.head, r[1], sizeof(long), 1) != sizeof(long) ||
-        svc_memory(&size, r[2], sizeof size, 1) != sizeof size) return -EFAULT;
-    return 0;
-  }
   return FP_SLOW;
 }
 
 static long svc_path_call(const long *r) {
+#ifdef FP_SVC_TEST_HOOK
+  FP_SVC_TEST_HOOK(r);
+#endif
   char path[PATH_MAX], other[PATH_MAX];
   struct timespec times[2];
   const struct timespec *when = (const struct timespec *)r[2];
