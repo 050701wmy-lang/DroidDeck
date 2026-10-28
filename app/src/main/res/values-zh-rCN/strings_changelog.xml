@@ -4,4 +4,6 @@
     <string name="changelog_installed">当前安装版本</string>
     <string name="changelog_untranslated_title">预览版 %1$s</string>
     <string name="changelog_translation_pending">此预览版的日志译文尚未收录。</string>
+    <string name="changelog_bundled_hint">包含此版本内置的发布日志，离线也可查看。</string>
+    <string name="changelog_online_checked">上次联网刷新：%1$s</string>
 </resources>

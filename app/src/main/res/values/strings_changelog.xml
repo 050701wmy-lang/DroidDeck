@@ -4,4 +4,6 @@
     <string name="changelog_installed">Installed build</string>
     <string name="changelog_untranslated_title">Preview %1$s</string>
     <string name="changelog_translation_pending">Notes for this preview are not yet included.</string>
+    <string name="changelog_bundled_hint">Includes published notes bundled with this build for offline viewing.</string>
+    <string name="changelog_online_checked">Last online refresh: %1$s</string>
 </resources>

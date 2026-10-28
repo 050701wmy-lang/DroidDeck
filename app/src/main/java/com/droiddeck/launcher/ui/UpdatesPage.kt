@@ -42,14 +42,7 @@ internal fun UpdatesPage(s: FrontEndState, a: FrontEndActions, modifier: Modifie
     val pal = LocalPalette.current
     val me = remember { AppUpdates.installed() }
     val originalNotes = booleanResource(R.bool.changelog_original_notes)
-    val changes = remember(u.catalog) {
-        buildList {
-            u.catalog?.preview?.let {
-                add(AppUpdates.PreviewChange(it.commit, it.title.ifBlank { it.tag }, it.summary, it.publishedAt))
-            }
-            addAll(u.catalog?.recentPreviews.orEmpty())
-        }.distinctBy { it.commit.lowercase() }.sortedByDescending { it.publishedAt }
-    }
+    val changes = remember(u.catalog) { changelogChanges(u.catalog) }
     Column(modifier = modifier.testTag("changelog-page")) {
         PageHeader(stringResource(R.string.upd_title)) {
             Spacer(Modifier.weight(1f))
@@ -58,8 +51,9 @@ internal fun UpdatesPage(s: FrontEndState, a: FrontEndActions, modifier: Modifie
         }
         Text(stringResource(R.string.upd_build, me.version, s.buildLabel),
             fontSize = 12.5.sp, color = colors.onSurfaceVariant)
+        Text(stringResource(R.string.changelog_bundled_hint), fontSize = 12.sp, color = colors.onSurfaceVariant)
         u.catalog?.checkedAt?.takeIf { it > 0 }?.let {
-            Text(stringResource(R.string.upd_checked, ago(it)), fontSize = 12.sp, color = colors.onSurfaceVariant)
+            Text(stringResource(R.string.changelog_online_checked, ago(it)), fontSize = 12.sp, color = colors.onSurfaceVariant)
         }
         if (u.error != null) Text(u.error, fontSize = 13.sp, color = pal.error,
             modifier = Modifier.padding(top = 8.dp))
