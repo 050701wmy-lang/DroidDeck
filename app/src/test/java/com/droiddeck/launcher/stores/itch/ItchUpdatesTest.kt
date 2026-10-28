@@ -41,6 +41,12 @@ class ItchUpdatesTest {
         assertTrue(update.replaced)
     }
 
+    @Test fun aReplacedUploadWithNoWindowsBuildLeftIsNotOffered() {
+        val linux = list(upload("8", "2026-10-01T10:00:00Z", windows = false))
+        assertNull(ItchUpdates.evaluate(linux, "7", "2026-09-01T10:00:00Z"))
+        assertNull(ItchUpdates.evaluate(linux, "", "2026-09-01T10:00:00Z"))
+    }
+
     @Test fun anUnknownInstalledVersionNeverReportsAnUpdate() {
         assertNull(ItchUpdates.evaluate(list(upload("7", "2026-10-20T10:00:00Z")), "7", ""))
     }

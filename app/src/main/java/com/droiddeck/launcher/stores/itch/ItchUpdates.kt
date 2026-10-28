@@ -38,7 +38,7 @@ internal object ItchUpdates {
             val stamp = ItchUploads.updatedAt(current)
             return if (stamp > version) ItchUpdate(uploadId, stamp, ItchUploads.filename(current), false) else null
         }
-        val next = ItchUploads.windows(uploads) ?: return null
+        val next = ItchUploads.windows(uploads)?.takeIf { ItchUploads.windows(it) } ?: return null
         val stamp = ItchUploads.updatedAt(next)
         if (uploadId.isBlank() && stamp <= version) return null
         return ItchUpdate(next.optString("id"), stamp, ItchUploads.filename(next), uploadId.isNotBlank())
