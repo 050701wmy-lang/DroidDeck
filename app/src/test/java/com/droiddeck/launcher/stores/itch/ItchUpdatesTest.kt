@@ -11,8 +11,8 @@ import org.junit.Test
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
 @org.robolectric.annotation.Config(sdk = [33], application = android.app.Application::class)
 class ItchUpdatesTest {
-    private fun upload(id: String, updated: String, filename: String = "game-$id.zip", windows: Boolean = true) =
-        JSONObject().put("id", id).put("filename", filename).put("updated_at", updated).put("type", "default").put("storage", "hosted")
+    private fun upload(id: String, updated: String, filename: String = "game-$id.zip", windows: Boolean = true, type: String = "default") =
+        JSONObject().put("id", id).put("filename", filename).put("updated_at", updated).put("type", type).put("storage", "hosted")
             .put("platforms", JSONObject().put("windows", windows).put("linux", !windows))
 
     private fun list(vararg uploads: JSONObject) = JSONArray().also { a -> uploads.forEach { a.put(it) } }
@@ -45,6 +45,15 @@ class ItchUpdatesTest {
         val linux = list(upload("8", "2026-10-01T10:00:00Z", windows = false))
         assertNull(ItchUpdates.evaluate(linux, "7", "2026-09-01T10:00:00Z"))
         assertNull(ItchUpdates.evaluate(linux, "", "2026-09-01T10:00:00Z"))
+    }
+
+    @Test fun aWindowsBuildOfAnotherTypeBeatsALinuxDefaultOne() {
+        val update = ItchUpdates.evaluate(
+            list(upload("8", "2026-10-09T10:00:00Z", windows = false), upload("9", "2026-10-01T10:00:00Z", type = "other")),
+            "7", "2026-09-01T10:00:00Z",
+        )!!
+        assertEquals("9", update.uploadId)
+        assertTrue(update.replaced)
     }
 
     @Test fun anUnknownInstalledVersionNeverReportsAnUpdate() {

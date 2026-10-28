@@ -38,3 +38,7 @@ build does not contain (saves, settings, the install record, launcher and art) s
 is marked updating just before the move, so an interruption in that short step is resumable, and the
 finished record carries the new `installVersion` and `uploadId`. Free space for one extra copy of the
 build is needed while the update runs.
+
+A cancel that arrives before the files are moved in stops the update and removes the staging folder. Once
+the move has started the update is past the point of no return: it finishes and writes the new record, so
+a cancel during that short step cannot leave new files under an old record.

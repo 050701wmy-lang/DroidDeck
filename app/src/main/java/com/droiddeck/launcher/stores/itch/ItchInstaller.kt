@@ -216,7 +216,6 @@ internal class ItchInstaller(
                 throw t
             }
             ItchStaging.merge(work, folder)
-            if (cancelled.get()) return null
             ItchStaging.delete(work)
         }
         return exe
