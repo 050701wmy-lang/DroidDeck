@@ -147,6 +147,8 @@ static void robust_checks(void) {
   assert(raw(SYS_get_robust_list, gettid(), (long)&got, (long)&size, 0, 0, 0) == 0);
   assert(got == (long)&head && size == sizeof head);
   assert(raw(SYS_get_robust_list, 0, 1, (long)&size, 0, 0, 0) == -EFAULT);
+  assert(raw(SYS_set_robust_list, 0, sizeof head, 0, 0, 0, 0) == -ENOSYS);
+  assert(raw(SYS_get_robust_list, 0, (long)&got, (long)&size, 0, 0, 0) == -ENOSYS);
   assert(raw(SYS_set_robust_list, original, sizeof head, 0, 0, 0, 0) == -ENOSYS);
   assert(raw(SYS_faccessat2, AT_FDCWD, (long)"/usr/lib/libc.so.6", R_OK, 0, 0, 0) == -ENOSYS);
   if (svc_android_api < 35) assert(raw(SYS_clone3, 0, 0, 0, 0, 0, 0) == -ENOSYS);
@@ -219,6 +221,18 @@ static void *cancel_worker(void *unused) {
   }
 }
 
+struct cancel_open { const char *path; int (*open)(const char *, int, ...); int ready, cleaned; };
+static void cancel_cleanup(void *arg) { ((struct cancel_open *)arg)->cleaned = 1; }
+static void *cancel_fifo(void *arg) {
+  struct cancel_open *test = arg;
+  pthread_cleanup_push(cancel_cleanup, test);
+  __atomic_store_n(&test->ready, 1, __ATOMIC_RELEASE);
+  int fd = test->open(test->path, O_RDONLY);
+  if (fd >= 0) close(fd);
+  pthread_cleanup_pop(1);
+  return NULL;
+}
+
 static void signal_checks(void) {
   stack_t old_stack, stack = {.ss_sp = malloc(128 * 1024), .ss_size = 128 * 1024};
   assert(stack.ss_sp && sigaltstack(&stack, &old_stack) == 0);
@@ -242,6 +256,19 @@ static void signal_checks(void) {
   void *result;
   assert(pthread_create(&thread, NULL, cancel_worker, NULL) == 0);
   assert(pthread_cancel(thread) == 0 && pthread_join(thread, &result) == 0 && result == PTHREAD_CANCELED);
+  char fifo[] = "/tmp/proot-expanded-fifo-XXXXXX";
+  int fd = mkstemp(fifo);
+  assert(fd >= 0 && close(fd) == 0 && unlink(fifo) == 0 && mkfifo(fifo, 0600) == 0);
+  void *libc = dlopen("libc.so.6", RTLD_NOW);
+  struct cancel_open test = {.path = fifo, .open = dlsym(libc, "open")};
+  assert(test.open && pthread_create(&thread, NULL, cancel_fifo, &test) == 0);
+  while (!__atomic_load_n(&test.ready, __ATOMIC_ACQUIRE)) sched_yield();
+  struct timespec deadline = {0, 20000000};
+  nanosleep(&deadline, NULL);
+  assert(pthread_cancel(thread) == 0 && clock_gettime(CLOCK_REALTIME, &deadline) == 0);
+  deadline.tv_sec += 2;
+  assert(pthread_timedjoin_np(thread, &result, &deadline) == 0 && result == PTHREAD_CANCELED && test.cleaned);
+  assert(unlink(fifo) == 0 && dlclose(libc) == 0);
   for (int i = 0; i < 32; i++) {
     assert(pthread_create(&thread, NULL, thread_check, NULL) == 0);
     assert(pthread_join(thread, NULL) == 0);

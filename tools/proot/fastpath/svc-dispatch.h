@@ -52,7 +52,8 @@ static long svc_blocked(const long *r) {
   }
   if (r[8] == SYS_get_robust_list) {
     long tid = sc(SYS_gettid, 0, 0, 0, 0, 0);
-    if ((r[0] && r[0] != tid) || svc_robust.tid != tid || !svc_robust.head) return FP_SLOW;
+    if ((r[0] && r[0] != tid) || svc_robust.tid != tid) return FP_SLOW;
+    if (!svc_robust.head) return -ENOSYS;
     size_t size = 3 * sizeof(long);
     if (svc_memory(&svc_robust.head, r[1], sizeof(long), 1) != sizeof(long) ||
         svc_memory(&size, r[2], sizeof size, 1) != sizeof size) return -EFAULT;
