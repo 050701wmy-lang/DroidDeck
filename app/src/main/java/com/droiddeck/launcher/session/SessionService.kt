@@ -757,7 +757,7 @@ class SessionService : Service() {
         guest.add("DROIDDECK_BWRAP_SOCKET=" + com.droiddeck.launcher.runtime.BwrapSpawner.socket(this))
         guest.add("HOME=/root")
         guest.add("USER=root")
-        guest.add("PATH=/usr/local/bin:/usr/bin:/bin")
+        guest.add("PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games")
         guest.add("TERM=xterm-256color")
         guest.add("LANG=C.UTF-8")
         guest.add("BL_STEAM_LANGUAGE=" + SteamLanguage.forLocale(
@@ -881,7 +881,7 @@ class SessionService : Service() {
     }
 
     private fun addControllerEnvironment(guest: MutableList<String>, fakeInputDir: File, sessionDir: File) {
-        FakeInputWriter.prepareRingSlots(fakeInputDir, 4)
+        FakeInputWriter.prepareRingSlots(fakeInputDir, 5)
         val builtinPad = SessionPrefs.builtinPad(this)
         val hiddenPad = SessionState.mode == MODE_STEAM && !builtinPad &&
             !com.droiddeck.launcher.input.PadBridge.anyControllerConnected()

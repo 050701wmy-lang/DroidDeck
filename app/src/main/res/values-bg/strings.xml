@@ -704,6 +704,8 @@
     <string name="drawer_low_latency_controller_hint">Контролерът докладва при 1000 Hz вместо 250 Hz. Малко повече CPU.</string>
     <string name="drawer_low_latency_touch">Докосване с ниско закъснение</string>
     <string name="drawer_low_latency_touch_hint">Докосванията пропускат групирането на кадри; управлението с докосване в Steam работи при 1000 Hz. Малко повече CPU.</string>
+    <string name="drawer_evdev_mouse">Суров канал за мишка</string>
+    <string name="drawer_direct_cursor">Курсор</string>
     <string name="drawer_pc_keyboard">Клавиатура за компютър</string>
     <string name="drawer_android_keyboard">Android</string>
     <string name="drawer_second_screen">Втори екран</string>
@@ -3199,6 +3201,12 @@
         <item quantity="one">%d приложение</item>
         <item quantity="other">%d приложения</item>
     </plurals>
+    <string name="desktop_restore_title">Възстановяване на софтуера ви</string>
+    <string name="desktop_restore_body">Преинсталиране на приложенията, които добавихте, след обновяване на DroidDeck.</string>
+    <string name="desktop_restore_done_title">Софтуерът е възстановен</string>
+    <string name="desktop_restore_done_body">Добавените от вас приложения са инсталирани отново.</string>
+    <string name="desktop_restore_failed_title">Част от софтуера не можа да бъде възстановена</string>
+    <string name="desktop_restore_failed_body">Вижте ~/.cache/droiddeck/apt-restore.log, след това опитайте sudo apt install в Konsole.</string>
     <string name="slow_usb_title">Бавна USB връзка</string>
     <string name="slow_usb_cable">%1$s е свързан чрез %2$s (%3$s Mbps, около %4$d MB/s), затова игрите на него ще се зареждат бавно. Използвайте USB 3 кабел за 5 Gbps или повече, обърнете USB-C щекера или използвайте по-бързо устройство.</string>
     <string name="slow_usb_port">%1$s е свързан чрез %2$s (%3$s Mbps, около %4$d MB/s). USB портът на това устройство не поддържа по-висока скорост, затова игрите ще се зареждат бавно. Вътрешната памет или microSD карта може да са по-бързи.</string>

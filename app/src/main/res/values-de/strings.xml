@@ -704,6 +704,8 @@
     <string name="drawer_low_latency_controller_hint">Der Controller meldet mit 1000 Hz statt 250 Hz. Die CPU-Last ist etwas höher.</string>
     <string name="drawer_low_latency_touch">Touch mit geringer Latenz</string>
     <string name="drawer_low_latency_touch_hint">Touch überspringt das Zusammenfassen von Frames, Steam-Touch meldet mit 1000 Hz. Die CPU-Last ist etwas höher.</string>
+    <string name="drawer_evdev_mouse">Roher Mauskanal</string>
+    <string name="drawer_direct_cursor">Zeiger</string>
     <string name="drawer_pc_keyboard">PC-Tastatur</string>
     <string name="drawer_android_keyboard">Android</string>
     <string name="drawer_second_screen">Zweiter Bildschirm</string>
@@ -3199,6 +3201,12 @@
         <item quantity="one">%d App</item>
         <item quantity="other">%d Apps</item>
     </plurals>
+    <string name="desktop_restore_title">Deine Software wird wiederhergestellt</string>
+    <string name="desktop_restore_body">Die Apps, die du hinzugefügt hast, werden nach einem DroidDeck-Update neu installiert.</string>
+    <string name="desktop_restore_done_title">Software wiederhergestellt</string>
+    <string name="desktop_restore_done_body">Die Apps, die du hinzugefügt hast, sind wieder installiert.</string>
+    <string name="desktop_restore_failed_title">Manche Software konnte nicht wiederhergestellt werden</string>
+    <string name="desktop_restore_failed_body">Sieh in ~/.cache/droiddeck/apt-restore.log nach und versuche dann sudo apt install in Konsole.</string>
     <string name="slow_usb_title">Langsame USB-Verbindung</string>
     <string name="slow_usb_cable">%1$s ist über %2$s verbunden (%3$s Mbit/s, etwa %4$d MB/s), daher laden Spiele darauf langsam. Nutze ein USB-3-Kabel mit 5 Gbit/s oder mehr, dreh den USB-C-Stecker um oder verwende ein schnelleres Laufwerk.</string>
     <string name="slow_usb_port">%1$s ist über %2$s verbunden (%3$s Mbit/s, etwa %4$d MB/s). Der USB-Anschluss dieses Geräts kann nicht schneller, daher laden Spiele darauf langsam. Interner Speicher oder eine microSD-Karte können schneller sein.</string>

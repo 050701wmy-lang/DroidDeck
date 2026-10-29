@@ -706,6 +706,8 @@
     <string name="drawer_low_latency_controller_hint">Controllerul raportează la 1000 Hz în loc de 250 Hz. Consum CPU puțin mai mare.</string>
     <string name="drawer_low_latency_touch">Atingere cu latență mică</string>
     <string name="drawer_low_latency_touch_hint">Atingerile sar peste gruparea cadrelor, deci controlul tactil Steam rulează la 1000 Hz. Consum CPU puțin mai mare.</string>
+    <string name="drawer_evdev_mouse">Canal brut de mouse</string>
+    <string name="drawer_direct_cursor">Cursor</string>
     <string name="drawer_pc_keyboard">Tastatură de PC</string>
     <string name="drawer_android_keyboard">Android</string>
     <string name="drawer_second_screen">Al doilea ecran</string>
@@ -3234,6 +3236,12 @@
         <item quantity="few">%d aplicații</item>
         <item quantity="other">%d de aplicații</item>
     </plurals>
+    <string name="desktop_restore_title">Se restaurează software-ul</string>
+    <string name="desktop_restore_body">Se reinstalează aplicațiile adăugate de tine după o actualizare DroidDeck.</string>
+    <string name="desktop_restore_done_title">Software restaurat</string>
+    <string name="desktop_restore_done_body">Aplicațiile adăugate de tine sunt instalate din nou.</string>
+    <string name="desktop_restore_failed_title">O parte din software nu a putut fi restaurată</string>
+    <string name="desktop_restore_failed_body">Vezi ~/.cache/droiddeck/apt-restore.log, apoi încearcă sudo apt install în Konsole.</string>
     <string name="slow_usb_title">Conexiune USB lentă</string>
     <string name="slow_usb_cable">%1$s este conectat prin %2$s (%3$s Mbps, aproximativ %4$d MB/s), așa că jocurile de pe el se vor încărca lent. Folosește un cablu USB 3 de 5 Gbps sau mai rapid, încearcă să întorci mufa USB-C sau folosește o unitate mai rapidă.</string>
     <string name="slow_usb_port">%1$s este conectat prin %2$s (%3$s Mbps, aproximativ %4$d MB/s). Portul USB al acestui dispozitiv nu poate merge mai repede, așa că jocurile se vor încărca lent. Memoria internă sau un card microSD pot fi mai rapide.</string>

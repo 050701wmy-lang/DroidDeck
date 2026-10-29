@@ -708,6 +708,8 @@
     <string name="drawer_low_latency_controller_hint">Ovladač hlásí na 1000 Hz místo 250 Hz. O něco víc CPU.</string>
     <string name="drawer_low_latency_touch">Dotek s nízkým zpožděním</string>
     <string name="drawer_low_latency_touch_hint">Doteky přeskakují dávkování snímků, takže ovládání dotykem ve Steamu běží na 1000 Hz. O něco víc CPU.</string>
+    <string name="drawer_evdev_mouse">Surový kanál myši</string>
+    <string name="drawer_direct_cursor">Kurzor</string>
     <string name="drawer_pc_keyboard">Klávesnice PC</string>
     <string name="drawer_android_keyboard">Android</string>
     <string name="drawer_second_screen">Druhá obrazovka</string>
@@ -3269,6 +3271,12 @@
         <item quantity="many">%d aplikace</item>
         <item quantity="other">%d aplikací</item>
     </plurals>
+    <string name="desktop_restore_title">Obnovování vašeho softwaru</string>
+    <string name="desktop_restore_body">Přeinstalace aplikací, které jste přidali, po aktualizaci DroidDecku.</string>
+    <string name="desktop_restore_done_title">Software obnoven</string>
+    <string name="desktop_restore_done_body">Aplikace, které jste přidali, jsou znovu nainstalovány.</string>
+    <string name="desktop_restore_failed_title">Část softwaru se nepodařilo obnovit</string>
+    <string name="desktop_restore_failed_body">Podívejte se do ~/.cache/droiddeck/apt-restore.log a pak zkuste sudo apt install v Konsoli.</string>
     <string name="slow_usb_title">Pomalé připojení USB</string>
     <string name="slow_usb_cable">%1$s je připojen přes %2$s (%3$s Mb/s, asi %4$d MB/s), takže hry na něm se budou načítat pomalu. Použijte kabel USB 3 s rychlostí 5 Gb/s nebo vyšší, zkuste otočit konektor USB-C nebo použijte rychlejší disk.</string>
     <string name="slow_usb_port">%1$s je připojen přes %2$s (%3$s Mb/s, asi %4$d MB/s). Port USB tohoto zařízení rychleji neumí, takže hry na něm se budou načítat pomalu. Interní úložiště nebo karta microSD může být rychlejší.</string>

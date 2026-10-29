@@ -704,6 +704,8 @@
     <string name="drawer_low_latency_controller_hint">コントローラーが 250 Hz ではなく 1000 Hz で報告されます。CPU 使用率がわずかに上がります。</string>
     <string name="drawer_low_latency_touch">低遅延タッチ</string>
     <string name="drawer_low_latency_touch_hint">タッチはフレームの結合を省略し、Steam のタッチは 1000 Hz で報告されます。CPU 使用率がわずかに上がります。</string>
+    <string name="drawer_evdev_mouse">生のマウス経路</string>
+    <string name="drawer_direct_cursor">カーソル</string>
     <string name="drawer_pc_keyboard">PCキーボード</string>
     <string name="drawer_android_keyboard">Android</string>
     <string name="drawer_second_screen">セカンドスクリーン</string>
@@ -3175,6 +3177,12 @@
     <plurals name="apps_count">
         <item quantity="other">%d 個のアプリ</item>
     </plurals>
+    <string name="desktop_restore_title">ソフトウェアを復元しています</string>
+    <string name="desktop_restore_body">DroidDeck の更新後、追加したアプリを再インストールしています。</string>
+    <string name="desktop_restore_done_title">ソフトウェアを復元しました</string>
+    <string name="desktop_restore_done_body">追加したアプリが再びインストールされました。</string>
+    <string name="desktop_restore_failed_title">一部のソフトウェアを復元できませんでした</string>
+    <string name="desktop_restore_failed_body">~/.cache/droiddeck/apt-restore.log を確認してから、Konsole で sudo apt install を試してください。</string>
     <string name="slow_usb_title">USB 接続が低速です</string>
     <string name="slow_usb_cable">%1$s は %2$s（%3$s Mbps、約 %4$d MB/s）で接続されているため、ゲームの読み込みが遅くなります。5 Gbps 以上の USB 3 ケーブルを使うか、USB-C プラグを裏返すか、より高速なドライブを使ってください。</string>
     <string name="slow_usb_port">%1$s は %2$s（%3$s Mbps、約 %4$d MB/s）で接続されています。この端末の USB ポートはこれ以上速くならないため、ゲームの読み込みが遅くなります。内部ストレージや microSD カードの方が速い場合があります。</string>

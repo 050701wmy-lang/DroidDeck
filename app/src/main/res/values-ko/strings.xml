@@ -704,6 +704,8 @@
     <string name="drawer_low_latency_controller_hint">컨트롤러가 250 Hz 대신 1000 Hz로 보고됩니다. CPU 사용량이 약간 늘어납니다.</string>
     <string name="drawer_low_latency_touch">저지연 터치</string>
     <string name="drawer_low_latency_touch_hint">터치가 프레임 병합을 건너뛰고 Steam 터치가 1000 Hz로 보고됩니다. CPU 사용량이 약간 늘어납니다.</string>
+    <string name="drawer_evdev_mouse">원시 마우스 채널</string>
+    <string name="drawer_direct_cursor">커서</string>
     <string name="drawer_pc_keyboard">PC 키보드</string>
     <string name="drawer_android_keyboard">Android</string>
     <string name="drawer_second_screen">보조 화면</string>
@@ -3175,6 +3177,12 @@
     <plurals name="apps_count">
         <item quantity="other">앱 %d개</item>
     </plurals>
+    <string name="desktop_restore_title">소프트웨어 복원 중</string>
+    <string name="desktop_restore_body">DroidDeck 업데이트 후 추가한 앱을 다시 설치하고 있습니다.</string>
+    <string name="desktop_restore_done_title">소프트웨어 복원됨</string>
+    <string name="desktop_restore_done_body">추가한 앱이 다시 설치되었습니다.</string>
+    <string name="desktop_restore_failed_title">일부 소프트웨어를 복원하지 못했습니다</string>
+    <string name="desktop_restore_failed_body">~/.cache/droiddeck/apt-restore.log를 확인한 다음 Konsole에서 sudo apt install을 시도하세요.</string>
     <string name="slow_usb_title">USB 연결이 느립니다</string>
     <string name="slow_usb_cable">%1$s이(가) %2$s(%3$s Mbps, 약 %4$d MB/s)로 연결되어 게임 로딩이 느립니다. 5 Gbps 이상의 USB 3 케이블을 사용하거나, USB-C 플러그를 뒤집어 꽂거나, 더 빠른 드라이브를 사용하세요.</string>
     <string name="slow_usb_port">%1$s이(가) %2$s(%3$s Mbps, 약 %4$d MB/s)로 연결되어 있습니다. 이 기기의 USB 포트는 더 빠르게 동작하지 않아 게임 로딩이 느립니다. 내부 저장소나 microSD 카드가 더 빠를 수 있습니다.</string>
