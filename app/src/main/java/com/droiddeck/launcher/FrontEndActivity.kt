@@ -109,6 +109,8 @@ class FrontEndActivity : ComponentActivity() {
     private var ready by mutableStateOf(false)
     private var removalPending by mutableStateOf(false)
     private var available by mutableStateOf<LinuxRuntimeInstaller.Release?>(null)
+    private var catalogFresh = false
+    private var componentsQueueBusy by mutableStateOf(false)
     private var busy by mutableStateOf(false)
     private var stage by mutableStateOf("")
     private var percent by mutableIntStateOf(-1)
@@ -1630,14 +1632,21 @@ class FrontEndActivity : ComponentActivity() {
         drivers.checkOnOpen()
         resumeInterruptedPackages()
         protons.checkUpdates()
-        if (!SessionState.running) Thread({
-            val applied = runCatching { ComponentsManager.applyQueued(this) }.getOrDefault(emptyList())
-            if (applied.isNotEmpty()) ui.post {
-                android.widget.Toast.makeText(this, getString(R.string.main_applied, applied.joinToString(", ")), android.widget.Toast.LENGTH_LONG).show()
-            }
-            ui.post { if (showComponents) components.refreshComponents() }
-        }, "components-queue").start()
-        else if (showComponents) components.refreshComponents()
+        catalogFresh = false
+        if (!SessionState.running && !componentsQueueBusy && !LinuxRuntimeInstaller.isBusy()) {
+            componentsQueueBusy = true
+            Thread({
+                val applied = runCatching { ComponentsManager.applyQueued(this) }.getOrDefault(emptyList())
+                if (applied.isNotEmpty()) ui.post {
+                    android.widget.Toast.makeText(this, getString(R.string.main_applied, applied.joinToString(", ")), android.widget.Toast.LENGTH_LONG).show()
+                }
+                ui.post {
+                    componentsQueueBusy = false
+                    if (showComponents) components.refreshComponents()
+                    autoUpdateRuntime()
+                }
+            }, "components-queue").start()
+        } else if (showComponents) components.refreshComponents()
         oscMode = SessionPrefs.oscMode(this)
         refreshController()
         refreshHomeAppState()
@@ -2441,6 +2450,7 @@ class FrontEndActivity : ComponentActivity() {
         installed = LinuxRuntimeInstaller.installedVersion(this)
         ready = LinuxRuntime.isInstalled(this)
         removalPending = LinuxRuntimeInstaller.hasRemovalPending(this)
+        ui.post { autoUpdateRuntime() }
         frameGenLabel = FrameGen.label(this)
         romsDir = SessionPrefs.romsDir(this).takeIf { it.isNotEmpty() }
         logsEnabled = SessionPrefs.logsEnabled(this)
@@ -2588,7 +2598,7 @@ class FrontEndActivity : ComponentActivity() {
     private fun runtimeChangesBlocked(): Boolean =
         busy || LinuxRuntimeInstaller.isBusy() || SessionState.running ||
             SessionState.phase !in setOf(SessionPhase.IDLE, SessionPhase.FAILED) ||
-            protons.protonBusyId != null || ProtonExtras.installInProgress || pkgStage != null ||
+            protons.protonBusyId != null || ProtonExtras.installInProgress || pkgStage != null || componentsQueueBusy ||
             components.compBusy != null || saveBusy != null || com.droiddeck.launcher.store.UserAppsState.working != null
 
     private fun removeDesktop() {
@@ -2648,10 +2658,25 @@ class FrontEndActivity : ComponentActivity() {
         }, "runtime-operation").start()
     }
 
+    private fun autoUpdateRuntime() {
+        val release = available?.takeIf { catalogFresh } ?: return
+        if (!lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED) || runtimeChangesBlocked() || removalPending) return
+        if (release.version == installed || installed == null) return
+        if (com.droiddeck.launcher.runtime.RuntimeAutoUpdate.claim(this, installed, release.version)) {
+            Log.i(TAG, "runtime: updating $installed to ${release.version} by itself")
+            install(release)
+        }
+    }
+
     private fun checkCatalog() {
         val release = LinuxRuntimeInstaller.fetchRelease()
         Log.i(TAG, "catalog: " + (release?.version ?: "unreachable"))
-        ui.post { if (release != null) available = release }
+        ui.post {
+            if (release == null) return@post
+            available = release
+            catalogFresh = true
+            autoUpdateRuntime()
+        }
     }
 
     companion object {
