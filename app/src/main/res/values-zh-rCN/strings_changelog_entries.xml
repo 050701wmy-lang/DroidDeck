@@ -92,4 +92,24 @@
     <string name="changelog_summary_8f6b2a412308f875c93c585bb3289442b054012a" formatted="false">新增 itch.io 已安装游戏的更新检测。本次更新下载完整构建；后续才会通过独立组件包支持 Butler 差分更新。这是 itch.io 商店重构的第 4 部分，浏览、筛选、游戏详情和收藏集已合并，Linux 支持见 #1589。</string>
     <string name="changelog_title_9d82df6981bd7b82ee24e976c0ffa22c8ee50d50" formatted="false">OpenGL 游戏不再等待每次屏幕刷新</string>
     <string name="changelog_summary_9d82df6981bd7b82ee24e976c0ffa22c8ee50d50" formatted="false">此前未设帧率上限时，AIO 的 Direct3D 7（DirectDraw）测试在 144 Hz 设备上仍固定为 144 帧，平均帧时间 6.94 毫秒，每帧都等待一次刷新；同一构建的 D3D11 测试帧时间为 0.26 毫秒。</string>
+    <string name="changelog_title_d1bd23df161de27520e05601f0ad71ab45f78a2c" formatted="false">游戏库驱动器连接速度为 USB 2.0 时显示警告</string>
+    <string name="changelog_summary_d1bd23df161de27520e05601f0ad71ab45f78a2c" formatted="false">当用作第二游戏库、游戏存储卷或外置 Games 文件夹的驱动器连接速度低于 USB 3 的 5 Gbps 时，DroidDeck 会使用应用对话框显示提醒。</string>
+    <string name="changelog_title_2410b8c67c459419e89f29ae1af88f7a8368628d" formatted="false">商店卡片改为以封面为主的样式</string>
+    <string name="changelog_summary_2410b8c67c459419e89f29ae1af88f7a8368628d" formatted="false">商店列表和网格与游戏库共用 ArtCard：名称、价格或大小置于封面渐变区域，角落显示状态，顶部显示下载进度。商店页也提供卡片大小、标题和大小显示选项。</string>
+    <string name="changelog_title_64950099a3c05b876ba981e838eda6d8fcf811ec" formatted="false">窄屏下存储摘要改为上下布局</string>
+    <string name="changelog_summary_64950099a3c05b876ba981e838eda6d8fcf811ec" formatted="false">修复竖屏窄窗口中清理面板挤压存储用量文字的问题。现在用量区域位于上方，分隔线和清理面板置于下方。</string>
+    <string name="changelog_title_0516d023fa03362e5a34b5436fbda5f6008d4d4f" formatted="false">游戏库采用封面卡片并新增显示菜单</string>
+    <string name="changelog_summary_0516d023fa03362e5a34b5436fbda5f6008d4d4f" formatted="false">移除标签条及未安装游戏的变暗效果，名称和大小叠放于封面底部渐变区域，聚焦卡片可展开两行；相近比例的封面保持完整，超宽横幅适当裁边。</string>
+    <string name="changelog_title_110cfc28f81291d7bde494e3271571ff7192e958" formatted="false">FusionHUD 替代会话 HUD，统一 MangoHud 读数</string>
+    <string name="changelog_summary_110cfc28f81291d7bde494e3271571ff7192e958" formatted="false">会话性能 HUD 改为 FusionHUD，使用与 Steam 性能覆盖层相同的数据来源和计算方式，避免同一游戏显示不同性能数值。</string>
+    <string name="changelog_title_e871557bf2492f05ed2b17a31d560a5ae62ca13d" formatted="false">Xbox 后端更新至 0.2.12</string>
+    <string name="changelog_summary_e871557bf2492f05ed2b17a31d560a5ae62ca13d" formatted="false">将固定的 Nexus 后端从 0.2.8 更新到 0.2.12，并重新适配凭据传输、启动视图与云令牌支持补丁。</string>
+    <string name="changelog_title_87572a7f9138328d3deaf12058e0e02f58c7fdf5" formatted="false">游戏详情采用封面背景与磨砂控件</string>
+    <string name="changelog_summary_87572a7f9138328d3deaf12058e0e02f58c7fdf5" formatted="false">游戏库和商店的游戏详情页使用游戏封面作为背景，控件采用磨砂胶囊样式，替代原先的盒状封面卡片。</string>
+    <string name="changelog_title_1e92d10fa53b98086b4fdfd6629990d71be714b4" formatted="false">为每个测试独立重置 RingVeil 状态</string>
+    <string name="changelog_summary_1e92d10fa53b98086b4fdfd6629990d71be714b4" formatted="false">修复共享快照状态导致 Compose 测试依赖执行顺序的问题。共用测试规则现在会重置 RingVeil；经测量，单元测试仍保留两个并行进程。</string>
+    <string name="changelog_title_92787dd0f015455481d09398ac2ee0f42c7e6883" formatted="false">CI 单元测试使用两个并行进程</string>
+    <string name="changelog_summary_92787dd0f015455481d09398ac2ee0f42c7e6883" formatted="false">通过查找并修复测试间共享的进程状态问题，恢复两个并行进程，缩短串行单元测试耗时。</string>
+    <string name="changelog_title_aef1f85aa9d579e24a1e3bd7c8dae2bd1a3fc84b" formatted="false">商店引擎主机测试移至并行任务</string>
+    <string name="changelog_summary_aef1f85aa9d579e24a1e3bd7c8dae2bd1a3fc84b" formatted="false">将原先串行执行的商店引擎 cargo test 移至独立任务，与 Gradle 构建重叠执行；仍保持非阻断检查，并使用独立的主机目标缓存。</string>
 </resources>
