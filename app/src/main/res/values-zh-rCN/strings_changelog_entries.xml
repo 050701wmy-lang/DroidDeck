@@ -112,4 +112,6 @@
     <string name="changelog_summary_92787dd0f015455481d09398ac2ee0f42c7e6883" formatted="false">通过查找并修复测试间共享的进程状态问题，恢复两个并行进程，缩短串行单元测试耗时。</string>
     <string name="changelog_title_aef1f85aa9d579e24a1e3bd7c8dae2bd1a3fc84b" formatted="false">商店引擎主机测试移至并行任务</string>
     <string name="changelog_summary_aef1f85aa9d579e24a1e3bd7c8dae2bd1a3fc84b" formatted="false">将原先串行执行的商店引擎 cargo test 移至独立任务，与 Gradle 构建重叠执行；仍保持非阻断检查，并使用独立的主机目标缓存。</string>
+    <string name="changelog_title_e9e0186e664a2a70901ef336836770850fde76fd" formatted="false">通过 PRoot 快速路径处理 FEX 的原始文件查询调用</string>
+    <string name="changelog_summary_e9e0186e664a2a70901ef336836770850fde76fd" formatted="false">FEX 大多数路径查询通过原始 syscall() 调用 newfstatat、readlinkat 和 statx，绕过 libc 封装。此前它们仍需进入 ptrace 跟踪器；现在改走 PRoot 快速路径，减少每次查询的完整跟踪器往返。</string>
 </resources>

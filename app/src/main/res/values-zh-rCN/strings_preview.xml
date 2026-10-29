@@ -198,4 +198,6 @@
     <string name="storage_reset_prefix_confirm">将删除位于 %2$s 的 Wine 前缀（%1$s），下次启动时重建。其中的存档、设置和已安装运行库会丢失；Steam 云存档仍保留在账号中。</string>
     <string name="storage_reset_prefix_title">重置 %1$s 的前缀？</string>
     <string name="stores_in_steam_label">在 Steam 中</string>
+    <string name="setup_rail_labels">侧栏标签</string>
+    <string name="setup_rail_labels_hint">在侧栏图标下显示名称。关闭后侧栏更窄。</string>
 </resources>
