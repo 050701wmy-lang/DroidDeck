@@ -667,6 +667,8 @@ class FrontEndActivity : ComponentActivity() {
     private var shortcutLibraryScanning by mutableStateOf(false)
     @Volatile private var libraryScanGeneration = 0
     private var pendingGameLink: String? = null
+    private var gameLinkReading = false
+    private var gameLinkTried = false
     private var gameSyncFolder by mutableStateOf<String?>(null)
     private fun pickGameExport(game: Library.SteamGame?) {
         onSavePicked = { folder ->
@@ -707,14 +709,20 @@ class FrontEndActivity : ComponentActivity() {
             shortcutLibraryScanning = true
         } else shortcutLibraryScanning = false
         pendingGameLink = null
+        gameLinkReading = false
+        gameLinkTried = false
         if (GameLaunchIntent.accepts(request.action)) {
+            gameLinkReading = true
+            com.droiddeck.launcher.ui.DualScreenPanel.hide(taskId)
             val copy = Intent(request)
             Thread({
                 val id = GameLaunchIntent.read(this, copy)
                 ui.post {
                     if (intent === request && !isDestroyed) {
+                        gameLinkReading = false
                         pendingGameLink = id
                         if (id == null) {
+                            syncDualPanel()
                             android.widget.Toast.makeText(this, R.string.game_link_invalid, android.widget.Toast.LENGTH_LONG).show()
                         } else refresh()
                     }
@@ -922,12 +930,17 @@ class FrontEndActivity : ComponentActivity() {
     private fun handleGameLink(games: List<Library.SteamGame>) {
         if (!lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) return
         val id = pendingGameLink ?: return
+        gameLinkTried = true
+        ui.postDelayed({
+            if (!isDestroyed && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) syncDualPanel()
+        }, LINK_PANEL_MS)
         val game = games.firstOrNull { it.gameIdString == id }
         if (game == null) {
             pendingGameLink = null
             intent.data = null
             intent.action = Intent.ACTION_MAIN
             intent.removeExtra(GameLaunchIntent.EXTRA_APP_ID)
+            syncDualPanel()
             android.widget.Toast.makeText(this, R.string.game_link_missing, android.widget.Toast.LENGTH_LONG).show()
         } else if (launchGame(game, returnHome = true)) {
             pendingGameLink = null
@@ -1498,6 +1511,9 @@ class FrontEndActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (intent.action == SteamIntegration.ACTION_SETUP) {
+            gameLinkReading = false
+            pendingGameLink = null
+            syncDualPanel()
             readIntegrationIntent(intent)
             return
         }
@@ -1688,7 +1704,7 @@ class FrontEndActivity : ComponentActivity() {
         com.droiddeck.launcher.stores.battlenet.BattleNetClient.opener = null
         displayManager.unregisterDisplayListener(secondScreenDisplayListener)
         launcherStarted = false
-        com.droiddeck.launcher.ui.DualScreenPanel.hide()
+        com.droiddeck.launcher.ui.DualScreenPanel.hide(taskId)
         flood = null
         returning = null
         floodProgress = 0f
@@ -1734,9 +1750,12 @@ class FrontEndActivity : ComponentActivity() {
     }
 
     private fun syncDualPanel() {
+        if (launchPending()) return
         if (launcherStarted && dualDisplayId >= 0) com.droiddeck.launcher.ui.DualScreenPanel.show(this, dualDisplayId, taskId)
-        else com.droiddeck.launcher.ui.DualScreenPanel.hide()
+        else com.droiddeck.launcher.ui.DualScreenPanel.hide(taskId)
     }
+
+    private fun launchPending(): Boolean = gameLinkReading || (pendingGameLink != null && !gameLinkTried)
 
     private fun launchAndroidApp(app: HomeApp.LaunchableApp, displayId: Int?) {
         try {
@@ -2639,6 +2658,7 @@ class FrontEndActivity : ComponentActivity() {
     companion object {
         private const val TAG = "MainActivity"
         private const val MEDIA_SETTLE_MS = 1500L
+        private const val LINK_PANEL_MS = 1500L
         private const val SESSION_SWITCH_WAIT_MS = 30_000L
         private const val SESSION_SWITCH_POLL_MS = 250L
         private const val KEY_PENDING_SWITCH = "pending_switch"
