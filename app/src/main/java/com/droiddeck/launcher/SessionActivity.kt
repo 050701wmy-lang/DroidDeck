@@ -528,6 +528,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
             refreshControls()
             updatePointerCapture()
             updateHandCamera()
+            refreshSecondScreenDisplays()
         }
         override fun onInputDeviceRemoved(deviceId: Int) {
             physicalShortcuts.onDeviceRemoved(deviceId)
@@ -539,10 +540,12 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
             refreshControls()
             updatePointerCapture()
             updateHandCamera()
+            refreshSecondScreenDisplays()
         }
         override fun onInputDeviceChanged(deviceId: Int) {
             joyConVr?.refresh()
             refreshControls()
+            refreshSecondScreenDisplays()
         }
     }
 
@@ -2990,11 +2993,15 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         val newIds = candidates.map { it.id }.toSet()
         if (secondScreenMode != SecondScreenMode.NONE && oldIds.isNotEmpty() && selectedSecondScreenDisplay !in newIds) {
             closeSecondScreen(reset = true)
+            SessionState.secondScreenAutoOpened = false
             return
         }
         if (selectedSecondScreenDisplay !in newIds) selectedSecondScreenDisplay = candidates.firstOrNull()?.id ?: -1
-        if (secondScreenMode != SecondScreenMode.NONE && candidates.isEmpty()) closeSecondScreen(reset = true)
-        else if (started && secondScreenMode != SecondScreenMode.NONE && secondScreenPresentation == null) showSecondScreen(secondScreenMode)
+        if (secondScreenMode != SecondScreenMode.NONE && candidates.isEmpty()) {
+            closeSecondScreen(reset = true)
+            SessionState.secondScreenAutoOpened = false
+        } else if (started && secondScreenMode != SecondScreenMode.NONE && secondScreenPresentation == null) showSecondScreen(secondScreenMode)
+        else if (started && !ended && ::loading.isInitialized && !loading.visible) openDualScreenControls()
         updateKeyboardRoute()
     }
 
@@ -3897,6 +3904,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         }
         (getSystemService(INPUT_SERVICE) as? InputManager)
             ?.registerInputDeviceListener(deviceListener, Handler(Looper.getMainLooper()))
+        refreshSecondScreenDisplays()
         if (SessionState.guestPid > 1) padBridge?.syncConnectedControllers()
         joyConVr?.refresh()
         onScreenControls?.reload()
