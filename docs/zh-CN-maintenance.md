@@ -270,3 +270,14 @@ CompositorHost 冲突保留上游新增的提交即绘制开关，同时调用 f
 补齐两项中文设置文案与当前日志的中英资源和发布时间，57 条日志随包内置。每项原生与脚本采用此次官方 APK 和当前重编译合成器。组件来自同提交官方 run 40865312892、产物 12893489047，ZIP SHA-256 为 8134cc0911064f5de8102ab92207e4a6a39018e4bc67e201496268439b15a9bc，详情见本机 e9e0186-addon-packs.json 与 e9e0186-payload-verification.json。包名、DroidDeck 名称、原签名和只读离线日志不变。
 
 本次发布构建、lint、原生依赖闭包、两个中文资源检查、16 项相关系统调用/呈现回归和 23 项相关 JUnit 通过。设置重置的 5 项在 Linux JVM 验证以匹配原子文件覆盖语义，其余 18 项在 Windows 通过。最终 APK 校验 199 项载荷、五个组件摘要、原包名/名称/版本及 fork 原签名。
+
+
+## 已发布预览 main-f69e2d0（2026-10-30）
+
+同步官方 catalog.preview 对应的 f69e2d017100e134fb01296e4e704c279a4d41e3，官方 APK SHA-256 为 a6b4a56270d4f89348869891a2c9de34fb36a94ed7572e185073dd1db8786403，版本 0.6.7 (16)。包含 Steam 界面在高刷新率屏幕上按接近 60 FPS 的整除档位绘制、HUD 默认关闭并保留用户选择、Linux 环境自动更新、Windows 组件迁移与恢复、itch 多层压缩包及双屏焦点/面板选择修复。
+
+解决侧栏、刷新率处理和资源冲突。上游 Steam 界面限帧参数与 fork 的有效刷新率过滤、vsync 去重和呈现缓存并存。新副屏面板不发布应用更新角标，继续采用只读日志。补齐官方 preview/recentPreviews 的十条完整提交号、中英文标题/摘要及时间，共 67 条随包日志，保留历史记录及中文未翻译提示。包名、名称、默认中文、字体挂载、GitHub 加速、Steam CDN/续传与 fork 签名不变。
+
+原生输入取自此次官方 APK，并完整重编译当前呈现库。211 项载荷与源码摘要见本机 f69e2d0-payload-verification.json。五个组件来自同提交官方 run 41013120616、产物 12958797775，ZIP SHA-256 为 c401a76e14700d11a15c78a89db8d242919b90a250a1552bbb6e23ed220e8018，详见 f69e2d0-addon-packs.json。
+
+发布构建、原生依赖闭包、3 项中文/下载加速检查、148 项脚本/原生检查和 91 项 Linux JVM 回归通过。发布所需 lintVital 检查通过；完整 lint 因旧 Compose 的 StateFlowValueCalledInComposition 和 UnrememberedMutableState 等检测器不支持 Kotlin 2.1 元数据而崩溃，未完成。单项跳过尝试未解决整个工具兼容性问题，不宣称完整 lint 通过，未修改生产依赖或仓库 lint 设置。最终 APK 核验全部载荷、五个组件摘要、原包名/名称/版本和既有 fork 签名。设备安装及 APK 摘要以本机 preview-state.json 为准。同步前用户未提交的两个 Steam 脚本与一个测试文件独立保护，未纳入本次构建或提交，合并提交后恢复。

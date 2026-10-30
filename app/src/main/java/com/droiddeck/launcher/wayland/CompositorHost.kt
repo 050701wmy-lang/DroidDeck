@@ -51,10 +51,11 @@ object CompositorHost {
         outputHeight: Int,
         refreshHz: Float,
         fpsLimit: Int,
+        uiLimit: Int = 0,
     ): Boolean {
         ownVsyncThread = SessionPrefs.vsyncThread(context)
         WaylandCompositor.nativeSetRenderOnCommit(SessionPrefs.renderOnCommit(context))
-        updateRefreshRate(refreshHz, fpsLimit)
+        updateRefreshRate(refreshHz, fpsLimit, uiLimit)
         if (!SessionState.running) WaylandCompositor.nativeSetOutputSize(outputWidth, outputHeight)
         if (started) {
             attached = surface
@@ -72,17 +73,17 @@ object CompositorHost {
         return true
     }
 
-    fun updateRefreshRate(refreshHz: Float, fpsLimit: Int) {
+    fun updateRefreshRate(refreshHz: Float, fpsLimit: Int, uiLimit: Int = 0) {
         if (!refreshHz.isFinite() || refreshHz <= 1f) return
         SessionState.refreshHz = refreshHz
         WaylandCompositor.nativeSetOutputRefreshRate(refreshHz)
-        WaylandCompositor.nativeSetFpsLimit(fpsLimit)
+        WaylandCompositor.nativeSetFpsLimit(if (fpsLimit == SessionPrefs.FPS_UNPACED && uiLimit > 0) uiLimit else fpsLimit)
         WaylandCompositor.nativeSetLayerFrameRate(if (fpsLimit > 0) fpsLimit.toFloat() else refreshHz)
     }
 
     @Synchronized
-    fun updatePacing(refreshHz: Float, fpsLimit: Int) {
-        if (started) updateRefreshRate(refreshHz, fpsLimit)
+    fun updatePacing(refreshHz: Float, fpsLimit: Int, uiLimit: Int = 0) {
+        if (started) updateRefreshRate(refreshHz, fpsLimit, uiLimit)
     }
 
     @Synchronized

@@ -114,4 +114,24 @@
     <string name="changelog_summary_aef1f85aa9d579e24a1e3bd7c8dae2bd1a3fc84b" formatted="false">将原先串行执行的商店引擎 cargo test 移至独立任务，与 Gradle 构建重叠执行；仍保持非阻断检查，并使用独立的主机目标缓存。</string>
     <string name="changelog_title_e9e0186e664a2a70901ef336836770850fde76fd" formatted="false">通过 PRoot 快速路径处理 FEX 的原始文件查询调用</string>
     <string name="changelog_summary_e9e0186e664a2a70901ef336836770850fde76fd" formatted="false">FEX 大多数路径查询通过原始 syscall() 调用 newfstatat、readlinkat 和 statx，绕过 libc 封装。此前它们仍需进入 ptrace 跟踪器；现在改走 PRoot 快速路径，减少每次查询的完整跟踪器往返。</string>
+    <string name="changelog_title_f69e2d017100e134fb01296e4e704c279a4d41e3" formatted="false">Steam 界面按接近 60 FPS 的均分刷新率绘制，修复卡顿和发热</string>
+    <string name="changelog_summary_f69e2d017100e134fb01296e4e704c279a4d41e3" formatted="false">自 0.6.7 起，多款设备在 Steam 大屏幕界面中出现卡顿，停留在界面时也会快速发热。官方收到的 Galaxy S26 Ultra 对比录像中，0.6.7 滚动游戏库出现了 49 次超过 100 毫秒的停顿，而 0.6.0 只有 1 次；S26、AYN Thor Max 等设备也有类似反馈。</string>
+    <string name="changelog_title_ed661d700741833fae6f75244793401a15ee9eb9" formatted="false">性能监控默认关闭，并保留用户选择</string>
+    <string name="changelog_summary_ed661d700741833fae6f75244793401a15ee9eb9" formatted="false">自 0.6.7 起，部分用户从未开启性能监控，却在每次会话中看到帧率、CPU、GPU、内存和电量条。此次修复默认状态，并保留用户自己选择的开关状态。</string>
+    <string name="changelog_title_2b0d63353531ed8294d78fa948cb8060520cfda5" formatted="false">Duo 副屏在切换游戏后保留所选面板</string>
+    <string name="changelog_summary_2b0d63353531ed8294d78fa948cb8060520cfda5" formatted="false">修复 Retroid Pocket Duo 等双屏掌机的副屏选择无法保留的问题：用户切换到触控板或终端后，下一次启动游戏仍会打开 Deck 控制面板。</string>
+    <string name="changelog_title_58968c9286973e341e1f61f4c862ea3b04d9554b" formatted="false">itch.io 支持安装多层压缩包中的游戏</string>
+    <string name="changelog_summary_58968c9286973e341e1f61f4c862ea3b04d9554b" formatted="false">修复下载的压缩包内还包含另一个压缩包时，安装器报“未找到 exe”的问题。例如 Voices of the Void 的 ZIP 内只有一个 7z，而游戏程序在 7z 内；此前安装器只解压一层便停止查找。</string>
+    <string name="changelog_title_57362979873a31efe4a58c361c1335f9a14f78c2" formatted="false">主屏启动应用时，启动器不再抢回焦点</string>
+    <string name="changelog_summary_57362979873a31efe4a58c361c1335f9a14f78c2" formatted="false">修复双屏设备启用启动器面板后，将尚未运行的应用打开到主屏却看似无效的问题。此前另一块屏幕上的面板恢复活动时，会把启动器任务重新拉到应用上方。</string>
+    <string name="changelog_title_26e2f26ec986ea75b46dccd0deaaa07eb828419f" formatted="false">启用 Decky 且端口 8080 被占用时，Steam 浏览按钮可用</string>
+    <string name="changelog_summary_26e2f26ec986ea75b46dccd0deaaa07eb828419f" formatted="false">修复桌面会话启用 Decky 后，其他应用占用端口 8080 导致 Steam“添加非 Steam 游戏”中的“浏览”按钮没有反应的问题。</string>
+    <string name="changelog_title_ee3876b965a8cdb4083e118011170ceaba60e859" formatted="false">Windows 组件恢复包内各部分，等待恢复并保留旧选择</string>
+    <string name="changelog_summary_ee3876b965a8cdb4083e118011170ceaba60e859" formatted="false">继续完善 Windows 组件恢复逻辑，处理 Droid-Deck/DroidDeck#1786 合并后审查提出的问题：恢复组件包的各个部分、等待恢复完成，并保留此前选择的旧版本。</string>
+    <string name="changelog_title_31c943c82aa722bdebc40744f5e3ba868059e26b" formatted="false">Windows 游戏安装到 Android 存储时不再要求管理员权限</string>
+    <string name="changelog_summary_31c943c82aa722bdebc40744f5e3ba868059e26b" formatted="false">修复 Battle.net 等商店将游戏安装到 Android 存储目录时，因目录权限检查而要求管理员身份的问题。受影响位置包括 Z:、microSD 卡和 USB SSD；此前安装到 C: 正常，软链接也无法绕过此问题。</string>
+    <string name="changelog_title_3b9abf63022e440906f4263a5c5c0901ab12de5a" formatted="false">有新版 Linux 运行环境时自动更新</string>
+    <string name="changelog_summary_3b9abf63022e440906f4263a5c5c0901ab12de5a" formatted="false">此前 Linux 运行环境发布新版后，只有用户手动打开运行环境菜单并点击按钮才会安装，导致许多用户更新应用后仍在使用存在问题的旧环境。现在有新环境时会自动更新。</string>
+    <string name="changelog_title_b726e19fa4c6e5fcdf7706addcf059c84ebf0a04" formatted="false">运行环境更新时保留 Windows 组件，并补装丢失组件</string>
+    <string name="changelog_summary_b726e19fa4c6e5fcdf7706addcf059c84ebf0a04" formatted="false">修复运行环境更新后依赖 DirectX、VC++ 运行库、XAudio、PhysX 等组件的游戏无法运行的问题。此前 /opt/droiddeck/wincomponents 组件仓库位于旧环境内，未被迁移，下一次启动还会移除游戏前缀中相关的 DLL。</string>
 </resources>
