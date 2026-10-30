@@ -199,4 +199,6 @@
     <string name="stores_in_steam_label">在 Steam 中</string>
     <string name="setup_rail_labels">侧栏标签</string>
     <string name="setup_rail_labels_hint">在侧栏图标下显示名称。关闭后侧栏更窄。</string>
+    <string name="drawer_frame_limit">帧率上限</string>
+    <string name="drawer_frame_limit_note">限制本游戏的帧率。若屏幕支持，会切换到能被此上限整除的刷新率；其他上限可能看起来不够流畅。Steam 游戏请使用其快速访问菜单中的帧率上限。</string>
 </resources>

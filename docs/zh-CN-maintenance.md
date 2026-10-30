@@ -281,3 +281,14 @@ CompositorHost 冲突保留上游新增的提交即绘制开关，同时调用 f
 原生输入取自此次官方 APK，并完整重编译当前呈现库。211 项载荷与源码摘要见本机 f69e2d0-payload-verification.json。五个组件来自同提交官方 run 41013120616、产物 12958797775，ZIP SHA-256 为 c401a76e14700d11a15c78a89db8d242919b90a250a1552bbb6e23ed220e8018，详见 f69e2d0-addon-packs.json。
 
 发布构建、原生依赖闭包、3 项中文/下载加速检查、148 项脚本/原生检查和 91 项 Linux JVM 回归通过。发布所需 lintVital 检查通过；完整 lint 因旧 Compose 的 StateFlowValueCalledInComposition 和 UnrememberedMutableState 等检测器不支持 Kotlin 2.1 元数据而崩溃，未完成。单项跳过尝试未解决整个工具兼容性问题，不宣称完整 lint 通过，未修改生产依赖或仓库 lint 设置。最终 APK 核验全部载荷、五个组件摘要、原包名/名称/版本和既有 fork 签名。设备安装及 APK 摘要以本机 preview-state.json 为准。同步前用户未提交的两个 Steam 脚本与一个测试文件独立保护，未纳入本次构建或提交，合并提交后恢复。
+
+
+## 已发布预览 main-92c1560（2026-10-31）
+
+同步官方 catalog.preview 对应的 92c1560f63cecf0c4ff465a6bcf3184adf41da8d。官方 APK SHA-256 为 652558f5df7253d985c6ea0905c1212396940f9bac3ac9f0fc52aba802176dce，版本 0.6.7 (16)。上游恢复 Steam 界面的完整屏幕刷新率，移除前次预览的界面限帧；每次会话启动前禁用 Steam 自身的自动睡眠，保留调暗和屏保设置。包含实体手柄快捷键、非 Steam 游戏会话内帧率上限、前端启动游戏及过场动画播放修复。
+
+CompositorHost 冲突采用上游移除 uiLimit 参数的行为，保留 fork 的有效刷新率过滤、vsync 代际保护和原生呈现修复。新增六条中英标题/摘要及完整提交号和发布时间，共 73 条离线日志；当前预览优先保存 preview 的完整英文摘要，其他记录保留 recentPreviews 的官方原文。两项新增帧率设置已翻译；只读日志、中文默认、字体挂载、原包名/名称/签名及下载修复不变。
+
+载荷取自此次官方 APK，当前呈现库完整重编译，211 项摘要见本机 92c1560-payload-verification.json。上游新增 Butler 包，除原有 proot/directaudio/tracking/xbox/comet 五包外，第六包也必须与该 Preview 精确匹配，不能遗漏或用旧包代替。全部六包来自同提交 run 41087869550、产物 12992902799，ZIP SHA-256 为 9e7d8a9dc28cc7ded70b4dcb84ee7f3b81fcd46caf6a09fd117e9dc040de5304，并与官方及 fork APK 的实际 DEX 摘要逐个核对，见 92c1560-addon-packs.json。
+
+发布构建、lintVital、原生依赖闭包、3 项中文/GitHub 检查、38 项脚本/原生回归和 93 项 Linux JVM 回归通过。完整 lint 仍受前次已记录的旧 Compose 检测器不支持 Kotlin 2.1 元数据的限制，本次未重复运行；不宣称完整 lint 通过。源码提交不包含用户未提交的 Steam 文件或 experiments 目录，受保护 Steam 文件在合并提交后恢复。设备安装状态以本机 preview-state.json 为准，运行中的会话不被自动中断。

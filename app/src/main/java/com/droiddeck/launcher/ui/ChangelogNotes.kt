@@ -71,6 +71,12 @@ internal val changelogNotes = mapOf(
     "31c943c82aa722bdebc40744f5e3ba868059e26b" to Triple(R.string.changelog_title_31c943c82aa722bdebc40744f5e3ba868059e26b, R.string.changelog_summary_31c943c82aa722bdebc40744f5e3ba868059e26b, 1793316518000L),
     "3b9abf63022e440906f4263a5c5c0901ab12de5a" to Triple(R.string.changelog_title_3b9abf63022e440906f4263a5c5c0901ab12de5a, R.string.changelog_summary_3b9abf63022e440906f4263a5c5c0901ab12de5a, 1793315287000L),
     "b726e19fa4c6e5fcdf7706addcf059c84ebf0a04" to Triple(R.string.changelog_title_b726e19fa4c6e5fcdf7706addcf059c84ebf0a04, R.string.changelog_summary_b726e19fa4c6e5fcdf7706addcf059c84ebf0a04, 1793311439000L),
+    "92c1560f63cecf0c4ff465a6bcf3184adf41da8d" to Triple(R.string.changelog_title_92c1560f63cecf0c4ff465a6bcf3184adf41da8d, R.string.changelog_summary_92c1560f63cecf0c4ff465a6bcf3184adf41da8d, 1793377779000L),
+    "41615d2460b52e0b83fc051b8aad0af9f0fa672d" to Triple(R.string.changelog_title_41615d2460b52e0b83fc051b8aad0af9f0fa672d, R.string.changelog_summary_41615d2460b52e0b83fc051b8aad0af9f0fa672d, 1793373914000L),
+    "bc1a01041110878aa04bf040f07e7288e561b464" to Triple(R.string.changelog_title_bc1a01041110878aa04bf040f07e7288e561b464, R.string.changelog_summary_bc1a01041110878aa04bf040f07e7288e561b464, 1793371602000L),
+    "fb5af9d35ebff0d3d36e2ec741451934e4f19900" to Triple(R.string.changelog_title_fb5af9d35ebff0d3d36e2ec741451934e4f19900, R.string.changelog_summary_fb5af9d35ebff0d3d36e2ec741451934e4f19900, 1793367024000L),
+    "b75060c280906702973daa6be5bceffb31091725" to Triple(R.string.changelog_title_b75060c280906702973daa6be5bceffb31091725, R.string.changelog_summary_b75060c280906702973daa6be5bceffb31091725, 1793361414000L),
+    "4770d11e390b2adf2649276a17594f20f2d85bed" to Triple(R.string.changelog_title_4770d11e390b2adf2649276a17594f20f2d85bed, R.string.changelog_summary_4770d11e390b2adf2649276a17594f20f2d85bed, 1793359468000L),
 )
 
 internal fun changelogChanges(catalog: AppUpdates.Catalog?): List<AppUpdates.PreviewChange> =

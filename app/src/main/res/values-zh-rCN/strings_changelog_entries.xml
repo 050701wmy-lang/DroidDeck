@@ -134,4 +134,16 @@
     <string name="changelog_summary_3b9abf63022e440906f4263a5c5c0901ab12de5a" formatted="false">此前 Linux 运行环境发布新版后，只有用户手动打开运行环境菜单并点击按钮才会安装，导致许多用户更新应用后仍在使用存在问题的旧环境。现在有新环境时会自动更新。</string>
     <string name="changelog_title_b726e19fa4c6e5fcdf7706addcf059c84ebf0a04" formatted="false">运行环境更新时保留 Windows 组件，并补装丢失组件</string>
     <string name="changelog_summary_b726e19fa4c6e5fcdf7706addcf059c84ebf0a04" formatted="false">修复运行环境更新后依赖 DirectX、VC++ 运行库、XAudio、PhysX 等组件的游戏无法运行的问题。此前 /opt/droiddeck/wincomponents 组件仓库位于旧环境内，未被迁移，下一次启动还会移除游戏前缀中相关的 DLL。</string>
+    <string name="changelog_title_92c1560f63cecf0c4ff465a6bcf3184adf41da8d" formatted="false">每次会话启动时禁用 Steam 自动睡眠</string>
+    <string name="changelog_summary_92c1560f63cecf0c4ff465a6bcf3184adf41da8d" formatted="false">每次启动会话时，在 Steam 客户端启动前，将各个 Steam 主目录 config.vdf 中电池供电和接通电源时的“多久后睡眠”设为禁用。设备睡眠由 Android 管理，Steam 在会话内部挂起会造成 Android 无法感知的黑屏。只强制修改 IdleSuspendBatterySeconds 和 IdleSuspendACSeconds，保留用户的调暗显示与屏幕保护计时设置。会话中手动修改电源页面仍会生效，下一次启动时重置。</string>
+    <string name="changelog_title_41615d2460b52e0b83fc051b8aad0af9f0fa672d" formatted="false">Steam 界面恢复使用屏幕完整刷新率</string>
+    <string name="changelog_summary_41615d2460b52e0b83fc051b8aad0af9f0fa672d" formatted="false">有用户反馈上一预览版中，120 Hz 屏幕上的游戏可运行到 120 FPS，但 Steam 大屏幕界面被限制为 60 FPS，关闭省电模式和厂商游戏管理器也无效。此次恢复 Steam 界面按屏幕刷新率运行，与游戏及桌面一致。</string>
+    <string name="changelog_title_bc1a01041110878aa04bf040f07e7288e561b464" formatted="false">从其他前端启动游戏时直接进入游戏</string>
+    <string name="changelog_summary_bc1a01041110878aa04bf040f07e7288e561b464" formatted="false">修复通过 droiddeck://game/&lt;id&gt; 游戏链接或 LAUNCHGAME 意图启动游戏时，DroidDeck 有时只停留在带有“启动 Steam”按钮的主页，仍需用户再次点击的问题。</string>
+    <string name="changelog_title_fb5af9d35ebff0d3d36e2ec741451934e4f19900" formatted="false">恢复 DroidDeck-Proton 的过场动画和游戏内视频播放</string>
+    <string name="changelog_summary_fb5af9d35ebff0d3d36e2ec741451934e4f19900" formatted="false">修复用户反馈的 0.6.7 视频播放回归，包括新 Linux 环境使用 DroidDeck-Proton 时的播放问题，以及《王国之心 1.5+2.5》在全动态影像过场动画处崩溃的问题。运行环境补充 libva-drm2 和 libva-x11-2。</string>
+    <string name="changelog_title_b75060c280906702973daa6be5bceffb31091725" formatted="false">非 Steam 游戏可在会话中设置帧率上限</string>
+    <string name="changelog_summary_b75060c280906702973daa6be5bceffb31091725" formatted="false">为不通过 Steam 启动的游戏，在会话抽屉“显示”页面增加帧率上限选项：关闭、30、40、45、60、90、120。设置立即生效，控制合成器节奏，并在可用时切换到能被上限整除的屏幕刷新率。设置仅在本次会话生效，下一次会话会重置；Steam 游戏仍使用其快速访问菜单中的帧率上限。</string>
+    <string name="changelog_title_4770d11e390b2adf2649276a17594f20f2d85bed" formatted="false">新增实体手柄按键快捷操作</string>
+    <string name="changelog_summary_4770d11e390b2adf2649276a17594f20f2d85bed" formatted="false">可将实体手柄按键分配给 Steam、快速访问或 DroidDeck 菜单，按手柄分别保存设置，并支持重置。未分配按键保持默认行为，所有支持的语言均增加对应翻译。</string>
 </resources>
