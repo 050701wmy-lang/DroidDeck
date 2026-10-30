@@ -453,6 +453,8 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         if (r.resultCode == RESULT_OK) InAppFilePicker.pickedFile(r.data)?.let { importLossless(it) }
     }
     private var frameGen by mutableStateOf(FrameGen.Mode.OFF)
+    private var frameGenPip = false
+    private val frameGenRequests = java.util.concurrent.atomic.AtomicInteger()
     private var fexPreset by mutableStateOf("")
     private var suspendPolicy by mutableStateOf(SessionPrefs.SUSPEND_MANUAL)
     private var steamDownloadsInBackground by mutableStateOf(false)
@@ -830,7 +832,14 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                 onDispose { com.droiddeck.launcher.glasses.GlassesMenuMirror.setSessionMenuVisible(this@SessionActivity, false) }
             }
             androidx.compose.runtime.LaunchedEffect(drawerOpen, pcKeyboardOpen, achievementsOpen, pipUi) { updatePointerCapture() }
-            androidx.compose.runtime.LaunchedEffect(pipUi) { hud.setHidden(pipUi) }
+            androidx.compose.runtime.LaunchedEffect(pipUi) {
+                hud.setHidden(pipUi)
+                applyOutputPacing()
+                if (pipUi != frameGenPip) {
+                    frameGenPip = pipUi
+                    if (FrameGen.engine(this@SessionActivity) != FrameGen.ENGINE_OFF && ::surfaceView.isInitialized) applyFrameGen()
+                }
+            }
             androidx.compose.runtime.LaunchedEffect(AgentGuest.steamKeyboard) { updateOnScreenControls() }
             androidx.compose.runtime.LaunchedEffect(AgentGuest.desktopTextField) { onDesktopTextField(AgentGuest.desktopTextField) }
             androidx.compose.runtime.LaunchedEffect(pipUi, pcKeyboardOpen) { updateDesktopKeyboardButton() }
@@ -2225,10 +2234,13 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     private fun mirrorRefreshLimit(): Int =
         GlassesRendering.mirrorRefreshLimit(glassesSettings, glasses, glassesScreen != null)
 
-    private fun outputFpsLimit(): Int = SessionPrefs.compositorFpsLimit(mirrorRefreshLimit(), if (noSteamSession()) SessionState.fpsLimit else 0)
+    private fun outputFpsLimit(): Int = outputFpsLimit(pipUi)
+
+    private fun outputFpsLimit(pip: Boolean): Int =
+        SessionPrefs.compositorFpsLimit(mirrorRefreshLimit(), if (noSteamSession()) SessionState.fpsLimit else 0, pip)
 
     private fun applyOutputPacing() {
-        Log.i(TAG, "perf: " + PerfMode.apply(this, outputFpsLimit(), mirrorRefreshLimit()))
+        Log.i(TAG, "perf: " + PerfMode.apply(this, outputFpsLimit(false), mirrorRefreshLimit()))
         if (CompositorHost.isStarted) {
             val hz = refreshHz()
             val changed = kotlin.math.abs(SessionState.refreshHz - hz) > 0.1f
@@ -2240,8 +2252,13 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
 
     private fun applyFrameGen() {
         val hz = refreshHz()
+        val pip = pipUi && mirrorRefreshLimit() <= 0
+        val request = frameGenRequests.incrementAndGet()
         Thread({
-            val problem = FrameGen.apply(this, hz)
+            val problem = synchronized(frameGenRequests) {
+                if (request != frameGenRequests.get()) return@Thread
+                if (pip) FrameGen.apply(this, FrameGen.Mode.OFF, hz) else FrameGen.apply(this, hz)
+            }
             val state = Lossless.state(this)
             runOnUiThread {
                 lossless = state
