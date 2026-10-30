@@ -146,4 +146,12 @@
     <string name="changelog_summary_b75060c280906702973daa6be5bceffb31091725" formatted="false">为不通过 Steam 启动的游戏，在会话抽屉“显示”页面增加帧率上限选项：关闭、30、40、45、60、90、120。设置立即生效，控制合成器节奏，并在可用时切换到能被上限整除的屏幕刷新率。设置仅在本次会话生效，下一次会话会重置；Steam 游戏仍使用其快速访问菜单中的帧率上限。</string>
     <string name="changelog_title_4770d11e390b2adf2649276a17594f20f2d85bed" formatted="false">新增实体手柄按键快捷操作</string>
     <string name="changelog_summary_4770d11e390b2adf2649276a17594f20f2d85bed" formatted="false">可将实体手柄按键分配给 Steam、快速访问或 DroidDeck 菜单，按手柄分别保存设置，并支持重置。未分配按键保持默认行为，所有支持的语言均增加对应翻译。</string>
+    <string name="changelog_title_7e47db2e2ae517fdf18deff7669724c6f5f07e0c" formatted="false">启动选项选择器打开时不再误判游戏退出</string>
+    <string name="changelog_summary_7e47db2e2ae517fdf18deff7669724c6f5f07e0c" formatted="false">修复用户反馈的《真人快打 11》无法运行问题：在 RedMagic 11 Pro 上，游戏打开后未完成启动便退回 DroidDeck，0.6.7 及其后的预览版均曾出现。现在打开启动选项选择器时，不再提前关闭游戏会话。</string>
+    <string name="changelog_title_0b1af34a5f88a9cb3f99d088fe1b7716f4acaf1b" formatted="false">竖屏游戏库的筛选、排序和显示菜单不再被裁切</string>
+    <string name="changelog_summary_0b1af34a5f88a9cb3f99d088fe1b7716f4acaf1b" formatted="false">修复用户反馈的竖屏游戏库筛选菜单方向异常、内容被屏幕边缘裁切的问题。</string>
+    <string name="changelog_title_7bc35297220a3f4df7cc118a3d5f38b29ab1385f" formatted="false">修复不支持低延迟输出时的 DirectAudio 爆音</string>
+    <string name="changelog_summary_7bc35297220a3f4df7cc118a3d5f38b29ab1385f" formatted="false">修复启用 DirectAudio 后，Proton 游戏中出现噼啪杂音和爆音的问题，对应 #1843 和 #1819。在 Android 拒绝低延迟输出时采用合适的音频时序。</string>
+    <string name="changelog_title_9cc56631cd064941ea0acc365ffd312df831fc19" formatted="false">测试版和本地构建显示淡色版本标记</string>
+    <string name="changelog_summary_9cc56631cd064941ea0acc365ffd312df831fc19" formatted="false">测试 PR 和本地构建会在各页面右下角显示小型浅色标记，便于截图或共享屏幕时识别版本。PR 构建显示 PR 编号、提交号及最多 80 字符的标题；本地构建显示 LOCAL、提交号和分支名。官方稳定版和预览版的无 PR CI 构建不显示此标记。</string>
 </resources>

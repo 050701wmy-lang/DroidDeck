@@ -195,7 +195,7 @@ class FrontEndActivity : ComponentActivity() {
     private var navRequest by mutableStateOf<String?>(null)
     private var storesShowMature by mutableStateOf(false)
     private var storesSort by mutableStateOf(SessionPrefs.STORES_SORTS.first())
-    private var storesView by mutableStateOf(SessionPrefs.STORES_VIEWS.first())
+    private var storesView by mutableStateOf(SessionPrefs.DEFAULT_STORES_VIEW)
     private var mic by mutableStateOf(false)
     private var wifiDiscovery by mutableStateOf(false)
     private var wifiDiscoveryPermission by mutableStateOf(false)
@@ -324,7 +324,10 @@ class FrontEndActivity : ComponentActivity() {
             SteamIntegration.Feature.SHORTCUTS -> {
                 if (!integrationState.shortcuts) shortcutsTried = true
                 if (!HomeApp.isDefault(this)) configureIntegration(SteamIntegration.Feature.HOME)
-                else integrationSettings(SteamIntegration.shortcutSettings(this), android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                else {
+                    SteamIntegration.setShortcutsListed(this, true)
+                    integrationSettings(SteamIntegration.shortcutSettings(this), android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                }
             }
         }
     }
@@ -538,6 +541,11 @@ class FrontEndActivity : ComponentActivity() {
         override fun onDisplayAdded(displayId: Int) = refreshSecondScreenDisplays()
         override fun onDisplayRemoved(displayId: Int) = refreshSecondScreenDisplays()
         override fun onDisplayChanged(displayId: Int) = refreshSecondScreenDisplays()
+    }
+    private val secondScreenTouchListener = object : android.hardware.input.InputManager.InputDeviceListener {
+        override fun onInputDeviceAdded(deviceId: Int) = refreshSecondScreenDisplays()
+        override fun onInputDeviceRemoved(deviceId: Int) = refreshSecondScreenDisplays()
+        override fun onInputDeviceChanged(deviceId: Int) = refreshSecondScreenDisplays()
     }
 
     private val homeRoleRequest = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -1627,6 +1635,7 @@ class FrontEndActivity : ComponentActivity() {
 
     override fun onPause() {
         compatLaunchVisible = false
+        if (android.os.Build.VERSION.SDK_INT >= 29) com.droiddeck.launcher.ui.DualScreenPanel.yieldTo(taskId, true)
         super.onPause()
     }
 
@@ -1637,6 +1646,7 @@ class FrontEndActivity : ComponentActivity() {
         orientation = SessionPrefs.orientation(this)
         launcherOrientation = com.droiddeck.launcher.core.AppUiPrefs.orientation(this)
         requestedOrientation = launcherOrientation
+        SteamIntegration.syncShortcutsListing(this)
         refreshWifiDiscovery()
         com.droiddeck.launcher.stores.StoresState.refresh(this)
         com.droiddeck.launcher.stores.StoresState.libraryListener = { refreshAddedGames(); refresh() }
@@ -1688,6 +1698,7 @@ class FrontEndActivity : ComponentActivity() {
             addDataScheme("file")
         })
         displayManager.registerDisplayListener(secondScreenDisplayListener, ui)
+        getSystemService(android.hardware.input.InputManager::class.java)?.registerInputDeviceListener(secondScreenTouchListener, ui)
         launcherStarted = true
         refreshSecondScreenDisplays()
         getSystemService(android.content.pm.LauncherApps::class.java).registerCallback(packageCallback, ui)
@@ -1730,6 +1741,7 @@ class FrontEndActivity : ComponentActivity() {
         com.droiddeck.launcher.stores.StoresState.libraryListener = null
         com.droiddeck.launcher.stores.battlenet.BattleNetClient.opener = null
         displayManager.unregisterDisplayListener(secondScreenDisplayListener)
+        getSystemService(android.hardware.input.InputManager::class.java)?.unregisterInputDeviceListener(secondScreenTouchListener)
         launcherStarted = false
         com.droiddeck.launcher.ui.DualScreenPanel.hide(taskId)
         flood = null

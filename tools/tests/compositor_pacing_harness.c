@@ -6,6 +6,8 @@ static struct { uint64_t ticks, ticks_late_2ms; int64_t tick_late_ns, tick_late_
 static int64_t clock_ns, g_previous_frame_ns, g_last_vsync_ns, g_tick_vsync_ns;
 static int64_t g_refresh_ns = 8333333;
 static int g_output_refresh_mhz;
+static int64_t g_scene_due_ns;
+static int g_fps_limit, g_release_unpaced;
 static int g_dirty = 1, renders, g_tick_held;
 static int64_t g_hold_missed_ns, g_dirty_since_ns;
 #define HOLD_RETRY_NS 1000000000LL

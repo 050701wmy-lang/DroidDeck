@@ -15,7 +15,9 @@ class CompositorPacingTest(unittest.TestCase):
         end = source.index('\nstatic uint32_t now_ms(', start)
         with tempfile.TemporaryDirectory() as folder:
             work = Path(folder)
-            (work / 'on_vsync_under_test.inc').write_text(source[start:end])
+            hold_start = source.index('static int scene_held_for_limit(')
+            hold_end = source.index('\nstatic int64_t scene_next_due(', hold_start)
+            (work / 'on_vsync_under_test.inc').write_text(source[hold_start:hold_end] + source[start:end])
             binary = work / 'compositor-pacing'
             subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror',
                             '-fsanitize=address,undefined', '-I' + str(work),

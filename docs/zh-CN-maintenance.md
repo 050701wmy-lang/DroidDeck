@@ -292,3 +292,14 @@ CompositorHost 冲突采用上游移除 uiLimit 参数的行为，保留 fork �
 载荷取自此次官方 APK，当前呈现库完整重编译，211 项摘要见本机 92c1560-payload-verification.json。上游新增 Butler 包，除原有 proot/directaudio/tracking/xbox/comet 五包外，第六包也必须与该 Preview 精确匹配，不能遗漏或用旧包代替。全部六包来自同提交 run 41087869550、产物 12992902799，ZIP SHA-256 为 9e7d8a9dc28cc7ded70b4dcb84ee7f3b81fcd46caf6a09fd117e9dc040de5304，并与官方及 fork APK 的实际 DEX 摘要逐个核对，见 92c1560-addon-packs.json。
 
 发布构建、lintVital、原生依赖闭包、3 项中文/GitHub 检查、38 项脚本/原生回归和 93 项 Linux JVM 回归通过。完整 lint 仍受前次已记录的旧 Compose 检测器不支持 Kotlin 2.1 元数据的限制，本次未重复运行；不宣称完整 lint 通过。源码提交不包含用户未提交的 Steam 文件或 experiments 目录，受保护 Steam 文件在合并提交后恢复。设备安装状态以本机 preview-state.json 为准，运行中的会话不被自动中断。
+
+
+## 已发布预览 main-7e47db2（2026-10-31）
+
+同步官方 catalog.preview 对应的 7e47db2e2ae517fdf18deff7669724c6f5f07e0c。官方 APK SHA-256 为 b727805503668b67c8f898df63367e623c164c86784823b5596daa99af5ef396，版本仍为 0.6.7 (16)。包含 Steam 游戏启动选项选择器打开时不提前关闭会话（MK11）、竖屏游戏库菜单裁切、DirectAudio 在非低延迟设备上的音频时序修复，以及本地/测试构建标记、挂起时钟暂停和双屏交互改动。本 fork 作为本地构建保留上游淡色 LOCAL 提交号/分支标记，不伪装为官方 CI 构建。
+
+App 初始化冲突保留上游 shortcuts_sync 进程隔离及 fork GitHubDownloads 初始化。新上游中文翻译与已收录资源去重，保留原有中文文案、默认语言、字体挂载、下载修复及只读日志。按官方 preview/recentPreviews 增加四条完整提交号、中英文标题/摘要与时间，共 77 条离线记录，保留历史日志和中文未翻译提示。包名、名称和原签名不变。
+
+当前合成器完整重编译，原生载荷与脚本来自本次官方 APK 和合并源码，211 项摘要见本机 7e47db2-payload-verification.json。六组件来自同提交官方 run 41136988538、产物 13018570321，ZIP SHA-256 为 69353c27b55718adbfff162a3f6cbd54dac6f703f9fc4e2dcbe5b552266cf2f4。逐一核验官方及 fork APK 实际 DEX 中六包摘要，详见 7e47db2-addon-packs.json。
+
+发布构建、lintVital、原生依赖闭包、3 项中文/下载检查、224 项脚本/原生检查和 147 项 Linux JVM 回归通过。初轮计时夹具因上游新增 scene_held_for_limit 依赖而编译失败，夹具补齐状态及真实函数后单项重测通过；其余 223 项初轮通过，证据汇总在 scripts-7e47db2-verified.json。未为该测试适配修改生产逻辑。完整 lint 仍有已记录的旧 Compose/Kotlin 元数据兼容性限制，本次不重复运行或宣称通过。用户未提交的 Steam 修改与实验目录不纳入构建/提交，提交后恢复 Steam 文件。APK 摘要和设备安装状态见本机 preview-state.json。
