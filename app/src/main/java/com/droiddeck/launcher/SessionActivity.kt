@@ -357,9 +357,13 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     private var drawerDefaultProton by mutableStateOf<String?>(null)
     private val drawerComponentMenu by lazy { ComponentsMenu(this, uiHandler) }
     private var drawerGameProfileId by mutableStateOf<Long?>(null)
+    private var fpsLimit by mutableStateOf(SessionState.fpsLimit)
 
     private fun noSteamSession(): Boolean = SessionState.mode == SessionService.MODE_RUN &&
-        SessionState.program in setOf(com.droiddeck.launcher.session.NoSteamLaunch.PROTON_RUN, com.droiddeck.launcher.session.NoSteamLaunch.EPIC)
+        SessionState.program in setOf(
+            com.droiddeck.launcher.session.NoSteamLaunch.PROTON_RUN, com.droiddeck.launcher.session.NoSteamLaunch.EPIC,
+            com.droiddeck.launcher.session.NoSteamLaunch.BATTLENET,
+        )
     private val drawerGameInventory = GameProfileInventoryCache<Library.SteamGame>()
     private var drawerGameInventoryRevision = 0L
     private var drawerGameFexPresetSaving by mutableStateOf(false)
@@ -581,6 +585,10 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         }
         com.droiddeck.launcher.gpu.SteamVrHealth.begin(this, SessionState.sessionId)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        if (!SessionState.running) {
+            SessionState.fpsLimit = 0
+            fpsLimit = 0
+        }
         applyOutputPacing()
         if (!SessionState.running) SessionState.followScreen = followChoice()
         applyFollowOrientation(resources.configuration)
@@ -1198,6 +1206,12 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                     SessionPrefs.setTextureLodBias(this@SessionActivity, it)
                     textureLodBias = it
                 }
+            },
+            fpsLimit = fpsLimit,
+            onFpsLimit = { fps ->
+                SessionState.fpsLimit = fps
+                fpsLimit = fps
+                applyOutputPacing()
             },
             onFrameGenPick = { mode ->
                 FrameGen.set(this@SessionActivity, mode)
@@ -2218,7 +2232,7 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
     private fun mirrorRefreshLimit(): Int =
         GlassesRendering.mirrorRefreshLimit(glassesSettings, glasses, glassesScreen != null)
 
-    private fun outputFpsLimit(): Int = SessionPrefs.compositorFpsLimit(mirrorRefreshLimit())
+    private fun outputFpsLimit(): Int = SessionPrefs.compositorFpsLimit(mirrorRefreshLimit(), if (noSteamSession()) SessionState.fpsLimit else 0)
 
     private fun steamUiLimit(hz: Float): Int =
         if (steamUiFocused && SessionPrefs.steamUiPacing(this)) SessionPrefs.steamUiFpsLimit(hz) else 0
