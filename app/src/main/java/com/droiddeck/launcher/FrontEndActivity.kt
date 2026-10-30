@@ -1632,6 +1632,7 @@ class FrontEndActivity : ComponentActivity() {
 
     override fun onPause() {
         compatLaunchVisible = false
+        if (android.os.Build.VERSION.SDK_INT >= 29) com.droiddeck.launcher.ui.DualScreenPanel.yieldTo(taskId, true)
         super.onPause()
     }
 
