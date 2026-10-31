@@ -705,7 +705,6 @@
     <string name="hud_export_failed">Не удалось сохранить отчет HUD.</string>
     <string name="hud_reset">Сбросить настройки HUD</string>
     <string name="hud_reset_button">Сбросить</string>
-    <string name="hud_credit">FusionHUD от The412Banner, github.com/The412Banner/FusionHUD (GPL-3.0).</string>
     <string name="drawer_scaling">Режим масштабирования</string>
     <string name="drawer_scaling_sharpness">Резкость масштабирования</string>
     <string name="drawer_effects">Экранные эффекты</string>
@@ -1741,6 +1740,8 @@
     <string name="fm_accept">Принять</string>
     <string name="fm_decline">Отклонить</string>
     <string name="fm_drive_not_readable">%1$s: подключено, но сейчас недоступно для чтения</string>
+    <string name="fm_drive_access_title">Разрешить доступ к %1$s</string>
+    <string name="fm_drive_access_text">Android позволяет DroidDeck видеть этот диск, но не читать его. Включите для DroidDeck доступ ко всем файлам и вернитесь.</string>
     <string name="fm_list_view">Список</string>
     <string name="fm_grid_view">Сетка</string>
     <string name="fm_search">Поиск</string>
@@ -1846,6 +1847,7 @@
     <string name="flatpakmgr_not_ready">Сначала настройте Flatpak</string>
     <string name="flatpakmgr_starting">Запуск</string>
     <string name="flatpakmgr_exit_status">Flatpak завершился с кодом %1$d</string>
+    <string name="flatpakmgr_wrong_arch">%1$s собрано для %2$s, а DroidDeck не может это запустить. Приложениям Flatpak здесь нужна сборка для ARM64 или x86_64.</string>
     <string name="flatpakmgr_installing">Установка %1$s</string>
     <string name="flatpakmgr_updating">Обновление %1$s</string>
     <string name="flatpakmgr_removing">Удаление %1$s</string>

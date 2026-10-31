@@ -701,7 +701,6 @@
     <string name="hud_export_failed">HUD रिपोर्ट सेव नहीं हो सकी।</string>
     <string name="hud_reset">HUD सेटिंग रीसेट करें</string>
     <string name="hud_reset_button">रीसेट करें</string>
-    <string name="hud_credit">The412Banner का FusionHUD, github.com/The412Banner/FusionHUD (GPL-3.0)।</string>
     <string name="drawer_scaling">स्केलिंग मोड</string>
     <string name="drawer_scaling_sharpness">स्केलिंग शार्पनेस</string>
     <string name="drawer_effects">स्क्रीन इफ़ेक्ट</string>
@@ -1699,6 +1698,8 @@
     <string name="fm_accept">स्वीकार करें</string>
     <string name="fm_decline">अस्वीकार करें</string>
     <string name="fm_drive_not_readable">%1$s माउंट है लेकिन अभी पढ़ा नहीं जा सकता</string>
+    <string name="fm_drive_access_title">%1$s तक पहुँच दें</string>
+    <string name="fm_drive_access_text">Android, DroidDeck को यह ड्राइव दिखाता है पर पढ़ने नहीं देता। DroidDeck के लिए सभी फ़ाइलों का ऐक्सेस चालू करें, फिर वापस आएँ।</string>
     <string name="fm_list_view">लिस्ट व्यू</string>
     <string name="fm_grid_view">ग्रिड व्यू</string>
     <string name="fm_search">सर्च</string>
@@ -1800,6 +1801,7 @@
     <string name="flatpakmgr_not_ready">पहले Flatpak सेट करें</string>
     <string name="flatpakmgr_starting">शुरू हो रहा है</string>
     <string name="flatpakmgr_exit_status">Flatpak status %1$d के साथ बंद हुआ</string>
+    <string name="flatpakmgr_wrong_arch">%1$s %2$s के लिए बना है, जिसे DroidDeck नहीं चला सकता। यहाँ Flatpak ऐप ARM64 या x86_64 के लिए बने होने चाहिए।</string>
     <string name="flatpakmgr_installing">%1$s इंस्टॉल हो रहा है</string>
     <string name="flatpakmgr_updating">%1$s अपडेट हो रहा है</string>
     <string name="flatpakmgr_removing">%1$s हटाया जा रहा है</string>

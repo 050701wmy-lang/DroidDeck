@@ -699,7 +699,6 @@
     <string name="hud_export_failed">Tidak dapat menyimpan laporan HUD.</string>
     <string name="hud_reset">Setel ulang setelan HUD</string>
     <string name="hud_reset_button">Setel ulang</string>
-    <string name="hud_credit">FusionHUD oleh The412Banner, github.com/The412Banner/FusionHUD (GPL-3.0).</string>
     <string name="drawer_scaling">Mode penskalaan</string>
     <string name="drawer_scaling_sharpness">Ketajaman penskalaan</string>
     <string name="drawer_effects">Efek layar</string>
@@ -1678,6 +1677,8 @@
     <string name="fm_accept">Terima</string>
     <string name="fm_decline">Tolak</string>
     <string name="fm_drive_not_readable">%1$s terpasang tetapi tidak dapat dibaca saat ini</string>
+    <string name="fm_drive_access_title">Izinkan akses ke %1$s</string>
+    <string name="fm_drive_access_text">Android mengizinkan DroidDeck melihat drive ini tetapi tidak membacanya. Aktifkan Akses semua file untuk DroidDeck, lalu kembali.</string>
     <string name="fm_list_view">Tampilan daftar</string>
     <string name="fm_grid_view">Tampilan kisi</string>
     <string name="fm_search">Cari</string>
@@ -1777,6 +1778,7 @@
     <string name="flatpakmgr_not_ready">Siapkan Flatpak terlebih dahulu</string>
     <string name="flatpakmgr_starting">Memulai</string>
     <string name="flatpakmgr_exit_status">Flatpak keluar dengan status %1$d</string>
+    <string name="flatpakmgr_wrong_arch">%1$s dibuat untuk %2$s, yang tidak dapat dijalankan DroidDeck. Aplikasi Flatpak di sini memerlukan versi ARM64 atau x86_64.</string>
     <string name="flatpakmgr_installing">Menginstal %1$s</string>
     <string name="flatpakmgr_updating">Memperbarui %1$s</string>
     <string name="flatpakmgr_removing">Menghapus %1$s</string>

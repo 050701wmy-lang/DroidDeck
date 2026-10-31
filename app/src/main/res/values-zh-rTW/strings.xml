@@ -688,7 +688,6 @@
     <string name="hud_export_failed">無法儲存 HUD 報告。</string>
     <string name="hud_reset">重設 HUD 設定</string>
     <string name="hud_reset_button">重設</string>
-    <string name="hud_credit">FusionHUD，作者 The412Banner，github.com/The412Banner/FusionHUD (GPL-3.0)。</string>
     <string name="drawer_scaling">縮放模式</string>
     <string name="drawer_scaling_sharpness">縮放銳利度</string>
     <string name="drawer_effects">畫面效果</string>
@@ -1649,6 +1648,8 @@
     <string name="fm_accept">接受</string>
     <string name="fm_decline">拒絕</string>
     <string name="fm_drive_not_readable">%1$s 已掛載，但目前無法讀取</string>
+    <string name="fm_drive_access_title">允許存取 %1$s</string>
+    <string name="fm_drive_access_text">Android 允許 DroidDeck 看到這個磁碟，但不允許讀取。請為 DroidDeck 開啟「所有檔案存取權」，然後返回。</string>
     <string name="fm_list_view">清單檢視</string>
     <string name="fm_grid_view">格狀檢視</string>
     <string name="fm_search">搜尋</string>
@@ -1748,6 +1749,7 @@
     <string name="flatpakmgr_not_ready">請先設定 Flatpak</string>
     <string name="flatpakmgr_starting">正在啟動</string>
     <string name="flatpakmgr_exit_status">Flatpak 已結束，狀態碼 %1$d</string>
+    <string name="flatpakmgr_wrong_arch">%1$s 是為 %2$s 建置的，DroidDeck 無法執行。這裡的 Flatpak 應用程式需要 ARM64 或 x86_64 版本。</string>
     <string name="flatpakmgr_installing">正在安裝 %1$s</string>
     <string name="flatpakmgr_updating">正在更新 %1$s</string>
     <string name="flatpakmgr_removing">正在移除 %1$s</string>

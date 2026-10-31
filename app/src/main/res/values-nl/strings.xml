@@ -701,7 +701,6 @@
     <string name="hud_export_failed">Kan het HUD-rapport niet opslaan.</string>
     <string name="hud_reset">HUD-instellingen resetten</string>
     <string name="hud_reset_button">Resetten</string>
-    <string name="hud_credit">FusionHUD door The412Banner, github.com/The412Banner/FusionHUD (GPL-3.0).</string>
     <string name="drawer_scaling">Schaalmodus</string>
     <string name="drawer_scaling_sharpness">Schaalscherpte</string>
     <string name="drawer_effects">Schermeffecten</string>
@@ -1699,6 +1698,8 @@
     <string name="fm_accept">Accepteren</string>
     <string name="fm_decline">Weigeren</string>
     <string name="fm_drive_not_readable">%1$s is gekoppeld, maar nu niet leesbaar</string>
+    <string name="fm_drive_access_title">Toegang tot %1$s toestaan</string>
+    <string name="fm_drive_access_text">Android laat DroidDeck deze schijf zien, maar niet lezen. Zet Toegang tot alle bestanden aan voor DroidDeck en kom daarna terug.</string>
     <string name="fm_list_view">Lijstweergave</string>
     <string name="fm_grid_view">Rasterweergave</string>
     <string name="fm_search">Zoeken</string>
@@ -1800,6 +1801,7 @@
     <string name="flatpakmgr_not_ready">Stel eerst Flatpak in</string>
     <string name="flatpakmgr_starting">Starten</string>
     <string name="flatpakmgr_exit_status">Flatpak is gestopt met status %1$d</string>
+    <string name="flatpakmgr_wrong_arch">%1$s is gebouwd voor %2$s, wat DroidDeck niet kan draaien. Flatpak-apps hebben hier een ARM64- of x86_64-versie nodig.</string>
     <string name="flatpakmgr_installing">%1$s installeren</string>
     <string name="flatpakmgr_updating">%1$s updaten</string>
     <string name="flatpakmgr_removing">%1$s verwijderen</string>

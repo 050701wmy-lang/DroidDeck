@@ -699,7 +699,6 @@
     <string name="hud_export_failed">HUD 보고서를 저장할 수 없습니다.</string>
     <string name="hud_reset">HUD 설정 초기화</string>
     <string name="hud_reset_button">초기화</string>
-    <string name="hud_credit">FusionHUD 제작: The412Banner, github.com/The412Banner/FusionHUD (GPL-3.0).</string>
     <string name="drawer_scaling">스케일링 모드</string>
     <string name="drawer_scaling_sharpness">스케일링 선명도</string>
     <string name="drawer_effects">화면 효과</string>
@@ -1678,6 +1677,8 @@
     <string name="fm_accept">수락</string>
     <string name="fm_decline">거절</string>
     <string name="fm_drive_not_readable">%1$s이(가) 마운트되었지만 지금은 읽을 수 없습니다</string>
+    <string name="fm_drive_access_title">%1$s 액세스 허용</string>
+    <string name="fm_drive_access_text">Android에서 DroidDeck이 이 드라이브를 볼 수는 있지만 읽을 수는 없습니다. DroidDeck의 모든 파일 액세스를 켠 다음 돌아오세요.</string>
     <string name="fm_list_view">목록 보기</string>
     <string name="fm_grid_view">격자 보기</string>
     <string name="fm_search">검색</string>
@@ -1777,6 +1778,7 @@
     <string name="flatpakmgr_not_ready">먼저 Flatpak을 설정하세요</string>
     <string name="flatpakmgr_starting">시작 중</string>
     <string name="flatpakmgr_exit_status">Flatpak이 종료되었습니다(상태 %1$d)</string>
+    <string name="flatpakmgr_wrong_arch">%1$s은(는) DroidDeck이 실행할 수 없는 %2$s용으로 빌드되었습니다. 여기서 Flatpak 앱은 ARM64 또는 x86_64 빌드여야 합니다.</string>
     <string name="flatpakmgr_installing">%1$s 설치 중</string>
     <string name="flatpakmgr_updating">%1$s 업데이트 중</string>
     <string name="flatpakmgr_removing">%1$s 제거 중</string>

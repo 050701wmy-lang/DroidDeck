@@ -303,3 +303,14 @@ App 初始化冲突保留上游 shortcuts_sync 进程隔离及 fork GitHubDownlo
 当前合成器完整重编译，原生载荷与脚本来自本次官方 APK 和合并源码，211 项摘要见本机 7e47db2-payload-verification.json。六组件来自同提交官方 run 41136988538、产物 13018570321，ZIP SHA-256 为 69353c27b55718adbfff162a3f6cbd54dac6f703f9fc4e2dcbe5b552266cf2f4。逐一核验官方及 fork APK 实际 DEX 中六包摘要，详见 7e47db2-addon-packs.json。
 
 发布构建、lintVital、原生依赖闭包、3 项中文/下载检查、224 项脚本/原生检查和 147 项 Linux JVM 回归通过。初轮计时夹具因上游新增 scene_held_for_limit 依赖而编译失败，夹具补齐状态及真实函数后单项重测通过；其余 223 项初轮通过，证据汇总在 scripts-7e47db2-verified.json。未为该测试适配修改生产逻辑。完整 lint 仍有已记录的旧 Compose/Kotlin 元数据兼容性限制，本次不重复运行或宣称通过。用户未提交的 Steam 修改与实验目录不纳入构建/提交，提交后恢复 Steam 文件。APK 摘要和设备安装状态见本机 preview-state.json。
+
+
+## 已发布预览 main-b07eca3（2026-10-31）
+
+同步官方 catalog.preview 对应 b07eca3c0629e8e6eaaa18b7f6e027effc5cf399，官方 APK SHA-256 为 e1afb9e171f89db6b51a11f0ff22ee2ee2a25a821cdbc1b5603cd9a270bb3745，版本 0.6.7 (16)。.NET 游戏不再覆盖 FEX 预设的多块翻译设置；上游示例《星露谷物语》启动由 85 秒缩短至 45 秒，未将其作为本设备实测结果。包含 NTFS USB 上 Linux 游戏首次启动修复、Flatpak 架构校验、USB 不可读时请求所有文件访问权限和双屏焦点无响应修复。
+
+沿用用户选择的上游 HUD：Fusion HUD 更名为 DroidDeck HUD，并支持双指缩放与贴边停靠为 FPS 标签；不恢复旧 PerfHud 口径。保留中文默认、Linux 字体挂载、GitHub 加速、Steam CDN/续传、原包名/名称/签名、只读更新日志及本地原生呈现修复。补齐官方 preview/recentPreviews 的六条中英记录与日期，共 83 条离线日志，保留历史条目和中文未翻译提示。
+
+当前呈现库完整重编译，其余原生载荷取自本次官方 APK，211 项摘要见 b07eca3-payload-verification.json。原生 PRoot 与更新后的脚本一起使用。六组件来自同提交官方 run 41167933607、产物 13029693863，ZIP SHA-256 为 48aef2c3fab17b313509a42c7b9f094ff640073f72b5fc71182423bd37ecd92f；与官方及 fork APK DEX 逐个核对，见 b07eca3-addon-packs.json。
+
+发布构建、lintVital、原生依赖闭包、3 项中文/GitHub 检查、115 项相关脚本/原生回归与 64 项 Linux JVM 回归通过。完整 lint 仍有前次记录的 Compose/Kotlin 元数据兼容性限制，本次未重复运行或宣称通过。上游 PRoot 补丁 0024 的空白已确认与官方提交完全一致并原样保留，其余文件通过空白检查。未提交的 Steam 文件和实验目录不纳入构建/提交；Steam 文件在合并提交后恢复。设备通过硬件序列号确认，优先 USB，不能将同型号或旧无线地址直接作为身份依据；安装状态见本机 preview-state.json。

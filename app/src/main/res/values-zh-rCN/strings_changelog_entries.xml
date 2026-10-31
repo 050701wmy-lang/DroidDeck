@@ -154,4 +154,16 @@
     <string name="changelog_summary_7bc35297220a3f4df7cc118a3d5f38b29ab1385f" formatted="false">修复启用 DirectAudio 后，Proton 游戏中出现噼啪杂音和爆音的问题，对应 #1843 和 #1819。在 Android 拒绝低延迟输出时采用合适的音频时序。</string>
     <string name="changelog_title_9cc56631cd064941ea0acc365ffd312df831fc19" formatted="false">测试版和本地构建显示淡色版本标记</string>
     <string name="changelog_summary_9cc56631cd064941ea0acc365ffd312df831fc19" formatted="false">测试 PR 和本地构建会在各页面右下角显示小型浅色标记，便于截图或共享屏幕时识别版本。PR 构建显示 PR 编号、提交号及最多 80 字符的标题；本地构建显示 LOCAL、提交号和分支名。官方稳定版和预览版的无 PR CI 构建不显示此标记。</string>
+    <string name="changelog_title_b07eca3c0629e8e6eaaa18b7f6e027effc5cf399" formatted="false">.NET 游戏保留 FEX 预设的多块翻译设置</string>
+    <string name="changelog_summary_b07eca3c0629e8e6eaaa18b7f6e027effc5cf399" formatted="false">对于带有 coreclr.dll 的 .NET 5+ 游戏，原先固定配置在全 TSO 的基础上关闭 FEX 多块翻译，覆盖了用户全局预设。现在保留预设中的多块翻译设置，减少 .NET JIT 产生新代码时的逐块翻译开销。官方《星露谷物语》示例的启动时间由 85 秒缩短至 45 秒，具体效果取决于设备和游戏。</string>
+    <string name="changelog_title_6eef0721c99fb3ad1355abf1a35989761ea2491c" formatted="false">DroidDeck HUD 支持双指缩放和贴边停靠</string>
+    <string name="changelog_summary_6eef0721c99fb3ad1355abf1a35989761ea2491c" formatted="false">性能监控面板及相关设置统一从 Fusion HUD 更名为 DroidDeck HUD，移除旧的署名提示。支持双指缩放，将面板推到屏幕边缘可停靠为 FPS 标签。继续使用上游 HUD 的数据口径。</string>
+    <string name="changelog_title_a81d1a4d4eb6d4c7055aaa17fa2b6c408f5f99d3" formatted="false">USB 存储已挂载但不可读时提示授权所有文件访问</string>
+    <string name="changelog_summary_a81d1a4d4eb6d4c7055aaa17fa2b6c408f5f99d3" formatted="false">部分三星设备的 USB 存储虽然已出现在文件管理器中，Android 仍会阻止应用读取。此前 DroidDeck 只显示已挂载但暂时不可读，用户必须自行查找系统权限设置。现在会在需要时提示授予“所有文件访问”权限。</string>
+    <string name="changelog_title_8088e47d1429812efdfc73551dc9035da6864e57" formatted="false">修复双屏掌机副屏取得焦点后的无响应</string>
+    <string name="changelog_summary_8088e47d1429812efdfc73551dc9035da6864e57" formatted="false">修复 Retroid Pocket Duo 等设备在副屏取得焦点后，使用 RB/LB 切换商店或其他页面时出现“DroidDeck 没有响应”的问题。</string>
+    <string name="changelog_title_6673a892e25c3339b5ffc1e883d0fb0507429424" formatted="false">明确拒绝为其他架构构建的 Flatpak 安装包</string>
+    <string name="changelog_summary_6673a892e25c3339b5ffc1e883d0fb0507429424" formatted="false">修复用户在桌面模式安装 r2modman 等 Flatpak 包后，安装看似成功、应用却一打开就关闭的问题。现在检测安装包架构与运行环境是否匹配，并在不匹配时给出明确提示。</string>
+    <string name="changelog_title_8cf01ebb77a2cc91db89692b69c7bc6dffbcacb6" formatted="false">修复 NTFS USB 存储上的 Linux 游戏首次启动失败</string>
+    <string name="changelog_summary_8cf01ebb77a2cc91db89692b69c7bc6dffbcacb6" formatted="false">修复安装在 NTFS 格式 USB 存储上的原生 Linux 游戏，首次启动因无法加载动态库而关闭并退回启动器的问题。上游同时调整 PRoot 的绝对路径 execveat 处理，原生组件与启动脚本需要配套更新。</string>
 </resources>
