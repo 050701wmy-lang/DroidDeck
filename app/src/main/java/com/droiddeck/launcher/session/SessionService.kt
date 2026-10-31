@@ -803,6 +803,7 @@ class SessionService : Service() {
             }
         }
         FexCatalog.cached(this)?.let { guest.addAll(FexCatalog.environment(it)) }
+        guest.add("BL_GITHUB_MIRROR=" + com.droiddeck.launcher.core.GitHubDownloads.current())
         if (SessionState.mode == MODE_STEAM) {
             guest.add("BL_GAMESCOPE_STRETCH_16X9=" + (if (SessionPrefs.stretch16x9(this)) "1" else "0"))
         }

@@ -8,6 +8,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+import urllib.parse
 
 RELEASES = "https://api.github.com/repos/%s/releases"
 SOURCES = {
@@ -61,16 +62,38 @@ def download(url, path):
     """Resumable, because this is hundreds of megabytes over a phone's connection. curl is used
     rather than urllib so a retry continues rather than starting again."""
     log("downloading %s" % os.path.basename(path))
-    rc = subprocess.call([
-        "curl", "-fL", "--retry", "5", "--retry-delay", "3", "--retry-connrefused",
-        "-C", "-", "-A", USER_AGENT, "-o", path, url])
+    rc = 1
+    for source in download_sources(url):
+        log("download route: %s" % urllib.parse.urlsplit(source).hostname)
+        rc = subprocess.call([
+            "curl", "-fL", "--retry", "5", "--retry-delay", "3", "--retry-all-errors",
+            "--connect-timeout", "15", "--speed-limit", "1024", "--speed-time", "30",
+            "-C", "-", "-A", USER_AGENT, "-o", path, source])
+        if rc == 0:
+            break
     if rc != 0:
         raise SystemExit("droiddeck-proton-extra: download failed (curl %d)" % rc)
     log("downloaded %.0f MB" % (os.path.getsize(path) / 1048576.0))
+    return source != url
 
 
-def verify(path, sums_url):
+def download_sources(url):
+    prefix = os.environ.get("BL_GITHUB_MIRROR", "").strip()
+    mirror = urllib.parse.urlsplit(prefix)
+    original = urllib.parse.urlsplit(url)
+    if (prefix and mirror.scheme == "https" and mirror.hostname and not mirror.username
+            and not mirror.password and not mirror.query and not mirror.fragment
+            and original.scheme == "https" and original.hostname == "github.com"
+            and original.port in (None, 443) and not original.username
+            and re.fullmatch(r"/[^/]+/[^/]+/releases/download/.+", original.path)):
+        return [prefix.rstrip("/") + "/" + url, url]
+    return [url]
+
+
+def verify(path, sums_url, required=False):
     if not sums_url:
+        if required:
+            raise SystemExit("droiddeck-proton-extra: mirror download requires a published checksum")
         log("no checksum published; skipping verification")
         return
     try:
@@ -78,6 +101,8 @@ def verify(path, sums_url):
         with urllib.request.urlopen(req, timeout=60) as r:
             want = r.read().decode("utf-8", "replace").split()[0].lower()
     except (urllib.error.URLError, IndexError, OSError) as e:
+        if required:
+            raise SystemExit("droiddeck-proton-extra: could not verify mirror download: %s" % e)
         log("could not read the checksum (%s); skipping verification" % e)
         return
     h = hashlib.sha512()
@@ -162,8 +187,8 @@ def main():
         tarball = local
     else:
         tarball = os.path.join(staging, os.path.basename(url.split("?")[0]))
-        download(url, tarball)
-        verify(tarball, sums)
+        mirrored = download(url, tarball)
+        verify(tarball, sums, required=mirrored)
 
     unpacked = os.path.join(staging, "unpacked")
     shutil.rmtree(unpacked, ignore_errors=True)

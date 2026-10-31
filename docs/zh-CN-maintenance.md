@@ -314,3 +314,12 @@ App 初始化冲突保留上游 shortcuts_sync 进程隔离及 fork GitHubDownlo
 当前呈现库完整重编译，其余原生载荷取自本次官方 APK，211 项摘要见 b07eca3-payload-verification.json。原生 PRoot 与更新后的脚本一起使用。六组件来自同提交官方 run 41167933607、产物 13029693863，ZIP SHA-256 为 48aef2c3fab17b313509a42c7b9f094ff640073f72b5fc71182423bd37ecd92f；与官方及 fork APK DEX 逐个核对，见 b07eca3-addon-packs.json。
 
 发布构建、lintVital、原生依赖闭包、3 项中文/GitHub 检查、115 项相关脚本/原生回归与 64 项 Linux JVM 回归通过。完整 lint 仍有前次记录的 Compose/Kotlin 元数据兼容性限制，本次未重复运行或宣称通过。上游 PRoot 补丁 0024 的空白已确认与官方提交完全一致并原样保留，其余文件通过空白检查。未提交的 Steam 文件和实验目录不纳入构建/提交；Steam 文件在合并提交后恢复。设备通过硬件序列号确认，优先 USB，不能将同型号或旧无线地址直接作为身份依据；安装状态见本机 preview-state.json。
+
+
+## 已发布预览 main-583f34f（2026-11-01）
+
+同步官方 catalog.preview 的 583f34fc55276446b6d18daca30021d8f849d2e7，官方 APK SHA-256 为 0de7755f333471b8f2fbd54ccfc2463d310cd2305ccce61a30df066ba1ea784a，版本 0.6.7 (16)。修复导入游戏误识别为 Spacewar (480)、Steam 应用 ID 变化及启动选项处理，包含双屏外部窗口焦点、默认桌面最近任务行为和 Battle.net zRAM 改动。目录中的旧 zRAM 摘要仍标注测试用途，该文字按原文保留；本次同步的是目录已正式发布的完整 main-583f34f，并非 PR 测试产物。
+
+新增三条双语离线日志，共 86 条。保留上游 DroidDeck HUD、默认中文、字体挂载、原包名/名称/签名、GitHub 加速与 Steam CDN/续传、只读日志和原生呈现修复，不恢复 APK 更新入口或角标。原生库完整重编译，211 项载荷与源码摘要见 583f34f-payload-verification.json。六组件来自同提交 run 41225376870、产物 13051978130，ZIP SHA-256 为 7e993b88e586e26daac9e3dffdc35306f2688e89070322652fff6854371439bf，并核对官方和 fork DEX 的全部组件摘要。
+
+发布构建、lintVital、原生依赖、3 项中文/下载检查、65 项脚本/原生回归、86 项 Linux JVM 回归通过。完整 lint 保留此前工具兼容性限制，本次不宣称通过。用户未提交 Steam 文件独立保护并在提交后恢复，实验目录不纳入提交。设备身份、签名、会话及安装状态保存在本机 preview-state.json。

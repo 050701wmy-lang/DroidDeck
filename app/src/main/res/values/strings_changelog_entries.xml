@@ -166,4 +166,10 @@
     <string name="changelog_summary_6673a892e25c3339b5ffc1e883d0fb0507429424" formatted="false">On Discord, a user installed r2modman from a .flatpak bundle in desktop mode. The install finished, but the app closed straight away every time it was opened. Their log (DroidDeck-2026-10-30-01-desktop.zip, Samsung SM-F976B) shows why:</string>
     <string name="changelog_title_8cf01ebb77a2cc91db89692b69c7bc6dffbcacb6" formatted="false">fix: Linux games on an NTFS USB drive start the first time instead of failing to load a library</string>
     <string name="changelog_summary_8cf01ebb77a2cc91db89692b69c7bc6dffbcacb6" formatted="false">A native Linux game installed on a USB drive formatted NTFS (a Samsung SSD on the RedMagic Astra 2) closed about 14 seconds after launch, and the session returned to the launcher. The session log showed:</string>
+    <string name="changelog_title_583f34fc55276446b6d18daca30021d8f849d2e7" formatted="false">fix: stop importing games as Spacewar (480) and follow a changed Steam app id</string>
+    <string name="changelog_summary_583f34fc55276446b6d18daca30021d8f849d2e7" formatted="false">An added game whose steamappid.txt says 480 disappears from the Library and shows up as Spacewar.</string>
+    <string name="changelog_title_ac132a23e2a1c9179a1e10bc2098ea4fb9d5f0c9" formatted="false">fix: dual-screen update prompt survives a bottom-screen tap, home launcher stays out of Recents, Quest panel opens landscape</string>
+    <string name="changelog_summary_ac132a23e2a1c9179a1e10bc2098ea4fb9d5f0c9" formatted="false">Fixes three dual-screen and panel launcher bugs reported on Discord: DD-368, DD-377 and DD-360. DD-382 was already fixed by #1871; it is re-checked below.</string>
+    <string name="changelog_title_85dd8beae155820d5ffb14dfe4e5c456c88013f9" formatted="false">zRAM: compress Battle.net with the Steam client while one of its games runs</string>
+    <string name="changelog_summary_85dd8beae155820d5ffb14dfe4e5c456c88013f9" formatted="false">Test build only. Do not merge yet.</string>
 </resources>
