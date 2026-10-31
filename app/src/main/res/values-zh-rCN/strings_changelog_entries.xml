@@ -172,4 +172,8 @@
     <string name="changelog_summary_ac132a23e2a1c9179a1e10bc2098ea4fb9d5f0c9" formatted="false">修复双屏设备点击副屏后外部提示窗口丢失焦点的问题。作为默认主屏启动器时保持不出现在最近任务中，Quest 面板以横屏打开。此 fork 继续只提供更新日志，不恢复官方 APK 更新入口。</string>
     <string name="changelog_title_85dd8beae155820d5ffb14dfe4e5c456c88013f9" formatted="false">游戏运行时将 Battle.net 与 Steam 客户端一起压入 zRAM</string>
     <string name="changelog_summary_85dd8beae155820d5ffb14dfe4e5c456c88013f9" formatted="false">为运行游戏时的 Battle.net 客户端增加与 Steam 相同的 zRAM 压缩处理。该条官方目录摘要原文仍注明“仅测试构建，暂勿合并”；本次跟随的是官方目录已发布的完整 main-583f34f 预览提交，并未使用 PR 测试版。</string>
+    <string name="changelog_title_0a07926ef3477c90db911d169904137cfc5e2505" formatted="false">DroidDeck 0.6.9 发布说明</string>
+    <string name="changelog_summary_0a07926ef3477c90db911d169904137cfc5e2505" formatted="false">新增 0.6.9 发布说明，汇总自 0.6.7 起合入主分支的 60 个拉取请求（包括 #1903），列出作者和链接，并加入 Retroid Pocket Duo 实体按键快捷操作设置页面截图。</string>
+    <string name="changelog_title_b63feb5eaa8d5d706795387908b1bfab1db54de8" formatted="false">触控板模式下三指轻点打开键盘</string>
+    <string name="changelog_summary_b63feb5eaa8d5d706795387908b1bfab1db54de8" formatted="false">修复三指轻点被发送为鼠标中键，导致在 X11 桌面粘贴选中文本的问题。触控板模式下现在正确打开键盘，包括桌面会话和 Steam 桌面界面。</string>
 </resources>

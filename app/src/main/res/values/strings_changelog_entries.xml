@@ -172,4 +172,8 @@
     <string name="changelog_summary_ac132a23e2a1c9179a1e10bc2098ea4fb9d5f0c9" formatted="false">Fixes three dual-screen and panel launcher bugs reported on Discord: DD-368, DD-377 and DD-360. DD-382 was already fixed by #1871; it is re-checked below.</string>
     <string name="changelog_title_85dd8beae155820d5ffb14dfe4e5c456c88013f9" formatted="false">zRAM: compress Battle.net with the Steam client while one of its games runs</string>
     <string name="changelog_summary_85dd8beae155820d5ffb14dfe4e5c456c88013f9" formatted="false">Test build only. Do not merge yet.</string>
+    <string name="changelog_title_0a07926ef3477c90db911d169904137cfc5e2505" formatted="false">docs: DroidDeck 0.6.9 release notes</string>
+    <string name="changelog_summary_0a07926ef3477c90db911d169904137cfc5e2505" formatted="false">• Adds docs/releases/0.6.9.md, the DroidDeck 0.6.9 release notes covering the 60 pull requests merged to main since 0.6.7, including #1903, with authors and PR links in the 0.6.7 format.\n• Adds docs/releases/media/0.6.9/controller-shortcuts.jpg, the Button mapping screen with the new physical button shortcuts, captured on a Retroid Pocket Duo.</string>
+    <string name="changelog_title_b63feb5eaa8d5d706795387908b1bfab1db54de8" formatted="false">fix: three-finger tap opens the keyboard in touchpad mode</string>
+    <string name="changelog_summary_b63feb5eaa8d5d706795387908b1bfab1db54de8" formatted="false">A user reported that a three-finger tap pasted clipboard text instead of opening the keyboard. In touchpad mode (the default for desktop sessions and Steam\'s desktop UI), a three-finger tap was sent as a middle click, which pastes the X11 primary selection.</string>
 </resources>
