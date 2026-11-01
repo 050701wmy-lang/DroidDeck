@@ -92,6 +92,7 @@ internal val changelogNotes = mapOf(
     "85dd8beae155820d5ffb14dfe4e5c456c88013f9" to Triple(R.string.changelog_title_85dd8beae155820d5ffb14dfe4e5c456c88013f9, R.string.changelog_summary_85dd8beae155820d5ffb14dfe4e5c456c88013f9, 1793449463000L),
     "0a07926ef3477c90db911d169904137cfc5e2505" to Triple(R.string.changelog_title_0a07926ef3477c90db911d169904137cfc5e2505, R.string.changelog_summary_0a07926ef3477c90db911d169904137cfc5e2505, 1793472280000L),
     "b63feb5eaa8d5d706795387908b1bfab1db54de8" to Triple(R.string.changelog_title_b63feb5eaa8d5d706795387908b1bfab1db54de8, R.string.changelog_summary_b63feb5eaa8d5d706795387908b1bfab1db54de8, 1793470423000L),
+    "bfa61b5139407bb3969e0d6dae991e03829029eb" to Triple(R.string.changelog_title_bfa61b5139407bb3969e0d6dae991e03829029eb, R.string.changelog_summary_bfa61b5139407bb3969e0d6dae991e03829029eb, 1793494446000L),
 )
 
 internal fun changelogChanges(catalog: AppUpdates.Catalog?): List<AppUpdates.PreviewChange> =

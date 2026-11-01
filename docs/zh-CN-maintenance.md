@@ -332,3 +332,10 @@ App 初始化冲突保留上游 shortcuts_sync 进程隔离及 fork GitHubDownlo
 原包名、DroidDeck 名称、原签名、中文默认、字体挂载、下载修复、上游 HUD、只读日志及本地原生呈现修复保留。当前原生库完整重编译，211 项载荷见 0a07926-payload-verification.json。六组件来自同提交成功 workflow_dispatch run 41229652236、产物 13053791384，ZIP SHA-256 为 cffc98a870fc176b1818dbd0de80708944f16d9ed08654b6a0f8b68a45bb5e5b，与发布 APK DEX 摘要核对；触发方式不替代实际完整提交和发布产物验证。
 
 发布构建、lintVital、原生依赖、3 项中文/下载检查、65 项脚本/原生检查及 124 项 Linux JVM 回归通过。完整 lint 保留既有 Compose 元数据兼容性限制。用户未提交文件保护后恢复，不强推。实际安装状态见本机 preview-state.json，运行会话不被自动中断。
+
+
+## 已发布预览 main-bfa61b5（2026-11-01）
+
+同步官方 preview 的 bfa61b5139407bb3969e0d6dae991e03829029eb，官方 APK SHA-256 为 19c7ab0ed4f74a170d718130c5df4deade4fbe00efdde2e157b347eaa56be17d，版本 0.6.9 (17)。修复 AYN Thor 等双屏设备副屏闲置后的抢焦点及无响应问题。新增一条双语记录，共 89 条离线日志。保留中文默认、字体、下载加速、上游 HUD、原包名/名称/签名、只读日志及原生呈现修复。
+
+原生呈现库完整重编译；211 项载荷、六组件与官方 APK 逐项匹配，见本机 bfa61b5-payload-verification.json 和 bfa61b5-addon-packs.json。组件来自同提交官方 run 41257814071、产物 13063909879，ZIP SHA-256 为 f9393f556227a8ffa9021db3c5c4fab3445cfce2b34e343f5acd527bc40e570c。发布构建、lintVital、原生依赖、3 项中文/下载检查、65 项脚本/原生检查及 23 项 Linux JVM 回归通过；完整 lint 仍有既有工具兼容性限制，不宣称通过。未提交文件独立保护并恢复，不强推。此前 main-0a07926 尚未安装，旧设备记录保留真实已安装 main-583f34f；新 APK 的安装状态按实时会话决定，不中断游戏。

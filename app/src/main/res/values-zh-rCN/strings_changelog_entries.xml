@@ -176,4 +176,6 @@
     <string name="changelog_summary_0a07926ef3477c90db911d169904137cfc5e2505" formatted="false">新增 0.6.9 发布说明，汇总自 0.6.7 起合入主分支的 60 个拉取请求（包括 #1903），列出作者和链接，并加入 Retroid Pocket Duo 实体按键快捷操作设置页面截图。</string>
     <string name="changelog_title_b63feb5eaa8d5d706795387908b1bfab1db54de8" formatted="false">触控板模式下三指轻点打开键盘</string>
     <string name="changelog_summary_b63feb5eaa8d5d706795387908b1bfab1db54de8" formatted="false">修复三指轻点被发送为鼠标中键，导致在 X11 桌面粘贴选中文本的问题。触控板模式下现在正确打开键盘，包括桌面会话和 Steam 桌面界面。</string>
+    <string name="changelog_title_bfa61b5139407bb3969e0d6dae991e03829029eb" formatted="false">修复双屏掌机副屏闲置后的无响应</string>
+    <string name="changelog_summary_bfa61b5139407bb3969e0d6dae991e03829029eb" formatted="false">继续处理 AYN Thor 等双屏设备的自动抢焦点和“DroidDeck 没有响应”问题，跟进 #1806 与 #1871，修复副屏闲置后的焦点行为。</string>
 </resources>
