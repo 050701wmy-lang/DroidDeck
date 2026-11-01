@@ -178,4 +178,14 @@
     <string name="changelog_summary_b63feb5eaa8d5d706795387908b1bfab1db54de8" formatted="false">修复三指轻点被发送为鼠标中键，导致在 X11 桌面粘贴选中文本的问题。触控板模式下现在正确打开键盘，包括桌面会话和 Steam 桌面界面。</string>
     <string name="changelog_title_bfa61b5139407bb3969e0d6dae991e03829029eb" formatted="false">修复双屏掌机副屏闲置后的无响应</string>
     <string name="changelog_summary_bfa61b5139407bb3969e0d6dae991e03829029eb" formatted="false">继续处理 AYN Thor 等双屏设备的自动抢焦点和“DroidDeck 没有响应”问题，跟进 #1806 与 #1871，修复副屏闲置后的焦点行为。</string>
+    <string name="changelog_title_ec9573643a71d6b55e623dfa13c6725924077aab" formatted="false">为 Codemasters EGO 游戏匹配 Windows 可见核心数的线程方案</string>
+    <string name="changelog_summary_ec9573643a71d6b55e623dfa13c6725924077aab" formatted="false">修复 DiRT 3、DiRT Showdown、GRID、F1 等 EGO 游戏只提供部分核心数线程方案的问题，为 Windows 实际可见的核心数量选择适配方案。</string>
+    <string name="changelog_title_09d170eb2242ae134fe1c8a8aac6ac3702b0cbf8" formatted="false">性能 HUD 随 Inner Gamer 主题循环变色</string>
+    <string name="changelog_summary_09d170eb2242ae134fe1c8a8aac6ac3702b0cbf8" formatted="false">修复性能监控面板在 Inner Gamer 主题下的颜色循环行为。</string>
+    <string name="changelog_title_730b3affae0b3c3b3fd48580a3d0298a5a6a3f5e" formatted="false">每次会话均打开副屏仪表盘</string>
+    <string name="changelog_summary_730b3affae0b3c3b3fd48580a3d0298a5a6a3f5e" formatted="false">修复副屏仪表盘只在第一次会话打开、之后会话不再打开的问题。</string>
+    <string name="changelog_title_6e57af02af31547d19c5007087f869524d1e05a4" formatted="false">保留《小小梦魇》的渲染线程</string>
+    <string name="changelog_summary_6e57af02af31547d19c5007087f869524d1e05a4" formatted="false">调整《小小梦魇》的线程处理以保留渲染线程。上游在 Retroid Pocket Duo 测得 FPS 提升 12.7%，不代表本机实测结果。</string>
+    <string name="changelog_title_8a7022fc14679fccf6a661f84e25a62d8d016b9f" formatted="false">新增副屏仪表盘：下载、通知、截图、聊天与游戏统计</string>
+    <string name="changelog_summary_8a7022fc14679fccf6a661f84e25a62d8d016b9f" formatted="false">副屏可显示下载、通知和截图，支持 Steam 聊天与语音及游戏内统计、遥测仪表盘。保留只读更新日志，不恢复应用 APK 更新入口。</string>
 </resources>

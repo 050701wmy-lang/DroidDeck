@@ -339,3 +339,14 @@ App 初始化冲突保留上游 shortcuts_sync 进程隔离及 fork GitHubDownlo
 同步官方 preview 的 bfa61b5139407bb3969e0d6dae991e03829029eb，官方 APK SHA-256 为 19c7ab0ed4f74a170d718130c5df4deade4fbe00efdde2e157b347eaa56be17d，版本 0.6.9 (17)。修复 AYN Thor 等双屏设备副屏闲置后的抢焦点及无响应问题。新增一条双语记录，共 89 条离线日志。保留中文默认、字体、下载加速、上游 HUD、原包名/名称/签名、只读日志及原生呈现修复。
 
 原生呈现库完整重编译；211 项载荷、六组件与官方 APK 逐项匹配，见本机 bfa61b5-payload-verification.json 和 bfa61b5-addon-packs.json。组件来自同提交官方 run 41257814071、产物 13063909879，ZIP SHA-256 为 f9393f556227a8ffa9021db3c5c4fab3445cfce2b34e343f5acd527bc40e570c。发布构建、lintVital、原生依赖、3 项中文/下载检查、65 项脚本/原生检查及 23 项 Linux JVM 回归通过；完整 lint 仍有既有工具兼容性限制，不宣称通过。未提交文件独立保护并恢复，不强推。此前 main-0a07926 尚未安装，旧设备记录保留真实已安装 main-583f34f；新 APK 的安装状态按实时会话决定，不中断游戏。
+
+
+## 已发布预览 main-ec95736（2026-11-01）
+
+同步官方 preview 的 ec9573643a71d6b55e623dfa13c6725924077aab，官方 APK SHA-256 为 b31f2d00143c46ed42b1bb5adaaaaf1d1c58660fbae4f3ab2c008ce77c3645bd，版本 0.6.9 (17)。包含副屏仪表盘（下载、通知、截图、Steam 聊天及游戏统计）、HUD 主题颜色、每次会话打开仪表盘、EGO 游戏核心数量线程方案与《小小梦魇》线程优化。上游 FPS 示例不作为本机实测。
+
+新增 87 项中文设置及五条双语日志，共 94 条离线日志。保持 AppLanguage 默认中文、字体挂载、原包名/名称/签名、GitHub 加速和 Steam CDN/续传、上游 HUD 与本地原生呈现修复。保留只读日志，不恢复应用 APK 更新入口或角标。
+
+原生代码完整重编译，212 项当前官方载荷与源码摘要见 ec95736-payload-verification.json。六组件来自同提交官方 run 41280583086、产物 13072889916，ZIP SHA-256 为 83df90b4d5bcdb2bea27e8e8e86e964726851ebb57a0e086d4089beecae9dac0。保留上游新增的本地组件随包回退，六个 tar.zst 在 APK 内额外核验摘要，未遗漏新增资产。当前 .gitignore 与用户 Steam 修改独立保护，实验文件不纳入提交。
+
+发布构建、lintVital、原生依赖、3 项中文/下载检查、149 项脚本/原生回归及 119 项 Linux JVM 回归通过。完整 lint 保留此前已记录工具限制，不宣称通过。BottomTelemetryPage.kt 末尾空白与上游完全一致并保留。设备状态与升级读回校验见本机 preview-state.json；不自动打断会话。
