@@ -227,8 +227,6 @@
     <string name="stats_trace">最近 10 秒油门与刹车</string>
     <string name="stats_speed_chart">速度，%1$s</string>
     <string name="stats_gear">挡位</string>
-    <string name="stats_speed_units">速度单位</string>
-    <string name="stats_speed_units_auto">自动（%1$s）</string>
     <string name="stats_steam_client_arm">Steam 客户端 ARM</string>
     <string name="stats_steam_client_x86">Steam 客户端 x86</string>
     <string name="stats_throttle">油门</string>
@@ -246,7 +244,6 @@
     <string name="stats_fuel_t">燃料，吨</string>
     <string name="stats_fuel_main">主燃料 %1$s 吨</string>
     <string name="stats_fuel_reserve">备用燃料 %1$s 吨</string>
-    <string name="stats_tap_hint">点击顶部信息条或仪表盘可更换样式。</string>
     <string name="bottom_telemetry_send_title">发送仪表盘数据</string>
     <string name="bottom_telemetry_send_auto">自动</string>
     <string name="bottom_telemetry_send_auto_hint">为此处列出的所有游戏启用，包括之后发现的游戏。手动关闭的游戏保持关闭。</string>
@@ -285,7 +282,49 @@
     <string name="bottom_telemetry_balance">余额</string>
     <string name="bottom_telemetry_war_thunder">战争雷霆</string>
     <string name="bottom_telemetry_elite">精英：危机四伏</string>
-    <string name="bottom_telemetry_help">启用赛车游戏的数据输出（通常称为遥测或 UDP）即可在此查看实时仪表盘。数据仅保留在本设备。</string>
     <string name="bottom_telemetry_unknown_format">端口 %1$d 已收到数据（%2$d 个数据包，每个 %3$d 字节），但此页尚不支持该格式。</string>
     <string name="bottom_telemetry_port_busy">其他程序已占用端口 %1$s，无法显示此游戏的数据。</string>
+    <string name="libraries_missing">%1$s · 不可用</string>
+    <string name="setup_dual_screen_launcher_hint">自动将 Steam、游戏库、商店等启动器栏目放到掌机内置副屏。开启时使用任何副显示器，关闭时仅使用单屏启动器。</string>
+    <string name="stats_hud_core_group">%1$d 个核心，最高 %2$s GHz</string>
+    <string name="stats_hud_playing_for">已游玩 %1$s</string>
+    <string name="stats_hud_low" formatted="false">1% 低帧</string>
+    <string name="libraries_pick">选择游戏库文件夹</string>
+    <string name="bottom_strip_cpu_temp">CPU 温度</string>
+    <string name="bottom_desktop_starting">正在启动 KDE 桌面…</string>
+    <string name="bottom_desktop_mode_trackpad">触控板</string>
+    <string name="libraries_rename_title">游戏库名称</string>
+    <string name="setup_dual_screen_launcher">双屏启动器</string>
+    <string name="libraries_title">更多 Steam 游戏库</string>
+    <string name="bottom_desktop_failed">桌面无法启动，日志位于本次会话的 bottom-desktop 文件夹。</string>
+    <string name="bottom_desktop_ended">桌面已退出。</string>
+    <string name="stats_hud_per_minute">%1$d / 分钟</string>
+    <string name="libraries_applies_next">下次 Steam 会话起生效</string>
+    <string name="stats_hud_avg_frame">平均帧时间</string>
+    <string name="stats_hud_whole_device">整机</string>
+    <string name="bottom_desktop_off">桌面已关闭。</string>
+    <string name="bottom_strip_lows" formatted="false">1% 和 0.1% 低帧</string>
+    <string name="libraries_full">最多添加 %1$d 个游戏库</string>
+    <string name="stats_hud_frametime">帧时间</string>
+    <string name="bottom_desktop_mode_touch">直接触摸</string>
+    <string name="second_mode_desktop">桌面</string>
+    <string name="stats_hud_red_mark">红色标记表示 HUD 将温度显示为红色时的阈值。</string>
+    <string name="libraries_add">添加游戏库</string>
+    <string name="libraries_hint">Steam 可安装和运行游戏的文件夹，各自使用独立名称。移除游戏库会保留磁盘上的游戏。</string>
+    <string name="stats_hud_game_cores">游戏</string>
+    <string name="stats_hud_fps_of">%1$d Hz 下的 FPS</string>
+    <string name="libraries_rename">重命名</string>
+    <string name="bottom_desktop_trackpad">触控板，点击切换为直接触摸</string>
+    <string name="stats_hud_slow_frames">超过 33 毫秒的帧</string>
+    <string name="libraries_overlap">该文件夹已是游戏库或位于现有游戏库内</string>
+    <string name="stats_hud_last_seconds">最近 %1$d 秒</string>
+    <string name="setup_dual_screen_sessions">双屏会话</string>
+    <string name="setup_dual_screen_sessions_hint">自动将游戏内菜单停靠在内置副屏。开启时使用任何副显示器，关闭时菜单保留在游戏屏幕，仍可从菜单选择副屏。</string>
+    <string name="bottom_desktop_direct_touch">直接触摸，点击切换为触控板</string>
+    <string name="bottom_desktop_title">桌面 · %1$s</string>
+    <string name="stats_hud_core_group_unknown">%1$d 个核心</string>
+    <string name="bottom_hud_group">副屏 HUD</string>
+    <string name="bottom_desktop_start">启动桌面</string>
+    <string name="bottom_strip_tabs">每个标签页显示信息条</string>
+    <string name="stats_hud_battery_temp">电池</string>
 </resources>

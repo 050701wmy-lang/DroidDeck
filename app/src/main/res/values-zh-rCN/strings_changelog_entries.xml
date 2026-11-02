@@ -188,4 +188,24 @@
     <string name="changelog_summary_6e57af02af31547d19c5007087f869524d1e05a4" formatted="false">调整《小小梦魇》的线程处理以保留渲染线程。上游在 Retroid Pocket Duo 测得 FPS 提升 12.7%，不代表本机实测结果。</string>
     <string name="changelog_title_8a7022fc14679fccf6a661f84e25a62d8d016b9f" formatted="false">新增副屏仪表盘：下载、通知、截图、聊天与游戏统计</string>
     <string name="changelog_summary_8a7022fc14679fccf6a661f84e25a62d8d016b9f" formatted="false">副屏可显示下载、通知和截图，支持 Steam 聊天与语音及游戏内统计、遥测仪表盘。保留只读更新日志，不恢复应用 APK 更新入口。</string>
+    <string name="changelog_title_55da0afd061f5d300d608cb00067de2585d18ca7" formatted="false">修复 Adreno 8xx 与硬件调度内核的免 Root GPU 频率和负载读取</string>
+    <string name="changelog_summary_55da0afd061f5d300d608cb00067de2585d18ca7" formatted="false">修复 Android 限制 GPU sysfs 访问时，Adreno 830 等设备无法读取 GPU 频率、只能显示部分 Vulkan 负载的问题，完善无需 Root 的硬件读取路径。</string>
+    <string name="changelog_title_313b6a59d2ed57e984b71822356614d6c762c70e" formatted="false">副屏被其他窗口占用时自动使用单屏模式</string>
+    <string name="changelog_summary_313b6a59d2ed57e984b71822356614d6c762c70e" formatted="false">Retroid Pocket Duo 与 AYN Thor 的副屏被其他窗口占用时自动切换到单屏模式，副屏空闲后恢复双屏模式。</string>
+    <string name="changelog_title_92ec0929aee269ae315703b41b7e37197a3c669d" formatted="false">移除副屏 HUD 设置的冗余说明</string>
+    <string name="changelog_summary_92ec0929aee269ae315703b41b7e37197a3c669d" formatted="false">移除“副屏 HUD”和“每个标签页显示信息条”等设置项的分组说明及副标题。</string>
+    <string name="changelog_title_40dfcd94f91caf9f8d18737c63a28df1cb5ce242" formatted="false">DOOM（2016）保留自身请求的交换链图像数量</string>
+    <string name="changelog_summary_40dfcd94f91caf9f8d18737c63a28df1cb5ce242" formatted="false">修复 GOG 版 DOOM（2016）使用 Vulkan 时启动即报引擎崩溃的问题，保留游戏要求的交换链图像数量，使其能够进入菜单。</string>
+    <string name="changelog_title_e1d241d723014e5cc3cc0fb126d873cfc3279db0" formatted="false">新增副屏 HUD、折线信息条及相关设置</string>
+    <string name="changelog_summary_e1d241d723014e5cc3cc0fb126d873cfc3279db0" formatted="false">为双屏设备增加副屏 HUD、折线信息条，以及在每个副屏标签下显示信息条的选项和副屏 HUD 设置。</string>
+    <string name="changelog_title_6a30a9bb4be22f3136f49ed171df93b2daa8425f" formatted="false">缩小停靠 HUD 标签的 FPS 数字</string>
+    <string name="changelog_summary_6a30a9bb4be22f3136f49ed171df93b2daa8425f" formatted="false">将停靠 FPS 标签数字从 20sp 缩小到 10sp，同时缩小 fps 标记和内边距，保持与 HUD 缩放设置联动。</string>
+    <string name="changelog_title_da665bb14f0cc201e3891ead354ae8ed954283b9" formatted="false">Adreno 7xx 自动优先选择 DD-Turnip</string>
+    <string name="changelog_summary_da665bb14f0cc201e3891ead354ae8ed954283b9" formatted="false">自动模式优先为 Adreno 7xx（包括 710、720、722）选择最新 DD-Turnip 驱动。</string>
+    <string name="changelog_title_e30e722f8b4fd3656fcd566c5b3b3769503c1873" formatted="false">支持管理多个 Steam 游戏库</string>
+    <string name="changelog_summary_e30e722f8b4fd3656fcd566c5b3b3769503c1873" formatted="false">除内部游戏库和存储卡外，可同时添加多个 Steam 游戏库，包括 USB、其他启动器目录及运行环境之外的内部目录，避免维修运行环境影响游戏文件。</string>
+    <string name="changelog_title_c5577478caab6af7efc9fa806a706ef49ad6ca2a" formatted="false">清理源码注释和无用代码，并补齐缺失翻译</string>
+    <string name="changelog_summary_c5577478caab6af7efc9fa806a706ef49ad6ca2a" formatted="false">上游代码清理及翻译整理，目标是不改变应用行为。中文 fork 保留其下载、中文资源与原生呈现修复。</string>
+    <string name="changelog_title_8cb5c2168e8ec4a3f05bc1e075eaaf968570ca69" formatted="false">在受限设备上免 Root 读取 GPU 负载和频率</string>
+    <string name="changelog_summary_8cb5c2168e8ec4a3f05bc1e075eaaf968570ca69" formatted="false">为阻止应用读取 GPU 数据的设备（例如 Retroid Pocket Duo）增加无需 Root 的 GPU 百分比及频率读取支持。</string>
 </resources>

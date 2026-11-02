@@ -350,3 +350,14 @@ App 初始化冲突保留上游 shortcuts_sync 进程隔离及 fork GitHubDownlo
 原生代码完整重编译，212 项当前官方载荷与源码摘要见 ec95736-payload-verification.json。六组件来自同提交官方 run 41280583086、产物 13072889916，ZIP SHA-256 为 83df90b4d5bcdb2bea27e8e8e86e964726851ebb57a0e086d4089beecae9dac0。保留上游新增的本地组件随包回退，六个 tar.zst 在 APK 内额外核验摘要，未遗漏新增资产。当前 .gitignore 与用户 Steam 修改独立保护，实验文件不纳入提交。
 
 发布构建、lintVital、原生依赖、3 项中文/下载检查、149 项脚本/原生回归及 119 项 Linux JVM 回归通过。完整 lint 保留此前已记录工具限制，不宣称通过。BottomTelemetryPage.kt 末尾空白与上游完全一致并保留。设备状态与升级读回校验见本机 preview-state.json；不自动打断会话。
+
+
+## 已发布预览 main-55da0af（2026-11-02）
+
+同步官方 catalog.preview 的 55da0afd061f5d300d608cb00067de2585d18ca7，官方 APK SHA-256 为 0771fdb26706bac9259f4dc0c2630a99600a0b2e6c308ce636769a7863757ca6，版本 0.6.9 (17)。包含免 Root GPU 读取、Adreno 8xx/硬件调度内核兼容、多 Steam 游戏库、副屏 HUD/信息条和副屏被占用时的单屏模式、DOOM 交换链与自动驱动选择修复。
+
+上游大规模注释清理冲突经逐项处理：保留 sc_layer 呈现统计重置、DMA-BUF FOREIGN 扩展、下载初始化，并接受新增隔离进程；中文资源去重并移除四项删除设置，新增 43 项中文设置和十条双语日志，共 104 条离线记录。继续保留默认中文、字体、原包名/名称/签名、下载修复、只读日志和原生呈现修复。
+
+原生呈现库清理重编译，217 项载荷与源码指纹见本机 55da0af-payload-verification.json，六组件来自同提交 run 41426216154、产物 13132771893，ZIP 摘要 sha256:f2a0d90f66ea9535852cd8f3e4f62daffeb30773113a9925b274cd86ba64910d。官方与 fork DEX 和六个随包回退组件逐项核验。新增 ZXing 3.5.3 从官方 Maven Central 获取，与上游声明一致，不修改生产依赖版本。
+
+发布构建、lintVital、依赖闭包、3 项中文/下载检查、125 项脚本/原生回归与 61 项 Linux JVM 回归通过；完整 lint 保留此前已记录工具限制，不宣称通过。用户 .gitignore、Steam 文件和实验文档独立保护恢复，不纳入本次提交，不强推。APK 与真实安装状态见 preview-state.json。

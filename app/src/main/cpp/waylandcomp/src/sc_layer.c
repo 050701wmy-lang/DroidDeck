@@ -387,7 +387,7 @@ int sc_layer_base_black(int width, int height) {
     ARect src = {0, 0, 16, 16}, dst = {0, 0, width, height};
     api.setBuffer(tx, g_base_sc, black, -1);
     api.setBufferTransparency(tx, g_base_sc, ASC_TRANSPARENCY_OPAQUE);
-    api.setZOrder(tx, g_base_sc, 0); /* GAME = 1, OVERLAY = 2 */
+    api.setZOrder(tx, g_base_sc, 0);
     api.setGeometry(tx, g_base_sc, &src, &dst, 0);
     api.setVisibility(tx, g_base_sc, ASC_VISIBILITY_SHOW);
     api.txApply(tx); api.txDelete(tx);
