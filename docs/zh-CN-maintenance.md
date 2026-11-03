@@ -370,3 +370,12 @@ App 初始化冲突保留上游 shortcuts_sync 进程隔离及 fork GitHubDownlo
 保留默认中文、字体挂载、下载加速及 Steam CDN/续传、原包名/名称/签名、只读日志、上游 HUD 与本地呈现修复。原生库完整重编译，222 项官方载荷及源码摘要见 2b790a8-payload-verification.json。MaliBridge 的 libvkbridge_server.so、JNI 及客户端使用本次官方 APK 精确产物，本机不重复构建官方服务端；不是忽略缺包检查。六组件来自同提交 run 41565482611、产物 13199997234，ZIP sha256:71b9e3180314f65ff070d09e821d139da2cdcafddb5562d229c5209295e03d99，并逐项核对官方及 fork DEX 与随包文件。
 
 发布构建、lintVital、原生依赖、3 项中文/下载检查、252 项脚本/原生回归和 68 项 Linux JVM 回归通过。完整 lint 保留此前工具限制，不宣称通过。docs/openmali/README.md 空白与上游一致并保留。用户 .gitignore、Steam 文件与未提交实验文档独立保护、提交后恢复，不强推。真实设备状态及升级签名/读回结果见 preview-state.json。
+
+
+## 已发布预览 main-951270b（2026-11-03）
+
+同步官方 catalog.preview 的 951270bc8f06a5b099f44274b14b8814428d697b，官方 APK SHA-256 06af0996078811dd004944344727ec07dd8ed7917995ac805834fb5de3cbc9ca，0.6.9 (17)。修复 EA 登录窗口被认证启动画面遮挡；新增 PC 键盘大小、透明度、隐藏键组设置，保留僵尸毁灭工程 JVM 调整、EA 应用安装支持和深色导航栏。补齐九项中文设置及两个已发布预览的双语记录，共 116 条离线日志。
+
+保留默认中文、字体挂载、下载加速、Steam CDN/续传、上游 HUD、本地呈现修复及只读日志。官方签名、包名、版本和完整 APK 摘要已验证；重编译本地呈现库，核对 222 项载荷与原生依赖闭包。六组件来自同提交 run 41637837971、产物 13233026990，ZIP sha256:365ea1136e00c13b56cc05701a7a5c88b7baf0bf4b17836b5998aa3a3116ecf5，核对官方与 fork DEX 中的摘要及随包文件。fork 保持 com.droiddeck.launcher、DroidDeck 和原签名，APK SHA-256 07c84a516b616411c3f4456ab484a77ceaf75c6cc17305b35d4100293f902b2f。
+
+发布构建、lintVital、3 项中文/下载检查、282 项原生/脚本回归、94 项 Linux JVM 检查通过。完整 lint 因已知 Compose Kotlin 元数据兼容限制未重跑，不宣称通过。上游 gamescope 补丁 0126 的上下文空白逐字保留，其余改动通过空白检查。用户原有脚本及实验工作单独保护，提交后恢复，不强推；设备状态及安装核验记录于 preview-state.json。

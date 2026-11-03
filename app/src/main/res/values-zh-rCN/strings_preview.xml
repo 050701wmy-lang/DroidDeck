@@ -339,4 +339,13 @@
     <string name="swap_game_screen">游戏显示位置</string>
     <string name="swap_game_screen_top">主屏</string>
     <string name="libraries_access_hint">允许所有文件访问，以便 DroidDeck 查找其他应用保存在内部存储上的 Steam 游戏库</string>
+    <string name="pckb_size">屏幕占比</string>
+    <string name="pckb_size_hint">键盘占屏幕的比例，包含标题栏。</string>
+    <string name="pckb_opacity">不透明度</string>
+    <string name="pckb_opacity_hint">降低不透明度可看见键盘后方的游戏。</string>
+    <string name="pckb_hidden_keys">隐藏按键</string>
+    <string name="pckb_hidden_keys_hint">隐藏不常用的按键。</string>
+    <string name="pckb_group_function">Esc 和功能键行</string>
+    <string name="pckb_group_nav">Ins / Del / Home / End / PgUp / PgDn</string>
+    <string name="pckb_group_arrows">方向键</string>
 </resources>

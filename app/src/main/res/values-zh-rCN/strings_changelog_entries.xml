@@ -228,4 +228,8 @@
     <string name="changelog_summary_89a2ae87d7f03039f1b15a49fb36cbb813e83278" formatted="false">移除游戏统计面板、副屏监控和屏上 HUD 后方的大型淡色 D 水印。</string>
     <string name="changelog_title_3583643a11a25eedf77e15d33e2685348b1f19c7" formatted="false">新增 Game Jolt 游戏商店</string>
     <string name="changelog_summary_3583643a11a25eedf77e15d33e2685348b1f19c7" formatted="false">商店页新增 Game Jolt，支持浏览、搜索、详情、构建选择、安装、游戏库、收藏和更新，并包含共享安装逻辑及 itch.io 的相关修复。</string>
+    <string name="changelog_title_951270bc8f06a5b099f44274b14b8814428d697b" formatted="false">EA 登录窗口保持在启动画面上方</string>
+    <string name="changelog_summary_951270bc8f06a5b099f44274b14b8814428d697b" formatted="false">修复启动 Burnout Paradise Remastered 时，EA 启动器的认证启动画面遮挡 EA 登录与验证窗口的问题。</string>
+    <string name="changelog_title_8eeea5ef5a6437dd6d4b6532cc5ef671a7530a6b" formatted="false">PC 键盘新增大小、透明度和隐藏按键设置</string>
+    <string name="changelog_summary_8eeea5ef5a6437dd6d4b6532cc5ef671a7530a6b" formatted="false">会话抽屉的控制器 → 键盘中新增屏幕占比（25–70%，默认 47%）、透明度（30–100%，默认 100%）及按键组隐藏设置；降低透明度时文字与边框一起变淡，触控不受影响。</string>
 </resources>
