@@ -361,3 +361,12 @@ App 初始化冲突保留上游 shortcuts_sync 进程隔离及 fork GitHubDownlo
 原生呈现库清理重编译，217 项载荷与源码指纹见本机 55da0af-payload-verification.json，六组件来自同提交 run 41426216154、产物 13132771893，ZIP 摘要 sha256:f2a0d90f66ea9535852cd8f3e4f62daffeb30773113a9925b274cd86ba64910d。官方与 fork DEX 和六个随包回退组件逐项核验。新增 ZXing 3.5.3 从官方 Maven Central 获取，与上游声明一致，不修改生产依赖版本。
 
 发布构建、lintVital、依赖闭包、3 项中文/下载检查、125 项脚本/原生回归与 61 项 Linux JVM 回归通过；完整 lint 保留此前已记录工具限制，不宣称通过。用户 .gitignore、Steam 文件和实验文档独立保护恢复，不纳入本次提交，不强推。APK 与真实安装状态见 preview-state.json。
+
+
+## 已发布预览 main-2b790a8（2026-11-03）
+
+同步官方 preview 的 2b790a8a71024034fe3c2c2c67251d899c77882f，官方 APK SHA-256 为 b95ad73fbdce1b753320cbbf48df8ff225bf5f70b4ff17139ec52ee55280a93b，版本 0.6.9 (17)。修复更新运行环境后桌面被误判未安装、旧会话失败停止新会话及 Xwayland 孤儿进程问题；包含 MaliBridge、Game Jolt、GOG 注册表、战网游戏识别、双屏交换和帧图改进。新增 12 项中文设置与十条双语记录，共 114 条离线日志。
+
+保留默认中文、字体挂载、下载加速及 Steam CDN/续传、原包名/名称/签名、只读日志、上游 HUD 与本地呈现修复。原生库完整重编译，222 项官方载荷及源码摘要见 2b790a8-payload-verification.json。MaliBridge 的 libvkbridge_server.so、JNI 及客户端使用本次官方 APK 精确产物，本机不重复构建官方服务端；不是忽略缺包检查。六组件来自同提交 run 41565482611、产物 13199997234，ZIP sha256:71b9e3180314f65ff070d09e821d139da2cdcafddb5562d229c5209295e03d99，并逐项核对官方及 fork DEX 与随包文件。
+
+发布构建、lintVital、原生依赖、3 项中文/下载检查、252 项脚本/原生回归和 68 项 Linux JVM 回归通过。完整 lint 保留此前工具限制，不宣称通过。docs/openmali/README.md 空白与上游一致并保留。用户 .gitignore、Steam 文件与未提交实验文档独立保护、提交后恢复，不强推。真实设备状态及升级签名/读回结果见 preview-state.json。

@@ -208,4 +208,24 @@
     <string name="changelog_summary_c5577478caab6af7efc9fa806a706ef49ad6ca2a" formatted="false">上游代码清理及翻译整理，目标是不改变应用行为。中文 fork 保留其下载、中文资源与原生呈现修复。</string>
     <string name="changelog_title_8cb5c2168e8ec4a3f05bc1e075eaaf968570ca69" formatted="false">在受限设备上免 Root 读取 GPU 负载和频率</string>
     <string name="changelog_summary_8cb5c2168e8ec4a3f05bc1e075eaaf968570ca69" formatted="false">为阻止应用读取 GPU 数据的设备（例如 Retroid Pocket Duo）增加无需 Root 的 GPU 百分比及频率读取支持。</string>
+    <string name="changelog_title_2b790a8a71024034fe3c2c2c67251d899c77882f" formatted="false">运行环境更新后保留已安装的 Linux 桌面</string>
+    <string name="changelog_summary_2b790a8a71024034fe3c2c2c67251d899c77882f" formatted="false">修复更新 Linux 运行环境后，桌面按钮重新显示“安装并打开桌面”、并重复下载整个 Kubuntu 桌面的问题。</string>
+    <string name="changelog_title_4b8f63d84df03aae94f61bb770c781663cdfb115" formatted="false">通过 MaliBridge 增加 Mali Vulkan 支持</string>
+    <string name="changelog_summary_4b8f63d84df03aae94f61bb770c781663cdfb115" formatted="false">合入 MaliBridge 支持，并以合并提交保留相关作者的提交记录，使用此前通过 CI 验证的分支。</string>
+    <string name="changelog_title_c43a493ad800b63a53971875bfe53ed3ad773e56" formatted="false">预加载器接管二次派生的 Xwayland 子进程</string>
+    <string name="changelog_summary_c43a493ad800b63a53971875bfe53ed3ad773e56" formatted="false">设置子进程回收角色，避免二次派生的 Xwayland 被交给 init，修复部分厂商内核一直停在“启动显示与音频”的问题。</string>
+    <string name="changelog_title_0a0bbb68d1ad57b2db9b7809cb464494a1e26368" formatted="false">旧会话启动失败不再停止新会话</string>
+    <string name="changelog_summary_0a0bbb68d1ad57b2db9b7809cb464494a1e26368" formatted="false">修复旧会话后台启动失败后，误将用户随后启动的新会话一并停止的问题。</string>
+    <string name="changelog_title_cdde9d3390defe4ee0c8f8236b9ee7b00d288b78" formatted="false">为无法运行安装器的 GOG 游戏补齐安装注册表</string>
+    <string name="changelog_summary_cdde9d3390defe4ee0c8f8236b9ee7b00d288b78" formatted="false">修复部分 GOG 游戏已完成安装却在启动阶段退出的问题，为安装器无法运行的游戏提供所需安装注册表。</string>
+    <string name="changelog_title_bc5edb81dbceb1011074f84743007b0118638c50" formatted="false">在游戏库中显示魔兽世界 Forever</string>
+    <string name="changelog_summary_bc5edb81dbceb1011074f84743007b0118638c50" formatted="false">修复通过 Battle.net 安装的 World of Warcraft: Forever 没有出现在游戏库中的问题。</string>
+    <string name="changelog_title_8d3616eccd9127188453b61cd9d1c44657becf5a" formatted="false">双屏设备支持交换游戏与面板屏幕</string>
+    <string name="changelog_summary_8d3616eccd9127188453b61cd9d1c44657becf5a" formatted="false">可将游戏放到副屏、面板放到主屏，支持双屏掌机交换显示位置。</string>
+    <string name="changelog_title_3fbd86c89ddff17df9bbc0980add8b384c2db47d" formatted="false">副屏帧时间图更新更平滑</string>
+    <string name="changelog_summary_3fbd86c89ddff17df9bbc0980add8b384c2db47d" formatted="false">改进副屏帧时间图的采样和绘制，减少低频轮询产生的跳动与锯齿观感。</string>
+    <string name="changelog_title_89a2ae87d7f03039f1b15a49fb36cbb813e83278" formatted="false">移除 HUD 背景水印，标题改用文字标识</string>
+    <string name="changelog_summary_89a2ae87d7f03039f1b15a49fb36cbb813e83278" formatted="false">移除游戏统计面板、副屏监控和屏上 HUD 后方的大型淡色 D 水印。</string>
+    <string name="changelog_title_3583643a11a25eedf77e15d33e2685348b1f19c7" formatted="false">新增 Game Jolt 游戏商店</string>
+    <string name="changelog_summary_3583643a11a25eedf77e15d33e2685348b1f19c7" formatted="false">商店页新增 Game Jolt，支持浏览、搜索、详情、构建选择、安装、游戏库、收藏和更新，并包含共享安装逻辑及 itch.io 的相关修复。</string>
 </resources>

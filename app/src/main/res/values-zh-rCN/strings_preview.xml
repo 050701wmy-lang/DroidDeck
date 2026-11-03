@@ -327,4 +327,16 @@
     <string name="bottom_desktop_start">启动桌面</string>
     <string name="bottom_strip_tabs">每个标签页显示信息条</string>
     <string name="stats_hud_battery_temp">电池</string>
+    <string name="swap_screens_unavailable">副屏目前不可用</string>
+    <string name="libraries_found_hint">在本设备找到 · %1$s · %2$s</string>
+    <string name="libraries_used_inner">已添加所选文件夹内的 Steam 游戏库 %1$s</string>
+    <string name="libraries_access_title">查找内部存储上的游戏库</string>
+    <string name="libraries_access_allow">允许</string>
+    <string name="swap_screens">交换屏幕</string>
+    <string name="swap_game_screen_bottom">副屏</string>
+    <string name="libraries_add_found">添加</string>
+    <string name="swap_game_screen_group">游戏屏幕</string>
+    <string name="swap_game_screen">游戏显示位置</string>
+    <string name="swap_game_screen_top">主屏</string>
+    <string name="libraries_access_hint">允许所有文件访问，以便 DroidDeck 查找其他应用保存在内部存储上的 Steam 游戏库</string>
 </resources>
