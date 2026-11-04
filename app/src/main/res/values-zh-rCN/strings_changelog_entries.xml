@@ -232,4 +232,12 @@
     <string name="changelog_summary_951270bc8f06a5b099f44274b14b8814428d697b" formatted="false">修复启动 Burnout Paradise Remastered 时，EA 启动器的认证启动画面遮挡 EA 登录与验证窗口的问题。</string>
     <string name="changelog_title_8eeea5ef5a6437dd6d4b6532cc5ef671a7530a6b" formatted="false">PC 键盘新增大小、透明度和隐藏按键设置</string>
     <string name="changelog_summary_8eeea5ef5a6437dd6d4b6532cc5ef671a7530a6b" formatted="false">会话抽屉的控制器 → 键盘中新增屏幕占比（25–70%，默认 47%）、透明度（30–100%，默认 100%）及按键组隐藏设置；降低透明度时文字与边框一起变淡，触控不受影响。</string>
+    <string name="changelog_title_26274114a3f6cc3fd2bb703927b3f29ec8e9c3e6" formatted="false">CI 避免重复构建 gamescope</string>
+    <string name="changelog_summary_26274114a3f6cc3fd2bb703927b3f29ec8e9c3e6" formatted="false">调整触发条件，避免发布后更新 release.env 又启动一次 gamescope 编译。</string>
+    <string name="changelog_title_45fb0174960a5ace3691858e93d759dc1d5bba26" formatted="false">批量更新 Steam 兼容性映射</string>
+    <string name="changelog_summary_45fb0174960a5ace3691858e93d759dc1d5bba26" formatted="false">批量处理兼容工具变更，减少大规模更新时逐个复制和搜索映射的开销。</string>
+    <string name="changelog_title_f3650d3d379f32a0d33e7a24249ae76023eab8bc" formatted="false">降低屏幕摇杆开销并遵循低延迟设置</string>
+    <string name="changelog_summary_f3650d3d379f32a0d33e7a24249ae76023eab8bc" formatted="false">减少长按虚拟摇杆的重绘开销，让屏幕控件遵循关闭低延迟的设置。尚未在受影响的三星设备上复现掉帧。</string>
+    <string name="changelog_title_9f6c73442b3ce0eb5f131b99180da469d8c9172c" formatted="false">修复 Quest 3 启动 Steam 失败</string>
+    <string name="changelog_summary_9f6c73442b3ce0eb5f131b99180da469d8c9172c" formatted="false">处理被拒绝的 KGSL 时间戳读取，修复 Quest 3 上 Steam 会话以状态 134 退出的问题。</string>
 </resources>
