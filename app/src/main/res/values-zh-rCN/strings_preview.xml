@@ -131,7 +131,6 @@
     <string name="integration_shortcuts">主屏幕键快捷操作</string>
     <string name="integration_shortcuts_hint">按住主屏幕键使用 Steam Guide 组合键</string>
     <string name="integration_shortcuts_maybe_restricted">Android 中显示为灰色？请到应用信息 → ⋮ → 允许受限设置</string>
-    <string name="integration_shortcuts_needs_home">需要将 DroidDeck 设为主屏幕应用</string>
     <string name="integration_shortcuts_restricted">已被 Android 阻止 · 应用信息 → ⋮ → 允许受限设置</string>
     <string name="integration_shortcuts_service">DroidDeck 主屏幕键</string>
     <string name="integration_shortcuts_service_description">Steam 会话处于前台且 DroidDeck 是默认主屏幕应用时，将主屏幕键传递为 Steam Guide 按键。不读取屏幕内容。</string>
@@ -348,4 +347,20 @@
     <string name="pckb_group_function">Esc 和功能键行</string>
     <string name="pckb_group_nav">Ins / Del / Home / End / PgUp / PgDn</string>
     <string name="pckb_group_arrows">方向键</string>
+    <string name="setup_log_share">分享</string>
+    <string name="wincomp_retry">重试更新</string>
+    <string name="wincomp_repair_required">此下载需要更新。</string>
+    <string name="setup_log_sessions">可用会话日志</string>
+    <string name="setup_log_save">保存到设备</string>
+    <string name="setup_log_export_hint">分享和保存的 ZIP 包含所选会话及相关 Steam、商店、工具和战网诊断信息。</string>
+    <string name="setup_log_delete_failed">无法删除会话日志。</string>
+    <string name="setup_log_size_date">%1$s · %2$s</string>
+    <string name="setup_log_delete_title">删除会话日志？</string>
+    <string name="setup_log_delete_message">删除 %1$s？此操作无法撤销。</string>
+    <string name="wincomp_repair_queued">已加入更新队列。</string>
+    <string name="setup_log_export_failed">无法保存会话日志。</string>
+    <string name="setup_log_current">当前会话</string>
+    <string name="setup_log_empty">尚无已保存的会话日志。</string>
+    <string name="setup_log_delete">删除</string>
+    <string name="setup_log_export_saved">会话日志已保存。</string>
 </resources>
