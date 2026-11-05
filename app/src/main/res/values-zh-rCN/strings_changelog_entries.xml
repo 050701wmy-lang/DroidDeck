@@ -240,4 +240,6 @@
     <string name="changelog_summary_f3650d3d379f32a0d33e7a24249ae76023eab8bc" formatted="false">减少长按虚拟摇杆的重绘开销，让屏幕控件遵循关闭低延迟的设置。尚未在受影响的三星设备上复现掉帧。</string>
     <string name="changelog_title_9f6c73442b3ce0eb5f131b99180da469d8c9172c" formatted="false">修复 Quest 3 启动 Steam 失败</string>
     <string name="changelog_summary_9f6c73442b3ce0eb5f131b99180da469d8c9172c" formatted="false">处理被拒绝的 KGSL 时间戳读取，修复 Quest 3 上 Steam 会话以状态 134 退出的问题。</string>
+    <string name="changelog_title_d849e6ae0a6788ea59f165ec537597bbb90063b1" formatted="false">红魔游戏空间保留 DroidDeck</string>
+    <string name="changelog_summary_d849e6ae0a6788ea59f165ec537597bbb90063b1" formatted="false">修复在红魔设备上将 DroidDeck 设为主屏幕后，DroidDeck 从游戏空间消失且切换回其他桌面后仍未恢复的问题。</string>
 </resources>

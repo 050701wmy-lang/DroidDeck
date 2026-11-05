@@ -240,4 +240,6 @@
     <string name="changelog_summary_f3650d3d379f32a0d33e7a24249ae76023eab8bc" formatted="false">Holding an on-screen stick costs far more than holding an on-screen button, and turning Low latency off changes nothing for on-screen controls. This reduces both. The frame rate drop has not been reproduced on the affected Samsung phones yet, so this should not be merged until it has been tested on one.</string>
     <string name="changelog_title_9f6c73442b3ce0eb5f131b99180da469d8c9172c" formatted="false">fix(quest): answer denied KGSL timestamp reads so Steam starts on Quest 3</string>
     <string name="changelog_summary_9f6c73442b3ce0eb5f131b99180da469d8c9172c" formatted="false">Steam failed to start on Quest 3 with \Session guest exited with status 134\.</string>
+    <string name="changelog_title_d849e6ae0a6788ea59f165ec537597bbb90063b1" formatted="false">fix: Home screen setting keeps DroidDeck in RedMagic Game Space</string>
+    <string name="changelog_summary_d849e6ae0a6788ea59f165ec537597bbb90063b1" formatted="false">On RedMagic, turning on \"Use as Home screen\" or \"DroidDeck as Home\" could leave DroidDeck out of Game Space, and it looked permanent even after switching back to another launcher.</string>
 </resources>
