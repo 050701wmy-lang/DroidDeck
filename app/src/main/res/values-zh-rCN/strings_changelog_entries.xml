@@ -282,4 +282,6 @@
     <string name="changelog_summary_7a78d2b66b4be8ea1e71e48d5188b594106331f6" formatted="false">诊断临时文件保存在私有缓存，每次导出使用独立目录并在传输后清理；刷新已导出的旧文件，保留其他目标文件。</string>
     <string name="changelog_title_e8ffe1164f14e501d64f70f98d498bdaf725d76f" formatted="false">自动检测 D3D12 能力</string>
     <string name="changelog_summary_e8ffe1164f14e501d64f70f98d498bdaf725d76f" formatted="false">默认让 VKD3D 检测 D3D12 能力，移除多项冗余游戏兼容配置，同时保留用户显式覆盖。</string>
+    <string name="changelog_title_a1bc8467fd8c4591c5b2aa5c89b7e2215e063786" formatted="false">启动页直接显示 Steam 启动选项</string>
+    <string name="changelog_summary_a1bc8467fd8c4591c5b2aa5c89b7e2215e063786" formatted="false">将 Steam 游戏的启动选项编辑器从“更多 → 编辑封面”移至游戏启动标签，便于查看和粘贴启动参数。</string>
 </resources>
