@@ -262,4 +262,24 @@
     <string name="changelog_summary_5cf69732ef0c5cf45aa5b79bb9fddbdc27048be1" formatted="false">改进实体鼠标、键盘及系统快捷键在会话中的行为。</string>
     <string name="changelog_title_940efdab3a468abecde4439cead263226f51b4ef" formatted="false">减少 Adreno 722 上 DXVK 呈现等待</string>
     <string name="changelog_summary_940efdab3a468abecde4439cead263226f51b4ef" formatted="false">针对使用 DD-Turnip 0.4.0 的 Adreno 722 运行 SpinTires.exe 时关闭 DXVK 平铺模式，保留显式配置优先级。</string>
+    <string name="changelog_title_bf693d7f7125c8af797893910a1ebabd8112d378" formatted="false">Xclipse 950/960 自动选择上游 RADV 驱动</string>
+    <string name="changelog_summary_bf693d7f7125c8af797893910a1ebabd8112d378" formatted="false">为 Xclipse 950 和 960 自动选择已验证的 RADV-Xclipse-upstream 驱动组合，避免旧候选版驱动导致 GPU 挂起与设备重启。</string>
+    <string name="changelog_title_3733c5090248e0e64f10fbe6decf9cfdf5b88d05" formatted="false">新增非 Adreno 图形栈</string>
+    <string name="changelog_summary_3733c5090248e0e64f10fbe6decf9cfdf5b88d05" formatted="false">合入 Venus、开放驱动组合及 gamescope 补丁，并保留贡献者提交记录。</string>
+    <string name="changelog_title_f4e5032b7de4219b2d0a0ac79a3e9970f1a78f99" formatted="false">适配 FEX-2611 构建</string>
+    <string name="changelog_summary_f4e5032b7de4219b2d0a0ac79a3e9970f1a78f99" formatted="false">跳过新版 FEX 已包含的补丁，修复 x86-64 Steam 客户端的 FEX 构建失败。</string>
+    <string name="changelog_title_c8a76e7ccec3b4ef1f3ac83b7952d04211e4ccd1" formatted="false">后台清理诊断临时目录</string>
+    <string name="changelog_summary_c8a76e7ccec3b4ef1f3ac83b7952d04211e4ccd1" formatted="false">将遗留诊断目录清理移至后台，减少应用启动线程等待锁及文件删除造成的阻塞。</string>
+    <string name="changelog_title_cd452e2b608c4dbb9c42c0b7b84c8e7864aa93cd" formatted="false">修复 GOG 云存档上传格式</string>
+    <string name="changelog_summary_cd452e2b608c4dbb9c42c0b7b84c8e7864aa93cd" formatted="false">按 GOG Galaxy 要求的 gzip 与元数据格式上传存档，修复其他电脑读取上传存档时的数据无效错误。</string>
+    <string name="changelog_title_5971b91ed4711cafdb3943872e96e2ac3b79de1e" formatted="false">游戏驱动器断开时回退内部存储</string>
+    <string name="changelog_summary_5971b91ed4711cafdb3943872e96e2ac3b79de1e" formatted="false">外置磁盘或存储卡拔出后回退到内部存储，并从安装目标中移除不可用目录。</string>
+    <string name="changelog_title_d64205ba5ba83e3a15865283f2a8f5ed62a89686" formatted="false">通过 Vulkan 报告显存预算</string>
+    <string name="changelog_summary_d64205ba5ba83e3a15865283f2a8f5ed62a89686" formatted="false">向 DXVK 和 D3D12 报告显存预算，同时保留实际堆容量与分配结果，避免硬性拒绝分配造成游戏崩溃。</string>
+    <string name="changelog_title_da851dae22475c0e3c4acc63f29f86c9823a12bd" formatted="false">鼠标被游戏捕获时触摸点击仍落在手指位置</string>
+    <string name="changelog_summary_da851dae22475c0e3c4acc63f29f86c9823a12bd" formatted="false">修复直接触摸模式下，游戏捕获指针后点击发生在旧光标位置的问题。</string>
+    <string name="changelog_title_7a78d2b66b4be8ea1e71e48d5188b594106331f6" formatted="false">保护并刷新免 Root 日志导出</string>
+    <string name="changelog_summary_7a78d2b66b4be8ea1e71e48d5188b594106331f6" formatted="false">诊断临时文件保存在私有缓存，每次导出使用独立目录并在传输后清理；刷新已导出的旧文件，保留其他目标文件。</string>
+    <string name="changelog_title_e8ffe1164f14e501d64f70f98d498bdaf725d76f" formatted="false">自动检测 D3D12 能力</string>
+    <string name="changelog_summary_e8ffe1164f14e501d64f70f98d498bdaf725d76f" formatted="false">默认让 VKD3D 检测 D3D12 能力，移除多项冗余游戏兼容配置，同时保留用户显式覆盖。</string>
 </resources>
