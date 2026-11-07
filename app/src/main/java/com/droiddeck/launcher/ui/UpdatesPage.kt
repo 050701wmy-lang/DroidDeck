@@ -14,8 +14,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
@@ -43,6 +48,7 @@ internal fun UpdatesPage(s: FrontEndState, a: FrontEndActions, modifier: Modifie
     val me = remember { AppUpdates.installed() }
     val originalNotes = booleanResource(R.bool.changelog_original_notes)
     val changes = remember(u.catalog) { changelogChanges(u.catalog) }
+    var expandedOriginal by rememberSaveable { mutableStateOf<String?>(null) }
     Column(modifier = modifier.testTag("changelog-page")) {
         PageHeader(stringResource(R.string.upd_title)) {
             Spacer(Modifier.weight(1f))
@@ -85,6 +91,17 @@ internal fun UpdatesPage(s: FrontEndState, a: FrontEndActions, modifier: Modifie
                         color = colors.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
                     if (summary.isNotBlank()) Text(summary, fontSize = 14.sp,
                         color = colors.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
+                    if (notes == null && !originalNotes && (change.title.isNotBlank() || change.summary.isNotBlank())) {
+                        val expanded = expandedOriginal == change.commit
+                        TextButton(onClick = { expandedOriginal = if (expanded) null else change.commit }) {
+                            Text(stringResource(if (expanded) R.string.changelog_hide_original else R.string.changelog_show_original))
+                        }
+                        if (expanded) {
+                            if (change.title.isNotBlank()) Text(change.title, fontWeight = FontWeight.SemiBold)
+                            if (change.summary.isNotBlank()) Text(change.summary, color = colors.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp))
+                        }
+                    }
                 }
             }
         }

@@ -6,4 +6,6 @@
     <string name="changelog_translation_pending">Notes for this preview are not yet included.</string>
     <string name="changelog_bundled_hint">Includes published notes bundled with this build for offline viewing.</string>
     <string name="changelog_online_checked">Last online refresh: %1$s</string>
+    <string name="changelog_show_original">View English original</string>
+    <string name="changelog_hide_original">Hide English original</string>
 </resources>

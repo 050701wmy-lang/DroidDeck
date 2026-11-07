@@ -6,4 +6,6 @@
     <string name="changelog_translation_pending">此预览版的日志译文尚未收录。</string>
     <string name="changelog_bundled_hint">包含此版本内置的发布日志，离线也可查看。</string>
     <string name="changelog_online_checked">上次联网刷新：%1$s</string>
+    <string name="changelog_show_original">查看英文原文</string>
+    <string name="changelog_hide_original">收起英文原文</string>
 </resources>

@@ -304,4 +304,12 @@
     <string name="changelog_summary_a81da1e4768918b9aa507e5f8a65f7f937520fc2" formatted="false">默认组件页提供自动与手动选项，手动模式仍支持下载、导入和恢复。</string>
     <string name="changelog_title_88acdbc3ab494374963bc27d5c4a529e0b34e78b" formatted="false">gamescope 发布到组件仓库并禁止覆盖标签</string>
     <string name="changelog_summary_88acdbc3ab494374963bc27d5c4a529e0b34e78b" formatted="false">构建产物发布到 DroidDeck-Components，遇到已存在的标签时停止。</string>
+    <string name="changelog_title_54464973012bd84c2301d407cfbb69a0c253d68d" formatted="false">卸载时清理残留的 Flatpak 应用目录</string>
+    <string name="changelog_summary_54464973012bd84c2301d407cfbb69a0c253d68d" formatted="false">若 Flatpak 已无应用引用但目录仍残留，卸载操作现在会删除该目录，避免应用继续留在启动器中。</string>
+    <string name="changelog_title_d5f3d1a0d50967895de9762634b639e192e4d1c0" formatted="false">原 Proton 构建被清理后使用最新构建</string>
+    <string name="changelog_summary_d5f3d1a0d50967895de9762634b639e192e4d1c0" formatted="false">启动时解析已被清理的 DroidDeck-Proton 构建并使用最新版本，修复部分战网游戏停在启动标志的问题。</string>
+    <string name="changelog_title_4cb3a894837ab00f95cac83b66f5d3db5c7cd78f" formatted="false">修复 Android 10 扫描游戏库及取消下载时崩溃</string>
+    <string name="changelog_summary_4cb3a894837ab00f95cac83b66f5d3db5c7cd78f" formatted="false">修复部分 Android 10 设备扫描游戏库或取消下载时发生的崩溃。</string>
+    <string name="changelog_title_22a675a664f0c8a1bfd8ecac292b8971a38555f7" formatted="false">统一游戏和桌面的手柄与触屏输入配置</string>
+    <string name="changelog_summary_22a675a664f0c8a1bfd8ecac292b8971a38555f7" formatted="false">实体手柄与屏幕控件共享配置和操作，可在桌面会话中分配鼠标、键盘和应用操作。</string>
 </resources>
