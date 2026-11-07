@@ -284,4 +284,24 @@
     <string name="changelog_summary_e8ffe1164f14e501d64f70f98d498bdaf725d76f" formatted="false">默认让 VKD3D 检测 D3D12 能力，移除多项冗余游戏兼容配置，同时保留用户显式覆盖。</string>
     <string name="changelog_title_a1bc8467fd8c4591c5b2aa5c89b7e2215e063786" formatted="false">启动页直接显示 Steam 启动选项</string>
     <string name="changelog_summary_a1bc8467fd8c4591c5b2aa5c89b7e2215e063786" formatted="false">将 Steam 游戏的启动选项编辑器从“更多 → 编辑封面”移至游戏启动标签，便于查看和粘贴启动参数。</string>
+    <string name="changelog_title_aba55031c331cd0991c3d36788fb903a3ca30e78" formatted="false">PRoot 快速路径处理属主变更及热传感器路径</string>
+    <string name="changelog_summary_aba55031c331cd0991c3d36788fb903a3ca30e78" formatted="false">补齐存储卡安装中仍落到 PRoot 的属主变更和绑定热传感器路径操作。</string>
+    <string name="changelog_title_18c7d56409de4cf3b63b1b09e60e0fe97a633a7d" formatted="false">自动组件更新仅处理 DroidDeck-Proton 并清理旧构建</string>
+    <string name="changelog_summary_18c7d56409de4cf3b63b1b09e60e0fe97a633a7d" formatted="false">修复自动组件更新范围，并清理过时构建。</string>
+    <string name="changelog_title_a552f1e29339b97a4f56e998afb9fc26eeb864f7" formatted="false">隔离条形 HUD 的绘制</string>
+    <string name="changelog_summary_a552f1e29339b97a4f56e998afb9fc26eeb864f7" formatted="false">未停靠的全宽 HUD 使用软件层绘制，避免帧时间图重绘时 Steam 闪烁；其余布局恢复常规绘制层。</string>
+    <string name="changelog_title_066834d17dddc36cef7b489589e80bd8dc797deb" formatted="false">低内存设备提前压缩空闲游戏内存</string>
+    <string name="changelog_summary_066834d17dddc36cef7b489589e80bd8dc797deb" formatted="false">在不超过 12 GB 内存的设备上，会话监控在内存不足时将空闲游戏内存压缩到 zRAM，减少加载时会话被 Android 终止的情况。</string>
+    <string name="changelog_title_f33d5b9e09ed27d68137aba4e711f8fca9eb93e9" formatted="false">自动组件更新仅跟随 DroidDeck-Proton</string>
+    <string name="changelog_summary_f33d5b9e09ed27d68137aba4e711f8fca9eb93e9" formatted="false">仅对 DroidDeck-Proton 应用夜间构建，其他 Proton 保留其随附的组件。</string>
+    <string name="changelog_title_250f80fbb5a23ddbc36793606b321326f2c555cd" formatted="false">避免反复切换相同刷新率的显示模式</string>
+    <string name="changelog_summary_250f80fbb5a23ddbc36793606b321326f2c555cd" formatted="false">修复部分设备反复重建窗口表面并重启插帧，引起 Steam 卡顿、发热和低帧率的问题。</string>
+    <string name="changelog_title_542bbf89c34102fbc6f3592b5a3e36829f4ac63e" formatted="false">游戏启动请求去重并显示准备状态</string>
+    <string name="changelog_summary_542bbf89c34102fbc6f3592b5a3e36829f4ac63e" formatted="false">每款游戏只保留一个启动请求，准备期间显示“正在启动”。</string>
+    <string name="changelog_title_e1987ca785bd6beb86a54fe1b02e05fb8571325f" formatted="false">将 gamescope 固定到组件仓库的 p22 发布版</string>
+    <string name="changelog_summary_e1987ca785bd6beb86a54fe1b02e05fb8571325f" formatted="false">使用 DroidDeck-Components 中以相同补丁集构建的 gamescope 3.16.29 p22。</string>
+    <string name="changelog_title_a81da1e4768918b9aa507e5f8a65f7f937520fc2" formatted="false">FEX、DXVK 和 VKD3D-Proton 支持自动更新</string>
+    <string name="changelog_summary_a81da1e4768918b9aa507e5f8a65f7f937520fc2" formatted="false">默认组件页提供自动与手动选项，手动模式仍支持下载、导入和恢复。</string>
+    <string name="changelog_title_88acdbc3ab494374963bc27d5c4a529e0b34e78b" formatted="false">gamescope 发布到组件仓库并禁止覆盖标签</string>
+    <string name="changelog_summary_88acdbc3ab494374963bc27d5c4a529e0b34e78b" formatted="false">构建产物发布到 DroidDeck-Components，遇到已存在的标签时停止。</string>
 </resources>
