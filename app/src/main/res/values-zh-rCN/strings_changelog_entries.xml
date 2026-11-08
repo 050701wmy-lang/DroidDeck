@@ -332,4 +332,6 @@
     <string name="changelog_summary_4948f73912886bdcdbedb1f8f54c2230a7c75876" formatted="false">以 Root 运行时，文件权限不会阻止写入，因此跳过依赖写入被拒绝的测试。</string>
     <string name="changelog_title_d29a1a2dc214d9bfa1926c95d514f4f6dacede88" formatted="false">以 Root 运行时跳过权限拒绝测试</string>
     <string name="changelog_summary_d29a1a2dc214d9bfa1926c95d514f4f6dacede88" formatted="false">避免在 Root 自托管运行器上误报依赖读取或写入被拒绝的测试。</string>
+    <string name="changelog_title_2beeb715fd8405b06441cbc574e05d243889f0e2" formatted="false">更新 PRoot 组件时保留 Linux 运行环境的安装状态</string>
+    <string name="changelog_summary_2beeb715fd8405b06441cbc574e05d243889f0e2" formatted="false">修复升级预览版后，新 PRoot 包使应用误报已安装的 Linux 运行环境需要重新安装的问题。</string>
 </resources>
