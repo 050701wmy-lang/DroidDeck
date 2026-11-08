@@ -398,4 +398,5 @@
     <string name="drivers_pair_updated">%1$s 已更新到最新构建</string>
     <string name="gpuinfo_powervr">系统 PowerVR 驱动，兼容性因设备而异</string>
     <string name="drivers_mali_unpublished_auto">%1$s 尚未发布，暂时使用 %2$s。</string>
-    <string name="cmgr_powervr_dxvk_queued">已排队：%1$s（等待切换运行环境驱动）</string></resources>
+    <string name="cmgr_powervr_dxvk_queued">已排队：%1$s（等待切换运行环境驱动）</string>    <string name="setup_android_text_field_keyboard">文本字段使用 Android 键盘</string>
+</resources>

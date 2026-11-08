@@ -1,18 +1,10 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="input_settings">输入配置</string>
-    <string name="input_settings_hint">选择每个控件发送的输入。原生控件沿用手柄或 Steam 输入行为，本地操作可发送按键、鼠标输入或 DroidDeck 命令。</string>
     <string name="input_profiles">配置</string>
-    <string name="input_profile_game">游戏</string>
-    <string name="input_profile_desktop">桌面</string>
-    <string name="input_active_profile">当前配置</string>
-    <string name="input_auto_hint">“自动”在桌面会话中使用桌面配置，在其他会话中使用游戏配置。从桌面运行游戏时，可手动选择游戏配置。</string>
-    <string name="input_edit_profile">编辑配置</string>
-    <string name="input_source">控件来源</string>
     <string name="input_physical">实体手柄</string>
     <string name="input_primary">主屏</string>
     <string name="input_secondary">副屏</string>
-    <string name="input_bindings">绑定</string>
     <string name="input_native">原生 / Steam 输入</string>
     <string name="input_native_target">原生：%1$s</string>
     <string name="input_remap_native">发送另一个手柄控件的输入</string>
@@ -30,16 +22,8 @@
     <string name="input_command_keyboard">显示键盘</string>
     <string name="input_command_steam">打开 Steam 菜单</string>
     <string name="input_command_qam">打开 Steam 快捷菜单</string>
-    <string name="input_surface">屏幕布局</string>
-    <string name="input_surface_edit">自定义副屏布局</string>
-    <string name="input_surface_hint">在此排列控件，再在副屏面板选择“自定义控件”。操作取自此配置的副屏绑定。原生触控板需要 Steam Deck 手柄，Steam 移动触控布局仍在 Steam 中设置。</string>
-    <string name="input_position_x">水平位置</string>
-    <string name="input_position_y">垂直位置</string>
-    <string name="input_width">宽度</string>
-    <string name="input_height">高度</string>
     <string name="input_remove_element">移除控件</string>
     <string name="input_add_element">添加控件</string>
-    <string name="input_custom_controls">自定义控件</string>
     <string name="input_extra_keys">设备专用按键</string>
     <string name="input_capture">分配实体按键</string>
     <string name="input_capture_confirm">松开按键后选择编辑、重试或取消。松开后按 B 或返回键可取消。</string>

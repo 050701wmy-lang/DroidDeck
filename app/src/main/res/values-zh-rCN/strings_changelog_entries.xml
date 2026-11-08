@@ -312,4 +312,24 @@
     <string name="changelog_summary_4cb3a894837ab00f95cac83b66f5d3db5c7cd78f" formatted="false">修复部分 Android 10 设备扫描游戏库或取消下载时发生的崩溃。</string>
     <string name="changelog_title_22a675a664f0c8a1bfd8ecac292b8971a38555f7" formatted="false">统一游戏和桌面的手柄与触屏输入配置</string>
     <string name="changelog_summary_22a675a664f0c8a1bfd8ecac292b8971a38555f7" formatted="false">实体手柄与屏幕控件共享配置和操作，可在桌面会话中分配鼠标、键盘和应用操作。</string>
+    <string name="changelog_title_15baa296bb0b90904fb0ec56775833313f15883a" formatted="false">可访问的第二游戏库继续使用</string>
+    <string name="changelog_summary_15baa296bb0b90904fb0ec56775833313f15883a" formatted="false">修复部分设备上存储卷状态未标记为已挂载时，可访问的存储卡游戏库仍被切回内部存储的问题。</string>
+    <string name="changelog_title_e4a4775be53082cb4c259a8ed24022cd70703afd" formatted="false">PC 键盘外的触摸仍可传给游戏</string>
+    <string name="changelog_summary_e4a4775be53082cb4c259a8ed24022cd70703afd" formatted="false">打开会话中的 PC 键盘时，点击键盘上方仍可操作游戏或登录界面。</string>
+    <string name="changelog_title_914b3588e1ec1fe300838c2ceca65f343717a2e0" formatted="false">切换驱动时退出原驱动组合</string>
+    <string name="changelog_summary_914b3588e1ec1fe300838c2ceca65f343717a2e0" formatted="false">选择其他显示驱动后清除旧组合的 Linux 驱动，并让自动显示选项选择最新驱动组合。</string>
+    <string name="changelog_title_2ade269be3f0a57bae86c23745df51c373664bd7" formatted="false">恢复隐藏光标游戏的直接触摸拖动</string>
+    <string name="changelog_summary_2ade269be3f0a57bae86c23745df51c373664bd7" formatted="false">修复游戏捕获隐藏指针时，直接触摸拖动只移动指针却未按住鼠标键的问题。</string>
+    <string name="changelog_title_0d034b1996699d3bb639b98ad364d67f39f7324e" formatted="false">恢复输入配置功能并保留副屏编辑器</string>
+    <string name="changelog_summary_0d034b1996699d3bb639b98ad364d67f39f7324e" formatted="false">修复统一输入配置后遗留的功能回归，让布局编辑器继续留在副屏。</string>
+    <string name="changelog_title_ef46c011dbec273d78823509f27a6fa53baf1839" formatted="false">熄屏后保留副屏菜单与布局编辑器</string>
+    <string name="changelog_summary_ef46c011dbec273d78823509f27a6fa53baf1839" formatted="false">恢复屏幕时保留会话菜单、输入设置和正在编辑的布局。</string>
+    <string name="changelog_title_5b2f7a9a6d9fd5cc966719c11e9c20e9dc6f34fa" formatted="false">恢复原始存储路径的第二游戏库</string>
+    <string name="changelog_summary_5b2f7a9a6d9fd5cc966719c11e9c20e9dc6f34fa" formatted="false">修复将 /mnt/mediarw 下的游戏库误判为离线，导致游戏和 Steam 库消失的问题。</string>
+    <string name="changelog_title_10cfc6c6b228e8f88c0b3cdd82e7582cf402152b" formatted="false">支持关闭存储空间不足提示</string>
+    <string name="changelog_summary_10cfc6c6b228e8f88c0b3cdd82e7582cf402152b" formatted="false">可在启动器设置或低空间提示框中关闭提醒，之后启动 Steam 不再弹出该提示。</string>
+    <string name="changelog_title_4948f73912886bdcdbedb1f8f54c2230a7c75876" formatted="false">文件权限未生效时跳过日志脱敏权限测试</string>
+    <string name="changelog_summary_4948f73912886bdcdbedb1f8f54c2230a7c75876" formatted="false">以 Root 运行时，文件权限不会阻止写入，因此跳过依赖写入被拒绝的测试。</string>
+    <string name="changelog_title_d29a1a2dc214d9bfa1926c95d514f4f6dacede88" formatted="false">以 Root 运行时跳过权限拒绝测试</string>
+    <string name="changelog_summary_d29a1a2dc214d9bfa1926c95d514f4f6dacede88" formatted="false">避免在 Root 自托管运行器上误报依赖读取或写入被拒绝的测试。</string>
 </resources>
