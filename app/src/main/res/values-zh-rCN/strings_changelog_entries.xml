@@ -334,4 +334,24 @@
     <string name="changelog_summary_d29a1a2dc214d9bfa1926c95d514f4f6dacede88" formatted="false">避免在 Root 自托管运行器上误报依赖读取或写入被拒绝的测试。</string>
     <string name="changelog_title_2beeb715fd8405b06441cbc574e05d243889f0e2" formatted="false">更新 PRoot 组件时保留 Linux 运行环境的安装状态</string>
     <string name="changelog_summary_2beeb715fd8405b06441cbc574e05d243889f0e2" formatted="false">修复升级预览版后，新 PRoot 包使应用误报已安装的 Linux 运行环境需要重新安装的问题。</string>
+    <string name="changelog_title_96a12465e01f50b88a617f72b4fadacc34f7938f" formatted="false">避免游戏立即读回内存时反复压缩</string>
+    <string name="changelog_summary_96a12465e01f50b88a617f72b4fadacc34f7938f" formatted="false">低内存时仍检查最近压缩的数据是否被游戏立即读回，减少反复压缩活跃内存。</string>
+    <string name="changelog_title_88d6b70881a9e53eee53ac5ee4d38ba711304788" formatted="false">ADB 缺少 content 命令时通过广播访问诊断接口</string>
+    <string name="changelog_summary_88d6b70881a9e53eee53ac5ee4d38ba711304788" formatted="false">为缺少 content 命令的 Android 设备提供广播后备路径，恢复会话状态、客体命令与日志访问。</string>
+    <string name="changelog_title_29823bb1bf4c8ee7b99fecb7e2d892dd177b007d" formatted="false">仅支持 Linux 的 Steam 工具保留原生平台</string>
+    <string name="changelog_summary_29823bb1bf4c8ee7b99fecb7e2d892dd177b007d" formatted="false">保留 Proton EasyAntiCheat Runtime 等工具的 Linux 平台设置，修复依赖安装时的无效平台错误。</string>
+    <string name="changelog_title_92a71245890943e822367cba98d336725098725f" formatted="false">缺少系统 Vulkan 运行包时跳过清理</string>
+    <string name="changelog_summary_92a71245890943e822367cba98d336725098725f" formatted="false">未安装可选的 PowerVR 图形运行包时，不尝试访问其目录进行清理。</string>
+    <string name="changelog_title_bf95a40e3edce12eb00d439a8ea2b43e71e0feeb" formatted="false">每个 PR 构建发布新通知</string>
+    <string name="changelog_summary_bf95a40e3edce12eb00d439a8ea2b43e71e0feeb" formatted="false">为每次 PR 提交发布新的签名测试构建通知，撤下旧通知并包含最新提交标题。</string>
+    <string name="changelog_title_5e438e9248e46be8ab2e5de2af7cbb3b0ecc5a0a" formatted="false">保留未出现在列表中的已购 GOG 游戏</string>
+    <string name="changelog_summary_5e438e9248e46be8ab2e5de2af7cbb3b0ecc5a0a" formatted="false">修复部分已购游戏从游戏库消失的问题，并让搜索覆盖 GOG 目录。</string>
+    <string name="changelog_title_6b110581ac167b1476d945db6b38327c63cd399e" formatted="false">将 GOG 安装脚本的辅助文件传入前缀</string>
+    <string name="changelog_summary_6b110581ac167b1476d945db6b38327c63cd399e" formatted="false">把插件列表和 INI 等辅助文件一同传入 Wine 前缀，确保启动已安装的游戏版本。</string>
+    <string name="changelog_title_a7c10e3f5164632fd352850ec4ccac40280dc9a3" formatted="false">为 Steam 提供会话总线以修复启动挂起</string>
+    <string name="changelog_summary_a7c10e3f5164632fd352850ec4ccac40280dc9a3" formatted="false">修复 Steam 游戏卡在处理安装脚本、下载无法完成或退出后停留黑屏的问题。</string>
+    <string name="changelog_title_1760f008ae7a9238fca81ec15e99dd70dcacaa2e" formatted="false">Flatpak 和 Snap 应用采用游戏 GPU 设置</string>
+    <string name="changelog_summary_1760f008ae7a9238fca81ec15e99dd70dcacaa2e" formatted="false">将游戏 GPU 配置传递给 Flatpak 和 Snap 应用，避免在 Adreno 上继承 Steam 客户端的系统内存渲染设置。</string>
+    <string name="changelog_title_3bb279f635d5379b9259b59f2bfdef6cef26c0f8" formatted="false">AppImage 程序采用游戏 GPU 设置</string>
+    <string name="changelog_summary_3bb279f635d5379b9259b59f2bfdef6cef26c0f8" formatted="false">让模拟器及其他 AppImage 程序使用游戏的 Turnip 渲染配置。</string>
 </resources>
