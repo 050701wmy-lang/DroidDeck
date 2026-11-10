@@ -127,7 +127,8 @@ object EpicClient {
         val version = current?.optString("app")?.ifEmpty { null }
         val runtimeVersion = current?.optString("runtime")?.ifEmpty { null }
         val installed = version != null && runtimeVersion != null &&
-            ready(File(state, "app/$version")) && ready(File(state, "runtime/$runtimeVersion"))
+            ready(File(state, "app/$version")) && ready(File(state, "runtime/$runtimeVersion")) &&
+            (runtimeVersion.endsWith(EpicClientSources.DEB_RUNTIME_SUFFIX) || File(state, "app/$version/AppRun").isFile)
         return Status(installed, version, runtimeVersion)
     }
 

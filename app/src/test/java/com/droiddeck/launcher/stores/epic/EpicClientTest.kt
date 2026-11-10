@@ -225,7 +225,7 @@ class EpicClientTest {
     }
 
     @Test fun launcherVersionComesFromTheRedirect() {
-        val location = "https://content-download-egs.distro.on.epicgames.com/Builds/EGLv2/0.95.2%2Bgfa9ad49/Linux/EpicGamesLauncher-x86_64.AppImage?launcherfilename=EpicGamesLauncher-x86_64.AppImage"
+        val location = "https://content-download-egs.distro.on.epicgames.com/Builds/EGLv2/0.95.2%2Bgfa9ad49/Linux/EpicGamesLauncher-x86_64.deb?launcherfilename=EpicGamesLauncher-x86_64.deb"
         assertEquals("0.95.2+gfa9ad49", EpicClientSources.launcherVersion(location))
         assertNull(EpicClientSources.launcherVersion("http://content-download-egs.distro.on.epicgames.com/Builds/EGLv2/1.0/Linux/a"))
         assertNull(EpicClientSources.launcherVersion("https://example.com/Builds/EGLv2/..%2F..%2Fetc/Linux/a"))
@@ -256,11 +256,13 @@ class EpicClientTest {
         assertEquals(true, EpicClientSources.etagMatches(file, hex(md5(data))))
     }
 
-    @Test fun appImageMagicIsRequired() {
-        val good = File(tmp.root, "a").apply { writeBytes(byteArrayOf(0x7f, 'E'.code.toByte(), 'L'.code.toByte(), 'F'.code.toByte(), 2, 1, 1, 0, 'A'.code.toByte(), 'I'.code.toByte(), 2, 0)) }
-        val bad = File(tmp.root, "b").apply { writeBytes(ByteArray(16)) }
-        assertTrue(EpicClientSources.isAppImage(good))
-        assertFalse(EpicClientSources.isAppImage(bad))
+    @Test fun debMagicIsRequired() {
+        val member = "debian-binary".padEnd(16) + "0".padEnd(12) + "0".padEnd(6) +
+            "0".padEnd(6) + "100644".padEnd(8) + "4".padEnd(10) + "`\n2.0\n"
+        val file = File(tmp.root, "launcher.deb").apply { writeText("!<arch>\n$member") }
+        assertTrue(EpicClientSources.isDeb(file))
+        file.writeText("!<arch>\n${member.replace("debian-binary", "another-entry")}")
+        assertFalse(EpicClientSources.isDeb(file))
     }
 
     @Test fun signInUrlsMustRedirectToLoopback() {

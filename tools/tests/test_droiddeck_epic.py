@@ -106,6 +106,19 @@ class PreloadTest(EpicTestCase):
 
 
 class RuntimeExtractTest(EpicTestCase):
+    def test_debian_gtk_schemas_are_compiled_once_and_used_by_the_client(self):
+        files = self.tmp / "files"
+        files.mkdir()
+        schemas = files / "share/glib-2.0/schemas"
+        compiler = files / "lib/x86_64-linux-gnu/glib-2.0/glib-compile-schemas"
+        with mock.patch("subprocess.call", return_value=0) as compile_schemas:
+            G["prepare_debian_schemas"](str(files), {"bin": "/fex"}, {})
+            env = {}
+            G["prepare_debian_schemas"](str(files), {"bin": "/fex"}, env)
+        compile_schemas.assert_called_once_with(["/fex", str(compiler), str(schemas)],
+                                              env={"GSETTINGS_SCHEMA_DIR": str(schemas)})
+        self.assertEqual(env["GSETTINGS_SCHEMA_DIR"], str(schemas))
+
     def test_runtime_extract_rewrites_links_and_skips_i386(self):
         tarball = self.tmp / "rt.tar.gz"
         with tarfile.open(tarball, "w:gz") as archive:
@@ -163,6 +176,7 @@ class RuntimeExtractTest(EpicTestCase):
         with self.assertRaises(G["Failure"]):
             G["install_gles"](str(bad), str(files))
 
+    @unittest.skipUnless(shutil.which("dpkg-deb"), "dpkg-deb is required")
     def test_install_marks_ready_and_prunes_old_versions(self):
         tarball = self.tmp / "rt.tar.gz"
         with tarfile.open(tarball, "w:gz") as archive:
@@ -175,17 +189,25 @@ class RuntimeExtractTest(EpicTestCase):
         old = self.state / "app/0.1"
         old.mkdir(parents=True)
 
-        def extract_app(image, dest):
-            os.makedirs(os.path.join(dest, "usr/bin"))
-            Path(dest, "AppRun").write_text("run")
-            Path(dest, "usr/bin/EpicGamesLauncher").write_text("bin")
-
-        with mock.patch.dict(G, {"extract_app": extract_app, "fex_tool": lambda request=False: {"bin": "/fex", "server": "/s"}}), \
+        control, payload = io.BytesIO(), io.BytesIO()
+        with tarfile.open(fileobj=control, mode="w:gz") as archive:
+            tar_add(archive, "./control", b"Package: epic-games-launcher\nVersion: 0.95.2+g1\nArchitecture: amd64\n")
+        with tarfile.open(fileobj=payload, mode="w:gz") as archive:
+            tar_add(archive, "./usr/bin/EpicGamesLauncher", b"bin", mode=0o755)
+            tar_add(archive, "./usr/share/icons/hicolor/128x128/apps/EpicGamesLauncher.png", b"icon")
+        package = self.tmp / "launcher.deb"
+        package.write_bytes(ar([("debian-binary", b"2.0\n"), ("control.tar.gz", control.getvalue()),
+                                ("data.tar.gz", payload.getvalue())]))
+        inputs = {name: str(self.tmp / name) for name in ("runtime-manifest", "archive-key", "security-key")}
+        for path in inputs.values():
+            Path(path).touch()
+        deps = mock.Mock()
+        with mock.patch.dict(G, {"fex_tool": lambda request=False: {"bin": "/fex", "server": "/s"},
+                                "install_debian_deps": deps}), \
                 mock.patch("sys.stdout", new_callable=io.StringIO) as out:
-            image = self.tmp / "image"
-            image.write_bytes(b"x")
-            code = G["install"]({"app": str(image), "app-version": "0.95.2+g1", "runtime": str(tarball),
-                                 "runtime-version": "4.0.1", "gles": str(deb)})
+            code = G["install"]({"app": str(package), "app-version": "0.95.2+g1", "runtime": str(tarball),
+                                 "runtime-version": "4.0.1", "gles": str(deb), **inputs})
+        deps.assert_called_once_with(*inputs.values(), str(self.state / "runtime/4.0.1.staging/files"))
         self.assertEqual(0, code)
         report = json.loads(out.getvalue())
         self.assertTrue(report["installed"])
@@ -194,7 +216,10 @@ class RuntimeExtractTest(EpicTestCase):
         files = self.state / "runtime/4.0.1/files"
         self.assertEqual("", (files / "etc/ld.so.preload").read_text())
         self.assertTrue((self.state / "runtime/4.0.1/.droiddeck-ready").is_file())
-        self.assertTrue((self.state / "app/0.95.2+g1/.droiddeck-ready").is_file())
+        app = self.state / "app/0.95.2+g1"
+        self.assertTrue((app / ".droiddeck-ready").is_file())
+        self.assertEqual(b"bin", (app / "usr/bin/EpicGamesLauncher").read_bytes())
+        self.assertEqual(b"icon", (app / "epic-games-launcher.png").read_bytes())
 
 
 class ArgumentsTest(EpicTestCase):
@@ -500,13 +525,14 @@ class DisplayTest(EpicTestCase):
             Path(marker).write_text(":2")
 
         session.spawn = spawn
-        display = session.start_display({"DISPLAY": ":0", "WAYLAND_DISPLAY": "gamescope-0", "HOME": "/root"}, "unix:path=/b")
+        display = session.start_display({"DISPLAY": ":0", "WAYLAND_DISPLAY": "gamescope-0", "HOME": "/root", "PATH": "/usr/local/bin:/usr/bin"}, "unix:path=/b")
         self.assertEqual(":2", display)
         command, env = spawned[0]
         self.assertEqual(["gamescope", "--backend", "headless"], command[:3])
         self.assertNotIn("DISPLAY", env)
         self.assertNotIn("WAYLAND_DISPLAY", env)
         self.assertEqual("unix:path=/b", env["DBUS_SESSION_BUS_ADDRESS"])
+        self.assertEqual("/usr/local/bin:/usr/bin:/usr/games", env["PATH"])
 
 
 class InstallationsTest(EpicTestCase):

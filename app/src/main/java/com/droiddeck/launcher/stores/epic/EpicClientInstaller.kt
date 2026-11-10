@@ -21,10 +21,13 @@ import java.security.MessageDigest
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal object EpicClientSources {
-    const val LAUNCHER_URL = "https://launcher-public-service-prod06.ol.epicgames.com/launcher/api/installer/download/EpicGamesLauncher-x86_64.AppImage"
-    const val LAUNCHER_FILE = "EpicGamesLauncher-x86_64.AppImage"
+    const val LAUNCHER_URL = "https://launcher-public-service-prod06.ol.epicgames.com/launcher/api/installer/download/EpicGamesLauncher-x86_64.deb"
+    const val LAUNCHER_FILE = "EpicGamesLauncher-x86_64.deb"
     const val RUNTIME_BASE = "https://repo.steampowered.com/steamrt4/images/"
     const val RUNTIME_FILE = "com.valvesoftware.SteamRuntime.Platform-amd64,i386-steamrt4-runtime.tar.gz"
+    private const val RUNTIME_MANIFEST = "com.valvesoftware.SteamRuntime.Platform-amd64,i386-steamrt4.manifest.deb822.gz"
+    private const val DEBIAN_KEYS = "https://ftp-master.debian.org/keys/"
+    const val DEB_RUNTIME_SUFFIX = "-gtk3"
     const val GLES_URL = "https://deb.debian.org/debian/pool/main/libg/libglvnd/libgles2_1.7.0-1+b2_amd64.deb"
     const val GLES_FILE = "libgles2_1.7.0-1+b2_amd64.deb"
     const val GLES_SHA256 = "e12c18aa77939d122ee1dea520ba0440b97dc19200b7396e03dff03a3ece74c1"
@@ -48,14 +51,19 @@ internal object EpicClientSources {
         return version.takeIf { VERSION.matches(it) && it != "." && it != ".." }
     }
 
-    fun runtime(): Source? {
+    fun runtime(): Pair<Source, Source>? {
         val version = text(RUNTIME_BASE + "latest-public-stable/VERSION.txt")?.trim()?.takeIf { VERSION.matches(it) && it.startsWith("4.") } ?: return null
         val sums = text("$RUNTIME_BASE$version/SHA256SUMS") ?: return null
         val sha = sha256For(sums, RUNTIME_FILE) ?: return null
-        return Source("$RUNTIME_BASE$version/" + RUNTIME_FILE.replace(",", "%2C"), version, sha)
+        val manifestSha = sha256For(sums, RUNTIME_MANIFEST) ?: return null
+        val base = "$RUNTIME_BASE$version/"
+        return Source(base + RUNTIME_FILE.replace(",", "%2C"), version, sha) to
+            Source(base + RUNTIME_MANIFEST.replace(",", "%2C"), version, manifestSha)
     }
 
     fun gles(): Source = Source(GLES_URL, "1.7.0-1+b2", GLES_SHA256)
+
+    fun debianKey(file: String, sha256: String): Source = Source(DEBIAN_KEYS + file, "13", sha256)
 
     fun sha256For(sums: String, file: String): String? = sums.lineSequence()
         .mapNotNull { SUM.find(it.trim()) }
@@ -142,12 +150,11 @@ internal object EpicClientSources {
 
     private fun hex(bytes: ByteArray): String = bytes.joinToString("") { "%02x".format(it) }
 
-    fun isAppImage(file: File): Boolean = runCatching {
+    fun isDeb(file: File): Boolean = runCatching {
         RandomAccessFile(file, "r").use { raf ->
-            val head = ByteArray(11)
-            raf.readFully(head)
-            head[0] == 0x7f.toByte() && head[1] == 'E'.code.toByte() && head[2] == 'L'.code.toByte() && head[3] == 'F'.code.toByte() &&
-                head[8] == 'A'.code.toByte() && head[9] == 'I'.code.toByte() && head[10] == 2.toByte()
+            val header = ByteArray(72).also(raf::readFully).toString(Charsets.US_ASCII)
+            header.startsWith("!<arch>\n") && header.endsWith("`\n2.0\n") &&
+                header.substring(8, 24).trimEnd().removeSuffix("/") == "debian-binary"
         }
     }.getOrDefault(false)
 }
@@ -156,7 +163,7 @@ internal class EpicClientInstaller(private val app: Context) : DownloadQueue.Dow
     private val cancelled = AtomicBoolean(false)
     @Volatile private var connection: HttpURLConnection? = null
 
-    private class Part(val url: String, val file: File, val sha256: String?, val appImage: Boolean) {
+    private class Part(val url: String, val file: File, val sha256: String?, val launcher: Boolean) {
         var size = -1L
         var mismatch: String? = null
     }
@@ -165,21 +172,29 @@ internal class EpicClientInstaller(private val app: Context) : DownloadQueue.Dow
         handle.stage(DownloadStage.MANIFEST, app.getString(R.string.epic_client_checking))
         if (!LinuxRuntime.isInstalled(app)) throw IllegalStateException(app.getString(R.string.epic_client_no_runtime))
         val launcher = EpicClientSources.launcher() ?: throw IllegalStateException(app.getString(R.string.epic_client_unreachable))
-        val runtime = EpicClientSources.runtime() ?: throw IllegalStateException(app.getString(R.string.epic_client_unreachable))
+        val (runtime, manifest) = EpicClientSources.runtime() ?: throw IllegalStateException(app.getString(R.string.epic_client_unreachable))
+        val runtimeVersion = runtime.version + EpicClientSources.DEB_RUNTIME_SUFFIX
         if (cancelled.get()) return null
         val state = EpicClient.stateDir(app)
         val before = EpicClient.read(app)
         val needApp = !(before.version == launcher.version && File(state, "app/${launcher.version}/.droiddeck-ready").isFile)
-        val needRuntime = !(before.runtimeVersion == runtime.version && File(state, "runtime/${runtime.version}/.droiddeck-ready").isFile)
+        val needRuntime = !File(state, "runtime/$runtimeVersion/.droiddeck-ready").isFile
         val dir = EpicClient.downloadsDir(app).apply { mkdirs() }
-        val gles = EpicClientSources.gles()
-        val parts = buildList {
-            if (needApp) add(Part(launcher.url, File(dir, "${launcher.version}-${EpicClientSources.LAUNCHER_FILE}"), null, true))
+        fun part(source: EpicClientSources.Source, name: String, launcher: Boolean = false) =
+            Part(source.url, File(dir, name), source.sha256, launcher)
+        val inputs = buildMap {
+            if (needApp) put("app", part(launcher, "${launcher.version}-${EpicClientSources.LAUNCHER_FILE}", launcher = true))
             if (needRuntime) {
-                add(Part(runtime.url, File(dir, "steamrt4-${runtime.version}.tar.gz"), runtime.sha256, false))
-                add(Part(gles.url, File(dir, EpicClientSources.GLES_FILE), gles.sha256, false))
+                put("runtime", part(runtime, "steamrt4-${runtime.version}.tar.gz"))
+                put("gles", part(EpicClientSources.gles(), EpicClientSources.GLES_FILE))
+                put("runtime-manifest", part(manifest, "steamrt4-${runtime.version}.manifest.deb822.gz"))
+                put("archive-key", part(EpicClientSources.debianKey("archive-key-13.asc",
+                    "6f1d277429dd7ffedcc6f8688a7ad9a458859b1139ffa026d1eeaadcbffb0da7"), "archive-key-13.asc"))
+                put("security-key", part(EpicClientSources.debianKey("archive-key-13-security.asc",
+                    "844c07d242db37f283afab9d5531270a0550841e90f9f1a9c3bd599722b808b7"), "archive-key-13-security.asc"))
             }
         }
+        val parts = inputs.values
         val keep = parts.flatMap { listOf(it.file.name, it.file.name + PARTIAL, it.file.name + TAG) }.toSet()
         dir.listFiles()?.forEach { if (it.name !in keep) it.deleteRecursively() }
         if (parts.isNotEmpty()) {
@@ -200,10 +215,9 @@ internal class EpicClientInstaller(private val app: Context) : DownloadQueue.Dow
         }
         if (cancelled.get()) return null
         handle.stage(DownloadStage.INSTALL, app.getString(R.string.epic_client_unpacking))
-        val argv = mutableListOf(EpicClient.PROGRAM, "install", "--app-version", launcher.version, "--runtime-version", runtime.version)
+        val argv = mutableListOf(EpicClient.PROGRAM, "install", "--app-version", launcher.version, "--runtime-version", runtimeVersion)
         fun guest(file: File) = EpicClient.guestPath(app, file) ?: throw IllegalStateException(app.getString(R.string.epic_client_unpack_failed, file.name))
-        if (needApp) argv += listOf("--app", guest(parts[0].file))
-        if (needRuntime) argv += listOf("--runtime", guest(parts[parts.size - 2].file), "--gles", guest(parts[parts.size - 1].file))
+        for ((option, part) in inputs) argv += listOf("--$option", guest(part.file))
         var answer: JSONObject? = null
         val code = GuestCommand.run(app, argv, fakeRoot = true, logName = "epic-client") { line ->
             if (line.startsWith("{")) runCatching { JSONObject(line) }.getOrNull()?.let { answer = it }
@@ -334,8 +348,8 @@ internal class EpicClientInstaller(private val app: Context) : DownloadQueue.Dow
         part.sha256?.let { want ->
             if (EpicClientSources.sha256(file) != want) { file.delete(); throw IOException("checksum mismatch") }
         }
-        if (part.appImage) {
-            if (!EpicClientSources.isAppImage(file)) { file.delete(); throw IOException("not an AppImage") }
+        if (part.launcher) {
+            if (!EpicClientSources.isDeb(file)) { file.delete(); throw IOException("not a Debian package") }
             if (EpicClientSources.etagMatches(file, etag) == false) {
                 val seen = EpicClientSources.sha256(file)
                 if (part.mismatch != seen) {
@@ -352,6 +366,6 @@ internal class EpicClientInstaller(private val app: Context) : DownloadQueue.Dow
         const val TAG = ".etag"
         const val ATTEMPTS = 6
         const val APP_ROOM = 600L shl 20
-        const val RUNTIME_ROOM = 560L shl 20
+        const val RUNTIME_ROOM = 1400L shl 20
     }
 }

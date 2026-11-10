@@ -14,11 +14,27 @@ WEBKIT = r"""
 #include <stdlib.h>
 const char *g_getenv(const char *name) { return getenv(name); }
 void webkit_web_view_load_uri(void *view, const char *uri) { (void)view; printf("%s\n", uri); }
+typedef struct { double red, green, blue, alpha; } GdkRGBA;
+void webkit_web_view_set_background_color(void *view, const GdkRGBA *color) { (void)view; printf("%.1f\n", color->alpha); }
+void gtk_widget_set_app_paintable(void *widget, int value) { (void)widget; printf("%d\n", value); }
+void *gdk_screen_get_rgba_visual(void *screen) { (void)screen; static int rgba = 1; return &rgba; }
+void *gdk_screen_get_system_visual(void *screen) { (void)screen; static int rgb = 0; return &rgb; }
 """
 
 LOADER = r"""
 void webkit_web_view_load_uri(void *view, const char *uri);
+#include <stdio.h>
+typedef struct { double red, green, blue, alpha; } GdkRGBA;
+void webkit_web_view_set_background_color(void *, const GdkRGBA *);
+void gtk_widget_set_app_paintable(void *, int);
+void *gdk_screen_get_rgba_visual(void *);
 int main(int argc, char **argv) {
+  if (argc == 1) {
+    const GdkRGBA color = {0, 0, 0, 0.5};
+    webkit_web_view_set_background_color(0, &color);
+    gtk_widget_set_app_paintable(0, 1);
+    printf("%d\n", *(int *)gdk_screen_get_rgba_visual(0));
+  }
   for (int i = 1; i < argc; i++) webkit_web_view_load_uri(0, argv[i]);
   return 0;
 }
@@ -68,6 +84,13 @@ class WebKitInputTest(unittest.TestCase):
         self.assertEqual(URIS, self.load(None))
         self.assertEqual(URIS, self.load("0"))
         self.assertEqual(URIS, self.load("10"))
+
+    def test_opaque_launcher_uses_opaque_background_and_visual(self):
+        for value, expected in [("0", ["0.5", "1", "1"]), ("1", ["1.0", "0", "0"])]:
+            env = dict(os.environ, DROIDDECK_EPIC_OPAQUE_WEBVIEW=value)
+            result = subprocess.run([str(self.tmp / "loader")], env=env, capture_output=True,
+                                    text=True, timeout=10, check=True)
+            self.assertEqual(result.stdout.splitlines(), expected)
 
 
 if __name__ == "__main__":

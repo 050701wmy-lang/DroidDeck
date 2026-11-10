@@ -3,6 +3,7 @@ import contextlib
 import collections
 import fcntl
 import filecmp
+import gzip
 import http.client
 import io
 import json
@@ -16,6 +17,7 @@ import socket
 import subprocess
 import sys
 import tarfile
+import tempfile
 import threading
 import time
 import urllib.error
@@ -346,23 +348,70 @@ def install_gles(deb, files_root):
     raise Failure("gles-missing")
 
 
-def extract_app(image, dest):
+def install_debian_deps(manifest, archive_key, security_key, files_root):
+    with tempfile.TemporaryDirectory(prefix="epic-deps-", dir=STATE) as work:
+        sources, status = (os.path.join(work, name) for name in ("sources.list", "status"))
+        lists, archives = (os.path.join(work, name) for name in ("lists", "archives"))
+        for path in (lists, archives):
+            os.makedirs(os.path.join(path, "partial"))
+        with gzip.open(manifest, "rt", encoding="utf-8") as stream:
+            packages = stream.read().split("\n\n")
+        write_text(status, "\n\n".join(p for p in packages if "\nArchitecture: i386\n" not in p))
+        write_text(sources,
+                   "deb [arch=amd64 signed-by=%s] https://deb.debian.org/debian trixie main\n"
+                   "deb [arch=amd64 signed-by=%s] https://deb.debian.org/debian-security trixie-security main\n"
+                   % (archive_key, security_key))
+        settings = {
+            "Dir::Etc::parts": "-", "Dir::Etc::main": "/dev/null",
+            "Dir::Etc::sourcelist": sources, "Dir::Etc::sourceparts": "-",
+            "Dir::State::status": status, "Dir::State::lists": lists,
+            "Dir::State::extended_states": os.path.join(work, "extended_states"),
+            "Dir::Cache::archives": archives, "Dir::Cache::pkgcache": "", "Dir::Cache::srcpkgcache": "",
+            "APT::Architecture": "amd64", "APT::Architectures::": "amd64",
+            "APT::Sandbox::User": "root", "APT::Update::Error-Mode": "any",
+            "Acquire::Languages": "none", "Acquire::Retries": "3", "Acquire::https::Timeout": "30",
+            "Acquire::IndexTargets::deb::DEP-11::DefaultEnabled": "false",
+        }
+        apt = ["/usr/bin/apt-get"] + [arg for key, value in settings.items() for arg in ("-o", f"{key}={value}")]
+        if subprocess.call(apt + ["update"], stdout=sys.stderr) or subprocess.call(
+            apt + ["--download-only", "--no-install-recommends", "--no-remove", "-y", "install",
+                   "libwebkit2gtk-4.1-0", "libayatana-appindicator3-1"], stdout=sys.stderr
+        ):
+            raise Failure("runtime-dependencies-download")
+        overlay = os.path.join(work, "overlay")
+        os.makedirs(overlay)
+        for package in sorted(os.listdir(archives)):
+            if package.endswith(".deb") and subprocess.call(
+                ["dpkg-deb", "--extract", os.path.join(archives, package), overlay], stdout=sys.stderr
+            ):
+                raise Failure("runtime-dependencies-extract")
+        usr = os.path.join(overlay, "usr")
+        if not os.path.isfile(os.path.join(usr, "lib/x86_64-linux-gnu/libwebkit2gtk-4.1.so.0")):
+            raise Failure("runtime-dependencies-incomplete")
+        if subprocess.call(["cp", "-a", os.path.join(usr, "."), os.path.realpath(os.path.join(files_root, "usr"))],
+                           stdout=sys.stderr):
+            raise Failure("runtime-dependencies-extract")
+
+
+def extract_app(package, dest):
     staging = dest + ".staging"
     remove(staging)
     os.makedirs(staging)
-    status = subprocess.call([os.path.join(BIN_DIR, "droiddeck-fex"), "extract", os.path.abspath(image)],
-                             cwd=staging, stdout=subprocess.DEVNULL)
-    root = os.path.realpath(os.path.join(staging, "squashfs-root"))
-    if status != 0 or not app_complete(root):
+    try:
+        status = subprocess.call(["dpkg-deb", "--extract", package, staging], stdout=subprocess.DEVNULL)
+        if status != 0 or not app_complete(staging):
+            raise Failure("app-extract")
+        icon = os.path.join(staging, "usr/share/icons/hicolor/128x128/apps/EpicGamesLauncher.png")
+        if os.path.isfile(icon):
+            shutil.copyfile(icon, os.path.join(staging, "epic-games-launcher.png"))
+        remove(dest)
+        os.rename(staging, dest)
+    finally:
         remove(staging)
-        raise Failure("app-extract")
-    remove(dest)
-    os.rename(root, dest)
-    remove(staging)
 
 
 def app_complete(root):
-    return os.path.isfile(os.path.join(root, "AppRun")) and os.path.isfile(os.path.join(root, "usr", "bin", "EpicGamesLauncher"))
+    return os.path.isfile(os.path.join(root, "usr", "bin", "EpicGamesLauncher"))
 
 
 def ready(path):
@@ -393,11 +442,11 @@ def install(options):
         app_dir = os.path.join(APPS, app)
         runtime_dir = os.path.join(RUNTIMES, runtime)
         if not ready(app_dir):
-            image = options.get("app")
-            if not image or not os.path.isfile(image):
-                raise Failure("no-app-image")
+            package = options.get("app")
+            if not package or not os.path.isfile(package):
+                raise Failure("no-app-package")
             say("unpacking the Epic Games Launcher %s" % app)
-            extract_app(image, app_dir)
+            extract_app(package, app_dir)
             mark_ready(app_dir)
         if not ready(runtime_dir):
             tarball, deb = options.get("runtime"), options.get("gles")
@@ -405,10 +454,19 @@ def install(options):
                 raise Failure("no-runtime-archive")
             say("unpacking the x86 runtime %s" % runtime)
             staging, count = extract_runtime(tarball, runtime_dir)
-            install_gles(deb, os.path.join(staging, "files"))
-            write_text(os.path.join(staging, "files", "etc", "ld.so.preload"), "")
-            remove(runtime_dir)
-            os.rename(staging, runtime_dir)
+            try:
+                files = os.path.join(staging, "files")
+                install_gles(deb, files)
+                if not os.path.isfile(os.path.join(app_dir, "AppRun")):
+                    inputs = [options.get(key) for key in ("runtime-manifest", "archive-key", "security-key")]
+                    if not all(path and os.path.isfile(path) for path in inputs):
+                        raise Failure("no-runtime-dependency-metadata")
+                    install_debian_deps(*inputs, files)
+                write_text(os.path.join(files, "etc", "ld.so.preload"), "")
+                remove(runtime_dir)
+                os.rename(staging, runtime_dir)
+            finally:
+                remove(staging)
             mark_ready(runtime_dir)
             say("x86 runtime ready (%d entries)" % count)
         with instance_guard() as free:
@@ -746,6 +804,17 @@ def client_environment(base, fex, files, display, bus, broker, a11y=None, hidden
         env["AT_SPI_BUS_ADDRESS"] = a11y
     env.update(fex_environment(fex, files, base))
     return env
+
+
+def prepare_debian_schemas(files, fex, env):
+    schemas = os.path.join(files, "share/glib-2.0/schemas")
+    env["GSETTINGS_SCHEMA_DIR"] = schemas
+    marker = os.path.join(files, ".droiddeck-gtk-schemas")
+    if not os.path.isfile(marker):
+        compiler = os.path.join(files, "lib/x86_64-linux-gnu/glib-2.0/glib-compile-schemas")
+        if subprocess.call([fex["bin"], compiler, schemas], env=env):
+            raise Failure("runtime-gtk-schemas")
+        write_text(marker, "1\n")
 
 
 def windows_path(path):
@@ -1205,6 +1274,7 @@ class Session:
         marker = os.path.join(self.rundir, "display")
         remove(marker)
         scope_env = dict(env, DBUS_SESSION_BUS_ADDRESS=bus)
+        scope_env["PATH"] = scope_env.get("PATH", os.defpath) + ":/usr/games"
         for name in ("DISPLAY", "WAYLAND_DISPLAY", "GAMESCOPE_WAYLAND_DISPLAY"):
             scope_env.pop(name, None)
         size = ["-W", str(WIDTH), "-H", str(HEIGHT), "-w", str(WIDTH), "-h", str(HEIGHT)]
@@ -1255,7 +1325,12 @@ class Session:
         self.broker = Broker(path, self.mode, base)
         write_json(instance_file(), {"pid": os.getpid(), "mode": self.mode, "bus": bus, "broker": path})
         env = client_environment(base, fex, files, display, bus, path, self.a11y, hidden=self.mode == "hidden")
-        self.command = [fex["bin"], os.path.join(app_dir, "AppRun")]
+        launcher = os.path.join(app_dir, "AppRun")
+        if not os.path.isfile(launcher):
+            launcher = os.path.join(app_dir, "usr/bin/EpicGamesLauncher")
+            prepare_debian_schemas(files, fex, env)
+            env["DROIDDECK_EPIC_OPAQUE_WEBVIEW"] = "1"
+        self.command = [fex["bin"], launcher]
         self.env = env
         say("starting the Epic Games Launcher %s (%s, display %s)" % (current.get("app"), self.mode, display))
         self.start_client()

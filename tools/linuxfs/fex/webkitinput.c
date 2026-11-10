@@ -230,6 +230,47 @@ static int hidden_launcher(void)
     return hidden && hidden[0] == '1' && !hidden[1];
 }
 
+static int opaque_launcher(void)
+{
+    const char *opaque = g_getenv ? g_getenv("DROIDDECK_EPIC_OPAQUE_WEBVIEW") : 0;
+    return opaque && opaque[0] == '1' && !opaque[1];
+}
+
+typedef struct {
+    double red, green, blue, alpha;
+} GdkRGBA;
+
+/* WebKitGTK 2.54 can lose unchanged regions when software painting into a transparent GTK window. */
+__attribute__((visibility("default"))) void webkit_web_view_set_background_color(void *view, const GdkRGBA *color)
+{
+    void (*next)(void *, const GdkRGBA *) = dlsym
+        ? (void (*)(void *, const GdkRGBA *))dlsym((void *)-1l, "webkit_web_view_set_background_color") : 0;
+    if (!next)
+        return;
+    if (opaque_launcher() && color && color->alpha < 1.0) {
+        GdkRGBA opaque = *color;
+        opaque.alpha = 1.0;
+        next(view, &opaque);
+    } else {
+        next(view, color);
+    }
+}
+
+__attribute__((visibility("default"))) void *gdk_screen_get_rgba_visual(void *screen)
+{
+    const char *symbol = opaque_launcher() ? "gdk_screen_get_system_visual" : "gdk_screen_get_rgba_visual";
+    void *(*visual)(void *) = dlsym ? (void *(*)(void *))dlsym((void *)-1l, symbol) : 0;
+    return visual ? visual(screen) : 0;
+}
+
+__attribute__((visibility("default"))) void gtk_widget_set_app_paintable(void *widget, int enabled)
+{
+    void (*next)(void *, int) = dlsym
+        ? (void (*)(void *, int))dlsym((void *)-1l, "gtk_widget_set_app_paintable") : 0;
+    if (next)
+        next(widget, opaque_launcher() ? 0 : enabled);
+}
+
 __attribute__((visibility("default"))) void webkit_web_view_load_uri(void *view, const char *uri)
 {
     static void (*next)(void *, const char *);
