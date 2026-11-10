@@ -208,13 +208,6 @@
     <string name="bottom_downloads_shader">正在下载着色器缓存</string>
     <string name="bottom_downloads_paused">已暂停</string>
     <string name="bottom_downloads_queued">等待开始</string>
-    <string name="bottom_page_notifications">通知</string>
-    <string name="bottom_notifications_listener">DroidDeck 副屏</string>
-    <string name="bottom_notifications_why">游戏过程中在此显示消息和其他通知。通知仅显示在副屏，不会保存。Android 首次会打开通知访问设置，请在其中启用 DroidDeck，随后自动返回此页。</string>
-    <string name="bottom_notifications_allow">允许通知访问</string>
-    <string name="bottom_notifications_none">暂无通知。</string>
-    <string name="bottom_notifications_count">%1$d 条通知</string>
-    <string name="bottom_notifications_clear">清空</string>
     <string name="bottom_page_screenshots">截图</string>
     <string name="stats_fps_needs_hud">显示 FPS 需要开启 HUD</string>
     <string name="stats_speed">速度</string>
@@ -399,4 +392,5 @@
     <string name="gpuinfo_powervr">系统 PowerVR 驱动，兼容性因设备而异</string>
     <string name="drivers_mali_unpublished_auto">%1$s 尚未发布，暂时使用 %2$s。</string>
     <string name="cmgr_powervr_dxvk_queued">已排队：%1$s（等待切换运行环境驱动）</string>    <string name="setup_android_text_field_keyboard">文本字段使用 Android 键盘</string>
+    <string name="theme_white_red_detail">白色界面搭配红色点缀。</string>
 </resources>
