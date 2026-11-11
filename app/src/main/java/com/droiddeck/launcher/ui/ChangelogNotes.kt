@@ -191,6 +191,16 @@ internal val changelogNotes = mapOf(
     "75a0230304d8f40478ef7b05095e109d504bcf4d" to Triple(R.string.changelog_title_75a0230304d8f40478ef7b05095e109d504bcf4d, R.string.changelog_summary_75a0230304d8f40478ef7b05095e109d504bcf4d, 1794255079000L),
     "7c89c14a84e1fa2a6d3ff0a1ce149a8c671cce4a" to Triple(R.string.changelog_title_7c89c14a84e1fa2a6d3ff0a1ce149a8c671cce4a, R.string.changelog_summary_7c89c14a84e1fa2a6d3ff0a1ce149a8c671cce4a, 1794247030000L),
     "b837611efe543336bc3848b4a73e1ac98be3c293" to Triple(R.string.changelog_title_b837611efe543336bc3848b4a73e1ac98be3c293, R.string.changelog_summary_b837611efe543336bc3848b4a73e1ac98be3c293, 1794246321000L),
+    "b1a410ccd2ca3baf89f2d3edd938ccdad063866a" to Triple(R.string.changelog_title_b1a410ccd2ca3baf89f2d3edd938ccdad063866a, R.string.changelog_summary_b1a410ccd2ca3baf89f2d3edd938ccdad063866a, 1794402058000L),
+    "2aeff3bd9be4ad2b989ccdd49d17fff4403fb0a2" to Triple(R.string.changelog_title_2aeff3bd9be4ad2b989ccdd49d17fff4403fb0a2, R.string.changelog_summary_2aeff3bd9be4ad2b989ccdd49d17fff4403fb0a2, 1794362834000L),
+    "0c79a742c414242a5b3076f2f335edb19a991f57" to Triple(R.string.changelog_title_0c79a742c414242a5b3076f2f335edb19a991f57, R.string.changelog_summary_0c79a742c414242a5b3076f2f335edb19a991f57, 1794361281000L),
+    "e4b2526d2c3f8cc424f612125df1d3a38183ad52" to Triple(R.string.changelog_title_e4b2526d2c3f8cc424f612125df1d3a38183ad52, R.string.changelog_summary_e4b2526d2c3f8cc424f612125df1d3a38183ad52, 1794354591000L),
+    "dd9363e5f2bb90bfb6840f348718ea2a501d9f20" to Triple(R.string.changelog_title_dd9363e5f2bb90bfb6840f348718ea2a501d9f20, R.string.changelog_summary_dd9363e5f2bb90bfb6840f348718ea2a501d9f20, 1794346965000L),
+    "055e2ec78fc2cc9f6215e1ed25906ff9ee7a281e" to Triple(R.string.changelog_title_055e2ec78fc2cc9f6215e1ed25906ff9ee7a281e, R.string.changelog_summary_055e2ec78fc2cc9f6215e1ed25906ff9ee7a281e, 1794345655000L),
+    "3c96df4ab1d85a2776ccbcf6048ed1c6aa3066c8" to Triple(R.string.changelog_title_3c96df4ab1d85a2776ccbcf6048ed1c6aa3066c8, R.string.changelog_summary_3c96df4ab1d85a2776ccbcf6048ed1c6aa3066c8, 1794342049000L),
+    "d8ed02f2cf38ecfa6aebed976281be37bd36f1fc" to Triple(R.string.changelog_title_d8ed02f2cf38ecfa6aebed976281be37bd36f1fc, R.string.changelog_summary_d8ed02f2cf38ecfa6aebed976281be37bd36f1fc, 1794341262000L),
+    "9bf638a3c4131ee569eac305c4f4ec28198cd0e2" to Triple(R.string.changelog_title_9bf638a3c4131ee569eac305c4f4ec28198cd0e2, R.string.changelog_summary_9bf638a3c4131ee569eac305c4f4ec28198cd0e2, 1794330366000L),
+    "40242fa0825cbb1a85d2ad0b58fe75b8c9217b5e" to Triple(R.string.changelog_title_40242fa0825cbb1a85d2ad0b58fe75b8c9217b5e, R.string.changelog_summary_40242fa0825cbb1a85d2ad0b58fe75b8c9217b5e, 1794327921000L),
 )
 
 internal fun changelogChanges(catalog: AppUpdates.Catalog?): List<AppUpdates.PreviewChange> =

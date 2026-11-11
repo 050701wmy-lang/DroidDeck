@@ -374,4 +374,24 @@
     <string name="changelog_summary_7c89c14a84e1fa2a6d3ff0a1ce149a8c671cce4a" formatted="false">移除副屏仪表盘通知页面及其系统通知监听服务。</string>
     <string name="changelog_title_b837611efe543336bc3848b4a73e1ac98be3c293" formatted="false">磁盘已满时诊断调用不再导致应用崩溃</string>
     <string name="changelog_summary_b837611efe543336bc3848b4a73e1ac98be3c293" formatted="false">处理诊断广播无法写入响应文件的错误，避免磁盘已满时中断运行会话。</string>
+    <string name="changelog_title_b1a410ccd2ca3baf89f2d3edd938ccdad063866a" formatted="false">修复育碧游戏的 Orbit 通信与启动等待</string>
+    <string name="changelog_summary_b1a410ccd2ca3baf89f2d3edd938ccdad063866a" formatted="false">为 Orbit、登录及仅进程状态的请求返回响应，修复《孤岛惊魂 3：血龙》启动后黑屏等待的问题。</string>
+    <string name="changelog_title_2aeff3bd9be4ad2b989ccdd49d17fff4403fb0a2" formatted="false">为草稿 PR 启用 CodeRabbit 审查</string>
+    <string name="changelog_summary_2aeff3bd9be4ad2b989ccdd49d17fff4403fb0a2" formatted="false">启用草稿 PR 的自动审查。</string>
+    <string name="changelog_title_0c79a742c414242a5b3076f2f335edb19a991f57" formatted="false">ARM64 前缀保留 x64 Visual C++ 运行库</string>
+    <string name="changelog_summary_0c79a742c414242a5b3076f2f335edb19a991f57" formatted="false">修复部分 Unreal Engine 游戏在 0.7.1 中因 Visual C++ 运行库而无法启动的问题。</string>
+    <string name="changelog_title_e4b2526d2c3f8cc424f612125df1d3a38183ad52" formatted="false">更新测试构建受信任贡献者列表</string>
+    <string name="changelog_summary_e4b2526d2c3f8cc424f612125df1d3a38183ad52" formatted="false">将新贡献者加入 CI 测试构建信任列表。</string>
+    <string name="changelog_title_dd9363e5f2bb90bfb6840f348718ea2a501d9f20" formatted="false">育碧启动服务改为独立组件</string>
+    <string name="changelog_summary_dd9363e5f2bb90bfb6840f348718ea2a501d9f20" formatted="false">将育碧启动服务作为独立组件发布，登录育碧账号时获取并放入客体环境。主分支扫描仅针对标准 APK。</string>
+    <string name="changelog_title_055e2ec78fc2cc9f6215e1ed25906ff9ee7a281e" formatted="false">修复 Electron Node 模式的沙盒参数注入</string>
+    <string name="changelog_summary_055e2ec78fc2cc9f6215e1ed25906ff9ee7a281e" formatted="false">子进程启用 Electron Node 模式时跳过 Chromium 参数注入，并在启动子进程时传递其环境配置。</string>
+    <string name="changelog_title_3c96df4ab1d85a2776ccbcf6048ed1c6aa3066c8" formatted="false">新增 Ubisoft Connect 商店</string>
+    <string name="changelog_summary_3c96df4ab1d85a2776ccbcf6048ed1c6aa3066c8" formatted="false">支持在 DroidDeck 内登录育碧账号、浏览游戏库、下载和启动游戏。</string>
+    <string name="changelog_title_d8ed02f2cf38ecfa6aebed976281be37bd36f1fc" formatted="false">新增 EA 商店</string>
+    <string name="changelog_summary_d8ed02f2cf38ecfa6aebed976281be37bd36f1fc" formatted="false">支持登录、同步、下载、更新和启动 EA 游戏。</string>
+    <string name="changelog_title_9bf638a3c4131ee569eac305c4f4ec28198cd0e2" formatted="false">仅在使用外接鼠标时将系统返回键转换为右键</string>
+    <string name="changelog_summary_9bf638a3c4131ee569eac305c4f4ec28198cd0e2" formatted="false">避免部分掌机的返回键因内置指针设备而误触发客体右键菜单。</string>
+    <string name="changelog_title_40242fa0825cbb1a85d2ad0b58fe75b8c9217b5e" formatted="false">CI 扫描已签名的主分支和发布 APK</string>
+    <string name="changelog_summary_40242fa0825cbb1a85d2ad0b58fe75b8c9217b5e" formatted="false">签名后将 APK 上传至 VirusTotal，在构建摘要列出扫描结果，并对检出结果发出警告。</string>
 </resources>
