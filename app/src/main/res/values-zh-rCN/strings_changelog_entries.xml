@@ -394,4 +394,24 @@
     <string name="changelog_summary_9bf638a3c4131ee569eac305c4f4ec28198cd0e2" formatted="false">避免部分掌机的返回键因内置指针设备而误触发客体右键菜单。</string>
     <string name="changelog_title_40242fa0825cbb1a85d2ad0b58fe75b8c9217b5e" formatted="false">CI 扫描已签名的主分支和发布 APK</string>
     <string name="changelog_summary_40242fa0825cbb1a85d2ad0b58fe75b8c9217b5e" formatted="false">签名后将 APK 上传至 VirusTotal，在构建摘要列出扫描结果，并对检出结果发出警告。</string>
+    <string name="changelog_title_da5a36151b7f82a394049409a75efc4888077f43" formatted="false">可隐藏 Agent 标签页</string>
+    <string name="changelog_summary_da5a36151b7f82a394049409a75efc4888077f43" formatted="false">在设置的启动器页面新增 Agent 标签开关，仅在 Agent 可用时显示，默认开启。</string>
+    <string name="changelog_title_01bfe8519ef75eed6fc5b988424604a01cb23650" formatted="false">长时间暂停后保持客体单调时钟连续</string>
+    <string name="changelog_summary_01bfe8519ef75eed6fc5b988424604a01cb23650" formatted="false">将暂停时钟补偿应用到会话客体进程，避免恢复时看到完整的暂停时间差。</string>
+    <string name="changelog_title_cd05c96d103210820f0c6891c9b690f50611d94b" formatted="false">文件系统不支持单个调用时保留 PRoot 快速路径</string>
+    <string name="changelog_summary_cd05c96d103210820f0c6891c9b690f50611d94b" formatted="false">单项文件系统调用不受支持时继续使用其他快速路径，改善存储卡安装和校验速度。</string>
+    <string name="changelog_title_b303423001ec49f9894f97cd4763e5536e5a494b" formatted="false">Lab 复用已安装的组件包</string>
+    <string name="changelog_summary_b303423001ec49f9894f97cd4763e5536e5a494b" formatted="false">当源码固定的 PRoot 版本与设备已安装版本不一致时，复用已安装组件，使 Agent 可以重启。</string>
+    <string name="changelog_title_1882520cac2f8c6d862959334ed4b1f7a12def0e" formatted="false">启动或结束 Steam 会话时保持 Agent 运行</string>
+    <string name="changelog_summary_1882520cac2f8c6d862959334ed4b1f7a12def0e" formatted="false">避免 Steam 会话启动、停止或重启时中断 Agent 当前操作。</string>
+    <string name="changelog_title_7da27d4ff4a5d9b006ae9febcd565b45a9eca617" formatted="false">新增构建标签水印开关</string>
+    <string name="changelog_summary_7da27d4ff4a5d9b006ae9febcd565b45a9eca617" formatted="false">可控制 Lab、测试和本地构建的标签水印，选择在重启后保留。</string>
+    <string name="changelog_title_02a5be62da4dc1af8f5e18f49dc14c0185126f04" formatted="false">修复处理事件时手柄断开导致的崩溃</string>
+    <string name="changelog_summary_02a5be62da4dc1af8f5e18f49dc14c0185126f04" formatted="false">避免手柄在按键事件处理期间断开而触发空引用。</string>
+    <string name="changelog_title_956f17239b2ad6ea1a37ee6c0edbda9f8c84d27e" formatted="false">清理存储时保留反作弊运行环境</string>
+    <string name="changelog_summary_956f17239b2ad6ea1a37ee6c0edbda9f8c84d27e" formatted="false">保留 Proton EasyAntiCheat 和 BattlEye 运行环境，避免 Steam 游戏停在下载进度 0%。</string>
+    <string name="changelog_title_3b6d13a8d7830e77bd0cf10373220e341a5df79d" formatted="false">改善存储卡游戏安装和战网访问</string>
+    <string name="changelog_summary_3b6d13a8d7830e77bd0cf10373220e341a5df79d" formatted="false">加快存储卡游戏安装，并修复 Battle.net 无法读取存储卷的问题。</string>
+    <string name="changelog_title_1d247d212bf6e1cd8cb4520b7b7f4ffc1e620510" formatted="false">修复 Decky 在客体环境中的启动</string>
+    <string name="changelog_summary_1d247d212bf6e1cd8cb4520b7b7f4ffc1e620510" formatted="false">让 Decky 在客体内以 root 执行所需角色，避免因缺少 deck 用户而启动失败。</string>
 </resources>
