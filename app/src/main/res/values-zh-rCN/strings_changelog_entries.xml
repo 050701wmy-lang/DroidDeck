@@ -420,4 +420,24 @@
     <string name="changelog_summary_c8dec0a8bc4285d9cf9da59ad7a663f0e28e9400" formatted="false">修复游戏库会列出当前账号无法下载或游玩的游戏的问题。现在仅显示账号实际拥有访问权限的游戏。</string>
     <string name="changelog_title_a8237e89277706b3b9256a0bbe338e5f0acc18d0" formatted="false">内存紧张时回收空闲会话占用</string>
     <string name="changelog_summary_a8237e89277706b3b9256a0bbe338e5f0acc18d0" formatted="false">修复内存超过 13 GiB 的设备无法回收空闲会话内存的问题，并改善 GPU 或系统预留内存快速增长时对剩余内存的估算。</string>
+    <string name="changelog_title_83de0e7f8c42df885c8fbcdd97629ab9957739ea" formatted="false">扩大 Rockstar 启动器协议兼容范围</string>
+    <string name="changelog_summary_83de0e7f8c42df885c8fbcdd97629ab9957739ea" formatted="false">取消仅限三款游戏的启动限制，按元数据选择启动方式。已安装游戏仍可直接游玩并注册 Steam 快捷方式。未识别到启动协议时可尝试直接运行程序，识别到协议时需服务器授权的启动数据。</string>
+    <string name="changelog_title_f33181e430ac3009c29c918428fec6769cfcf07a" formatted="false">加快存储卡上的目录切换</string>
+    <string name="changelog_summary_f33181e430ac3009c29c918428fec6769cfcf07a" formatted="false">PRoot 的 fchdir 直接使用已打开目录的路径，减少 Wine 枚举目录时重复解析路径的开销。</string>
+    <string name="changelog_title_bb05e20d1b72ea288d45270fbebb7774f383cc3c" formatted="false">可为不经 Steam 启动的游戏选择分辨率</string>
+    <string name="changelog_summary_bb05e20d1b72ea288d45270fbebb7774f383cc3c" formatted="false">为选择不通过 Steam 启动的游戏新增分辨率设置。</string>
+    <string name="changelog_title_827ab2d4856305f81a26e767d62e280f52c844e7" formatted="false">修复休眠唤醒后的 HUD 帧率和计时</string>
+    <string name="changelog_summary_827ab2d4856305f81a26e767d62e280f52c844e7" formatted="false">修复会话运行时休眠后，HUD 帧率、帧时间、平均帧率和已运行时间显示错误。</string>
+    <string name="changelog_title_d63193393d9747f225e1560911e5d005d565af71" formatted="false">Agent 功能移至开发者设置并默认关闭</string>
+    <string name="changelog_summary_d63193393d9747f225e1560911e5d005d565af71" formatted="false">Agent 标签页默认关闭。设置中的诊断页改名为开发者，Agent 标签页和浮窗开关移至该页的调试工具下。</string>
+    <string name="changelog_title_b841b232b42defcf40ae6d527e3c9c463c3f1a08" formatted="false">新增 Rockstar 游戏商店和经典 GTA 启动支持</string>
+    <string name="changelog_summary_b841b232b42defcf40ae6d527e3c9c463c3f1a08" formatted="false">加入 Rockstar 登录、已购游戏库、目录和经过校验的下载，并支持通过账号认证启动原版 GTA III、Vice City 和 San Andreas。</string>
+    <string name="changelog_title_9cc37d0a123bc8a6bd7ccad5827c96d2316688d4" formatted="false">修复顶部搜索栏高度和焦点</string>
+    <string name="changelog_summary_9cc37d0a123bc8a6bd7ccad5827c96d2316688d4" formatted="false">打开搜索时保持页眉高度，关闭后恢复原焦点。</string>
+    <string name="changelog_title_b5f6122d49a29ee07f889ce05695e59e4d8af3d6" formatted="false">减少启动时对存储卡游戏库的扫描</string>
+    <string name="changelog_summary_b5f6122d49a29ee07f889ce05695e59e4d8af3d6" formatted="false">启动会话和游戏时避免遍历无需检查的存储卡游戏目录。</string>
+    <string name="changelog_title_39a4a1b60cca6722086c495f0a7cd5cb196d9b79" formatted="false">新增 Agent 浮动助手 DeeDee</string>
+    <string name="changelog_summary_39a4a1b60cca6722086c495f0a7cd5cb196d9b79" formatted="false">浮动助手可显示 Agent 状态并打开聊天，可在浏览器、游戏和启动器等应用上方显示。</string>
+    <string name="changelog_title_b52ce7e4c5095c565056d3e39226b931998f317c" formatted="false">为各游戏单独配置帧生成</string>
+    <string name="changelog_summary_b52ce7e4c5095c565056d3e39226b931998f317c" formatted="false">可为游戏选择独立帧生成配置，也可使用默认配置。DroidDeck 游戏库和 Steam 侧栏均可调整。</string>
 </resources>

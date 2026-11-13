@@ -45,6 +45,7 @@ class App : Application() {
         CrashHandler.install(this)
         com.droiddeck.launcher.agent.AgentHost.refresh(this)
         com.droiddeck.launcher.agent.AgentTab.load(this)
+        com.droiddeck.launcher.ui.AgentPet.install(this)
         if (com.droiddeck.launcher.agent.AgentTab.visible) com.droiddeck.launcher.lab.LabNotice.openOnInstall = "agent"
         com.droiddeck.launcher.lab.LabNotice.started(this)
         com.droiddeck.launcher.core.SteamIntegration.syncShortcutsListing(this)
@@ -72,6 +73,7 @@ class App : Application() {
         com.droiddeck.launcher.stores.StoresState.register(com.droiddeck.launcher.stores.ubisoft.UbisoftBackend)
         com.droiddeck.launcher.stores.ea.EaBackend.app = this
         com.droiddeck.launcher.stores.StoresState.register(com.droiddeck.launcher.stores.ea.EaBackend)
+        com.droiddeck.launcher.stores.StoresState.register(com.droiddeck.launcher.stores.rockstar.RockstarBackend)
     }
 
     private fun prefetchAddonPacks() {
