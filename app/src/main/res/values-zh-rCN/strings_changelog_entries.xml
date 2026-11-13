@@ -414,4 +414,10 @@
     <string name="changelog_summary_3b6d13a8d7830e77bd0cf10373220e341a5df79d" formatted="false">加快存储卡游戏安装，并修复 Battle.net 无法读取存储卷的问题。</string>
     <string name="changelog_title_1d247d212bf6e1cd8cb4520b7b7f4ffc1e620510" formatted="false">修复 Decky 在客体环境中的启动</string>
     <string name="changelog_summary_1d247d212bf6e1cd8cb4520b7b7f4ffc1e620510" formatted="false">让 Decky 在客体内以 root 执行所需角色，避免因缺少 deck 用户而启动失败。</string>
+    <string name="changelog_title_3b1366f85c1d432c7bcfc5c627668eb7d77876fb" formatted="false">Agent 标签页可选择推理强度</string>
+    <string name="changelog_summary_3b1366f85c1d432c7bcfc5c627668eb7d77876fb" formatted="false">Agent 的模型选择器新增推理强度选项，可使用默认值或选择各 CLI 支持的档位。Claude Code 支持低至最高，Codex 支持低至高。设置按 CLI 分别保存，并显示在页眉。</string>
+    <string name="changelog_title_c8dec0a8bc4285d9cf9da59ad7a663f0e28e9400" formatted="false">EA 和 Ubisoft 游戏库仅显示可下载的游戏</string>
+    <string name="changelog_summary_c8dec0a8bc4285d9cf9da59ad7a663f0e28e9400" formatted="false">修复游戏库会列出当前账号无法下载或游玩的游戏的问题。现在仅显示账号实际拥有访问权限的游戏。</string>
+    <string name="changelog_title_a8237e89277706b3b9256a0bbe338e5f0acc18d0" formatted="false">内存紧张时回收空闲会话占用</string>
+    <string name="changelog_summary_a8237e89277706b3b9256a0bbe338e5f0acc18d0" formatted="false">修复内存超过 13 GiB 的设备无法回收空闲会话内存的问题，并改善 GPU 或系统预留内存快速增长时对剩余内存的估算。</string>
 </resources>

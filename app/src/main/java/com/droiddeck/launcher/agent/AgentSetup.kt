@@ -97,7 +97,7 @@ object AgentSetup {
             val result = runCatching {
                 installHelpers(app)
                 runCatching { harness.prepare(LinuxRuntime.rootDir(app)) }
-                val child = AgentHost.guest(app, command).start()
+                val child = AgentHost.guest(app, command, fakeRoot = step == Step.INSTALL).start()
                 val pid = AgentProcesses.pidOf(child)
                 OrphanReaper.keep(pid)
                 try {

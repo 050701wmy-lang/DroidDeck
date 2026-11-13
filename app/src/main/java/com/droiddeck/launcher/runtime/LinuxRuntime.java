@@ -147,7 +147,12 @@ public final class LinuxRuntime {
 
     public static List<String> commandWithBinds(Context context, File root, List<String> binds,
                                                 List<String> guestCommand) {
-        List<String> cmd = prootPrefix(context, root, "/root");
+        return commandWithBinds(context, root, binds, guestCommand, false);
+    }
+
+    public static List<String> commandWithBinds(Context context, File root, List<String> binds,
+                                                List<String> guestCommand, boolean fakeRoot) {
+        List<String> cmd = prootPrefix(context, root, "/root", fakeRoot);
         for (String spec : binds) bind(cmd, spec);
         cmd.addAll(guestCommand);
         return cmd;

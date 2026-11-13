@@ -414,4 +414,10 @@
     <string name="changelog_summary_3b6d13a8d7830e77bd0cf10373220e341a5df79d" formatted="false">Two separate faults hit games kept on an SD card.</string>
     <string name="changelog_title_1d247d212bf6e1cd8cb4520b7b7f4ffc1e620510" formatted="false">fix(decky): run Decky\'s unprivileged role as root in the guest</string>
     <string name="changelog_summary_1d247d212bf6e1cd8cb4520b7b7f4ffc1e620510" formatted="false">Decky Loader exits at startup with KeyError: getpwnam(): name not found: \'deck\' because the guest has no deck user, so the plugin menu never appears in Steam.</string>
+    <string name="changelog_title_3b1366f85c1d432c7bcfc5c627668eb7d77876fb" formatted="false">feat(agent): choose the reasoning effort in the Agent tab</string>
+    <string name="changelog_summary_3b1366f85c1d432c7bcfc5c627668eb7d77876fb" formatted="false">The model picker in the Agent tab gets a Reasoning effort row: Default plus the levels each CLI accepts. Claude Code gets low to max through --effort; Codex gets low to high through -c modelreasoningeffort. The choice is saved per CLI and shown in the header.</string>
+    <string name="changelog_title_c8dec0a8bc4285d9cf9da59ad7a663f0e28e9400" formatted="false">fix(stores): EA and Ubisoft libraries list only games the account can download</string>
+    <string name="changelog_summary_c8dec0a8bc4285d9cf9da59ad7a663f0e28e9400" formatted="false">The EA and Ubisoft libraries listed games the account can\'t download or play. This keeps only real entitlements.</string>
+    <string name="changelog_title_a8237e89277706b3b9256a0bbe338e5f0acc18d0" formatted="false">fix(memory): reclaim idle session memory under pressure</string>
+    <string name="changelog_summary_a8237e89277706b3b9256a0bbe338e5f0acc18d0" formatted="false">Issue #945 exposed a RAM-size gate that disabled idle session reclaim above 13 GiB. MemAvailable alone also overstated headroom during rapid GPU and system-reserved memory growth.</string>
 </resources>

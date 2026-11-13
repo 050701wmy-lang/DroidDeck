@@ -78,6 +78,9 @@ object AgentHost {
     /** The chosen model for [harness]; null is the CLI's default. */
     var model by mutableStateOf<String?>(null)
         private set
+    /** The chosen reasoning effort for [harness]; null is the CLI's default. */
+    var effort by mutableStateOf<String?>(null)
+        private set
     var plan by mutableStateOf(false)
         private set
     var chat by mutableStateOf<String?>(null)
@@ -131,6 +134,7 @@ object AgentHost {
         File(app.filesDir, "agent").mkdirs()
         harness = AgentHarness.byId(prefs(app).getString(HARNESS_KEY, null))
         model = prefs(app).getString(modelKey(harness), null)
+        effort = prefs(app).getString(effortKey(harness), null)?.takeIf { it in harness.efforts }
         plan = prefs(app).getBoolean(PLAN_KEY, false)
         available = LinuxRuntime.hasRootfs(app)
         installed = harness.files.all { guestFileExists(app, it) }
@@ -220,6 +224,11 @@ object AgentHost {
         prefs(context).edit().putString(modelKey(harness), id).apply()
     }
 
+    fun chooseEffort(context: Context, level: String?) {
+        effort = level
+        prefs(context).edit().putString(effortKey(harness), level).apply()
+    }
+
     fun choosePlan(context: Context, on: Boolean) {
         plan = on
         prefs(context).edit().putBoolean(PLAN_KEY, on).apply()
@@ -254,7 +263,7 @@ object AgentHost {
         AgentHostService.start(app)
         val current = harness
         val prompt = AgentAttachments.prompt(message, attached)
-        val command = current.turn(prompt, conversation, AgentHarness.Options(model, plan && current.plans, BRIEF))
+        val command = current.turn(prompt, conversation, AgentHarness.Options(model, plan && current.plans, BRIEF, effort))
         val workdir = workspace(app)
         Thread({
             runCatching { current.prepare(LinuxRuntime.rootDir(app)) }
@@ -331,10 +340,13 @@ object AgentHost {
      * proot over the installed rootfs, without a session. Loopback adb is connected first so
      * droiddeckctl reaches the app.
      */
-    fun guest(app: Context, command: List<String>, workdir: String = "/root", connectAdb: Boolean = true): ProcessBuilder {
+    fun guest(
+        app: Context, command: List<String>, workdir: String = "/root",
+        connectAdb: Boolean = true, fakeRoot: Boolean = false,
+    ): ProcessBuilder {
         val adb = AgentAdb.prepare(app)
         val env = listOf(
-            "/usr/bin/env", "HOME=/root", "PATH=/root/.local/bin:/usr/local/bin:/usr/bin:/bin", "LANG=C.UTF-8",
+            "/usr/bin/env", "HOME=/root", "PATH=/root/.local/bin:${if (fakeRoot) LinuxRuntime.GUEST_PATH else "/usr/local/bin:/usr/bin:/bin"}", "LANG=C.UTF-8",
             "ADB_SERIAL=${adb.serial}", "ADB_VENDOR_KEYS=${adb.vendorKeys}",
             "DD_AGENT=1", "DD_AGENT_INBOX=${File(app.filesDir, "agent").path}", "BROWSER=/root/.local/bin/android-open", "DD_BROWSER_DISPLAY=${AgentAdb.browserDisplay}",
         )
@@ -344,7 +356,12 @@ object AgentHost {
             (if (connectAdb) "adb start-server >/dev/null 2>&1; adb connect \"\$ADB_SERIAL\" >/dev/null 2>&1; " else "") +
                 "cd \"$1\" 2>/dev/null; shift; exec \"$@\"", "sh", workdir,
         )
-        val proot = LinuxRuntime.command(app, null, null, Environment.getExternalStorageDirectory(), env + shell + command)
+        val proot = LinuxRuntime.commandWithBinds(
+            app, LinuxRuntime.rootDir(app),
+            LinuxRuntime.binds(app, null, null, Environment.getExternalStorageDirectory(), null),
+            env + shell + command, fakeRoot,
+        )
+        if (fakeRoot) proot.add(1, "--link2symlink")
         return ProcessBuilder(proot).redirectErrorStream(true).apply {
             environment().apply {
                 remove("LD_PRELOAD"); remove("LD_AUDIT"); remove("LD_LIBRARY_PATH")
@@ -546,6 +563,7 @@ object AgentHost {
     private const val RETRY_MS = 3_000L
 
     private fun modelKey(harness: AgentHarness) = "model_${harness.id}"
+    private fun effortKey(harness: AgentHarness) = "effort_${harness.id}"
 
     internal fun prefs(context: Context) = context.getSharedPreferences("agent", Context.MODE_PRIVATE)
 }
