@@ -46,7 +46,6 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.CAMERA" />
@@ -119,6 +118,17 @@
         </activity>
 
         <activity
+            android:name=".DeviceCodeActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity="${applicationId}.devicecode"
+            android:excludeFromRecents="true"
+            android:supportsPictureInPicture="true"
+            android:resizeableActivity="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|density|keyboard|keyboardHidden|navigation"
+            android:theme="@style/AppTheme" />
+
+        <activity
             android:name=".PairingGuideActivity"
             android:exported="false"
             android:launchMode="singleTask"
@@ -141,6 +151,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <category android:name="android.intent.category.CAR_LAUNCHER" />
                 <data android:scheme="droiddeck" android:host="game" />
+                <data android:scheme="droiddeck" android:host="soundtrack" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.CREATE_SHORTCUT" />
@@ -334,6 +345,14 @@
             android:name=".sync.SyncthingService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+        <service
+            android:name=".playback.SoundtrackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.logs"

@@ -397,7 +397,6 @@
     <string name="perf_native_userland">不使用 PRoot 运行（实验性）</string>
     <string name="perf_native_userland_hint">直接在 Android 上启动 Linux 端。下次会话生效，若启动失败可关闭。</string>
     <string name="rail_agent">Agent</string>
-    <string name="setup_agent_tab">Agent 标签页</string>
     <string name="storage_tool_anticheat">Steam 会为附带反作弊的游戏下载此运行环境。删除后，游戏安装可能停在 0%。</string>
     <string name="upd_lab">Lab 构建</string>
     <string name="agent_action_install">安装</string>

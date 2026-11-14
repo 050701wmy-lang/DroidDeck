@@ -440,4 +440,24 @@
     <string name="changelog_summary_39a4a1b60cca6722086c495f0a7cd5cb196d9b79" formatted="false">浮动助手可显示 Agent 状态并打开聊天，可在浏览器、游戏和启动器等应用上方显示。</string>
     <string name="changelog_title_b52ce7e4c5095c565056d3e39226b931998f317c" formatted="false">为各游戏单独配置帧生成</string>
     <string name="changelog_summary_b52ce7e4c5095c565056d3e39226b931998f317c" formatted="false">可为游戏选择独立帧生成配置，也可使用默认配置。DroidDeck 游戏库和 Steam 侧栏均可调整。</string>
+    <string name="changelog_title_d8b3c66b9579c33050462647b054801f7be7a970" formatted="false">战网下载停滞时允许重试</string>
+    <string name="changelog_summary_d8b3c66b9579c33050462647b054801f7be7a970" formatted="false">下载长时间无进展时会提示重试。应用关闭时仍在进行的更新，重启后会继续作为更新处理。</string>
+    <string name="changelog_title_50fbcf8b2a34f82b126448d573a35a8f77f0b795" formatted="false">游戏库新增收藏标签页</string>
+    <string name="changelog_summary_50fbcf8b2a34f82b126448d573a35a8f77f0b795" formatted="false">在游戏详情点击爱心即可收藏游戏，在游戏库的收藏标签页快速找到它。</string>
+    <string name="changelog_title_2183b05573a1aeee5651903b014a3b30432af7c1" formatted="false">补齐界面译文与输入布局</string>
+    <string name="changelog_summary_2183b05573a1aeee5651903b014a3b30432af7c1" formatted="false">为各语言补齐缺失的界面译文，并添加输入布局资源。</string>
+    <string name="changelog_title_e816d795811689af4a9edb11e8e13db45e4256fa" formatted="false">设置 Steam 首次启动的显示默认值</string>
+    <string name="changelog_summary_e816d795811689af4a9edb11e8e13db45e4256fa" formatted="false">首次启动时默认显示电量百分比、以字节为单位显示下载速度，并按最近游玩排序。</string>
+    <string name="changelog_title_f502b8b3e632d92df1239fdb443c8e5edac04b44" formatted="false">HUD 可显示预计电池续航</string>
+    <string name="changelog_summary_f502b8b3e632d92df1239fdb443c8e5edac04b44" formatted="false">DroidDeck 游戏内 HUD 新增预计剩余续航，并可通过独立开关显示或隐藏。</string>
+    <string name="changelog_title_30d103280bc38ec31e0675e6dfa57d0f1b0d612d" formatted="false">保留游戏的 OpenGL 错误检查</string>
+    <string name="changelog_summary_30d103280bc38ec31e0675e6dfa57d0f1b0d612d" formatted="false">修复 Steam 游戏继承客户端的 OpenGL 设置后，在换关时可能黑屏的问题。</string>
+    <string name="changelog_title_f6d1794624722e53792b8c9069f6887da31fac66" formatted="false">减少帧率稳定时对最高性能核心的占用</string>
+    <string name="changelog_summary_f6d1794624722e53792b8c9069f6887da31fac66" formatted="false">减少自带帧率限制的游戏因忙等待而长时间占用最高性能核心的情况。</string>
+    <string name="changelog_title_b3ebd54d87f255d77fa81aace6db58eb3b9f881c" formatted="false">加快商店启动器游戏的启动反馈</string>
+    <string name="changelog_summary_b3ebd54d87f255d77fa81aace6db58eb3b9f881c" formatted="false">减少启动前扫描游戏目录的等待，并在游戏真正启动前持续显示“正在启动”。</string>
+    <string name="changelog_title_6d1a0d9fd0bd2234b2677c33a7072eaa89ef2be3" formatted="false">修复原生运行模式的游戏库盘符路径</string>
+    <string name="changelog_summary_6d1a0d9fd0bd2234b2677c33a7072eaa89ef2be3" formatted="false">修复关闭 PRoot 时，位于独立游戏库的 Windows 游戏因盘符路径错误而无法启动。</string>
+    <string name="changelog_title_bc929c08b2f327c4399c90d9fc407988e3c3bcfd" formatted="false">首次编辑也能保存 Steam 触控布局</string>
+    <string name="changelog_summary_bc929c08b2f327c4399c90d9fc407988e3c3bcfd" formatted="false">游戏尚无触控布局配置文件时，现在也可以保存编辑结果。</string>
 </resources>
