@@ -460,4 +460,22 @@
     <string name="changelog_summary_6d1a0d9fd0bd2234b2677c33a7072eaa89ef2be3" formatted="false">修复关闭 PRoot 时，位于独立游戏库的 Windows 游戏因盘符路径错误而无法启动。</string>
     <string name="changelog_title_bc929c08b2f327c4399c90d9fc407988e3c3bcfd" formatted="false">首次编辑也能保存 Steam 触控布局</string>
     <string name="changelog_summary_bc929c08b2f327c4399c90d9fc407988e3c3bcfd" formatted="false">游戏尚无触控布局配置文件时，现在也可以保存编辑结果。</string>
+    <string name="changelog_title_059711cfe1bac4b5e833381ff3501ae88bd80895" formatted="false">仅为《死亡搁浅》启用内存分配修复</string>
+    <string name="changelog_summary_059711cfe1bac4b5e833381ff3501ae88bd80895" formatted="false">按 Steam 游戏 ID 限定内存分配修复的作用范围，避免其他游戏受到影响。</string>
+    <string name="changelog_title_87cd74c4bfc8f17cdac34eed1edfadf31a170d7a" formatted="false">修复《死亡搁浅》在 39 位内核上启动时内存不足</string>
+    <string name="changelog_summary_87cd74c4bfc8f17cdac34eed1edfadf31a170d7a" formatted="false">修复《死亡搁浅：导演剪辑版》旧版内存分配器在地址空间受限的设备上启动失败的问题。</string>
+    <string name="changelog_title_b6d77bc3d816f6629680c07fb38e72bd4cf173fa" formatted="false">清理未使用的 Vulkan 声明</string>
+    <string name="changelog_summary_b6d77bc3d816f6629680c07fb38e72bd4cf173fa" formatted="false">移除未使用的 Vulkan 渲染和输出声明，保留原生帧生成所需的函数表。</string>
+    <string name="changelog_title_99bf382ae8e73ef20948cb8631adfc9c2c4352d6" formatted="false">让 DXVK 支持缺少双源混合的 Mali GPU</string>
+    <string name="changelog_summary_99bf382ae8e73ef20948cb8631adfc9c2c4352d6" formatted="false">修复部分 Mali GPU 经 Venus 运行 D3D11 游戏时，DXVK 找不到可用设备的问题。</string>
+    <string name="changelog_title_eb190f2dd7751f8f77de98940df4524e59cdf5bb" formatted="false">改进 Agent 标签页</string>
+    <string name="changelog_summary_eb190f2dd7751f8f77de98940df4524e59cdf5bb" formatted="false">改进输入框、通知和历史搜索，并增加选项、子代理、听写、游戏画面与复制功能。</string>
+    <string name="changelog_title_a3be5f7ae2479bdd47a8997e69ad3489774247a4" formatted="false">Epic 启动器改用官方 Linux DEB</string>
+    <string name="changelog_summary_a3be5f7ae2479bdd47a8997e69ad3489774247a4" formatted="false">Epic 停止发布 Linux AppImage，安装流程改用 Epic 提供的 DEB。</string>
+    <string name="changelog_title_87c571f4432ac3cf3158499fab1c5ad96c3b6439" formatted="false">上游扩充预览构建记录</string>
+    <string name="changelog_summary_87c571f4432ac3cf3158499fab1c5ad96c3b6439" formatted="false">上游更新页扩充历史构建信息，显示关联 PR 和提交，并标记过时的测试构建。</string>
+    <string name="changelog_title_c847659789e6f8ae7f28a795a8be449a636b4c27" formatted="false">支持拖动调整标签页顺序</string>
+    <string name="changelog_summary_c847659789e6f8ae7f28a795a8be449a636b4c27" formatted="false">在统一列表中拖动调整导航标签的顺序和显示位置。</string>
+    <string name="changelog_title_aa3a599ec6893d366f4185b7ec5061874b13b7fd" formatted="false">在会话日志记录运行时安装失败原因</string>
+    <string name="changelog_summary_aa3a599ec6893d366f4185b7ec5061874b13b7fd" formatted="false">记录安装失败的具体步骤和错误，以便通过共享会话日志定位问题。</string>
 </resources>
