@@ -478,4 +478,10 @@
     <string name="changelog_summary_c847659789e6f8ae7f28a795a8be449a636b4c27" formatted="false">在统一列表中拖动调整导航标签的顺序和显示位置。</string>
     <string name="changelog_title_aa3a599ec6893d366f4185b7ec5061874b13b7fd" formatted="false">在会话日志记录运行时安装失败原因</string>
     <string name="changelog_summary_aa3a599ec6893d366f4185b7ec5061874b13b7fd" formatted="false">记录安装失败的具体步骤和错误，以便通过共享会话日志定位问题。</string>
+    <string name="changelog_title_7254a88391f9e79bb2629a88b6f5a24ab437de8e" formatted="false">仅启用 Steam 键盘时才启动 Proton 的 TabTip</string>
+    <string name="changelog_summary_7254a88391f9e79bb2629a88b6f5a24ab437de8e" formatted="false">默认关闭 Proton 触摸键盘组件，减少部分支持 UI Automation 的游戏在窗口出现后崩溃的情况。</string>
+    <string name="changelog_title_fdf3d98c36c35c2d770ec54e59f3dd424f212beb" formatted="false">游戏退出后停止残留的手柄振动</string>
+    <string name="changelog_summary_fdf3d98c36c35c2d770ec54e59f3dd424f212beb" formatted="false">修复 Proton 游戏崩溃后，设备或手柄可能持续振动直到整个会话结束的问题。</string>
+    <string name="changelog_title_6f7d7f827f6bddf188cde0c4f91474eaccf558f9" formatted="false">避免替换测试构建时下载返回 404</string>
+    <string name="changelog_summary_6f7d7f827f6bddf188cde0c4f91474eaccf558f9" formatted="false">先刷新目录再清理旧 APK，已合并的测试构建也会保留到 Preview 包含对应改动。</string>
 </resources>
