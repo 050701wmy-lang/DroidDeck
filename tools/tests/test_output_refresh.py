@@ -148,9 +148,9 @@ int main(void) {
 class OutputRefreshTest(unittest.TestCase):
     def test_live_wayland_refresh_does_not_become_an_implicit_fps_limit(self):
         source = (ROOT / 'tools/linuxfs/overlay/usr/local/bin/droiddeck-session').read_text()
-        start = source.index('  args=(--backend wayland')
+        start = source.index('  args=(--backend ')
         end = source.index('  [ "$mode" = steam ]', start)
-        script = 'width=3040; height=1904; nested=$width; nested_h=$height\n' + source[start:end] + '\nprintf "%s\\n" "${args[@]}"\n' + '\nprintf "FOLLOW:%s\\n" "${GAMESCOPE_NESTED_REFRESH_FOLLOWS_HOST:-}"\n'
+        script = 'backend=wayland; width=3040; height=1904; nested=$width; nested_h=$height\n' + source[start:end] + '\nprintf "%s\\n" "${args[@]}"\n' + '\nprintf "FOLLOW:%s\\n" "${GAMESCOPE_NESTED_REFRESH_FOLLOWS_HOST:-}"\n'
         for fps, refresh in ((0, 60), (0, 120), (0, 165), (60, 165), (120, 165)):
             with self.subTest(fps=fps, refresh=refresh):
                 result = subprocess.run(['bash', '-c', script], capture_output=True, text=True,
