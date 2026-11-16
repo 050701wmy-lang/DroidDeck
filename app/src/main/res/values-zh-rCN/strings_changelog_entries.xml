@@ -486,4 +486,24 @@
     <string name="changelog_summary_6f7d7f827f6bddf188cde0c4f91474eaccf558f9" formatted="false">先刷新目录再清理旧 APK，已合并的测试构建也会保留到 Preview 包含对应改动。</string>
     <string name="changelog_title_7b4b86b0f368d3b59a33071b84c261a1d14b5054" formatted="false">Turnip 默认让游戏和应用使用系统内存渲染</string>
     <string name="changelog_summary_7b4b86b0f368d3b59a33071b84c261a1d14b5054" formatted="false">默认启用的 Turnip 系统内存渲染设置现已覆盖游戏与应用。在此之前，它主要应用于 Steam 客户端。</string>
+    <string name="changelog_title_f65e7a3d436bee56f32626dc3536708d12e43162" formatted="false">修复不同 Proton 下共享存储中的 Windows 游戏启动</string>
+    <string name="changelog_summary_f65e7a3d436bee56f32626dc3536708d12e43162" formatted="false">修复 Windows 游戏安装到 Android 共享存储自定义目录后启动即崩溃的问题。此问题曾在使用 Valve Proton Experimental ARM64 的设备上影响两款 EA 游戏。</string>
+    <string name="changelog_title_3d0c38c1d3462785c3ab1bae5970b2688ee381f6" formatted="false">符合条件的 Steam 界面默认启用 GPU 合成</string>
+    <string name="changelog_summary_3d0c38c1d3462785c3ab1bae5970b2688ee381f6" formatted="false">符合条件的开源驱动会话改为默认使用 GPU 进行 Steam 网页界面合成，调整此前未设置该选项时强制使用软件合成的行为。</string>
+    <string name="changelog_title_a20528c62b30ac0172eb75fa7006c06daa0e0db8" formatted="false">修复 32 位 x86 程序的大文件操作</string>
+    <string name="changelog_summary_a20528c62b30ac0172eb75fa7006c06daa0e0db8" formatted="false">修正 32 位 x86 程序对大文件执行状态查询、打开、写入和锁定时的返回结果，处理原生 Linux 版《求生之路 2》启动后很快退出的问题。</string>
+    <string name="changelog_title_9b5d7870a3b3fedb6bdc6de3c536bd3e44dc4484" formatted="false">启动游戏时重新应用 Steam 快捷菜单缩放设置</string>
+    <string name="changelog_summary_9b5d7870a3b3fedb6bdc6de3c536bd3e44dc4484" formatted="false">修复重启后 Steam 快捷菜单虽然显示已保存的缩放模式和滤镜，却未同步给 gamescope 的问题。游戏启动时会重新应用这些设置。</string>
+    <string name="changelog_title_c7ff93ec1977f1338120da0a14c385220b896f4b" formatted="false">新增整数缩放选项</string>
+    <string name="changelog_summary_c7ff93ec1977f1338120da0a14c385220b896f4b" formatted="false">新增整数缩放选项，适用于像素画风游戏和二维游戏。</string>
+    <string name="changelog_title_1cada9ad50d07c3768833846f77c6a27e1464019" formatted="false">保护 Claude 保留的后台任务</string>
+    <string name="changelog_summary_1cada9ad50d07c3768833846f77c6a27e1464019" formatted="false">修复 Claude 后台会话生命周期、重试和费用统计中的问题，改善保留后台任务时的可靠性。</string>
+    <string name="changelog_title_946e9c41e00ef49c356cb6f9044e3c09370e9f49" formatted="false">新增每款游戏的 Steam Input 设置</string>
+    <string name="changelog_summary_946e9c41e00ef49c356cb6f9044e3c09370e9f49" formatted="false">每款游戏可单独选择使用 Steam 默认设置、启用或禁用 Steam Input。</string>
+    <string name="changelog_title_259d5d184b9ccca71fc335228eb1c85854b60e5b" formatted="false">Claude Code 跨消息保持运行并接收后台结果</string>
+    <string name="changelog_summary_259d5d184b9ccca71fc335228eb1c85854b60e5b" formatted="false">保留 Claude Code 进程，使后台任务完成时能够唤醒会话并主动返回结果，处理此前需要等待用户下一条消息才显示任务通知的问题。</string>
+    <string name="changelog_title_9a93f59fbfc2631be1c8affaf3cba967238aca7f" formatted="false">桌面模式启动 PipeWire 以支持屏幕捕获</string>
+    <string name="changelog_summary_9a93f59fbfc2631be1c8affaf3cba967238aca7f" formatted="false">桌面模式启动 Plasma 时同时运行随附的 PipeWire 服务，修复 Sunshine 远程桌面请求失败、串流客户端无法捕获屏幕的问题。</string>
+    <string name="changelog_title_03812bb3b777c104746d07c55a85be636b398d3a" formatted="false">新增开机动画随机播放开关</string>
+    <string name="changelog_summary_03812bb3b777c104746d07c55a85be636b398d3a" formatted="false">开机动画设置新增随机播放开关，并与 Steam 的启动动画随机播放设置联动。</string>
 </resources>
