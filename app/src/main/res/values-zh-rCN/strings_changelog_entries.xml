@@ -484,4 +484,6 @@
     <string name="changelog_summary_fdf3d98c36c35c2d770ec54e59f3dd424f212beb" formatted="false">修复 Proton 游戏崩溃后，设备或手柄可能持续振动直到整个会话结束的问题。</string>
     <string name="changelog_title_6f7d7f827f6bddf188cde0c4f91474eaccf558f9" formatted="false">避免替换测试构建时下载返回 404</string>
     <string name="changelog_summary_6f7d7f827f6bddf188cde0c4f91474eaccf558f9" formatted="false">先刷新目录再清理旧 APK，已合并的测试构建也会保留到 Preview 包含对应改动。</string>
+    <string name="changelog_title_7b4b86b0f368d3b59a33071b84c261a1d14b5054" formatted="false">Turnip 默认让游戏和应用使用系统内存渲染</string>
+    <string name="changelog_summary_7b4b86b0f368d3b59a33071b84c261a1d14b5054" formatted="false">默认启用的 Turnip 系统内存渲染设置现已覆盖游戏与应用。在此之前，它主要应用于 Steam 客户端。</string>
 </resources>
